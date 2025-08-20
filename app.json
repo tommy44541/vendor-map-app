@@ -10,7 +10,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.tom-slighter.vendormapapp"
+      "bundleIdentifier": "com.tomslighter.vendormapapp"
     },
     "android": {
       "adaptiveIcon": {
@@ -18,7 +18,7 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.tom_slighter.vendormapapp"
+      "package": "com.tomslighter.vendormapapp"
     },
     "web": {
       "bundler": "metro",
