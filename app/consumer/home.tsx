@@ -20,7 +20,7 @@ export default function ConsumerHomeScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showUserMenu, setShowUserMenu] = useState(false);
 
-  // 设置状态栏样式
+  // 設置狀態欄樣式
   useEffect(() => {
     StatusBar.setBarStyle("light-content");
     if (Platform.OS === "android") {
@@ -34,12 +34,12 @@ export default function ConsumerHomeScreen() {
       await logout();
       router.replace("/entry");
     } catch (error) {
-      console.error("登出失败:", error);
+      console.error("登出失敗:", error);
     }
   };
 
   const handleSearch = () => {
-    // TODO: 搜索功能
+    // TODO: 搜尋功能
     // if (searchQuery.trim()) {
     //   router.push(
     //     `/consumer/search?q=${encodeURIComponent(searchQuery.trim())}`
@@ -48,7 +48,7 @@ export default function ConsumerHomeScreen() {
   };
 
   const categories = [
-    { id: "all", name: "全部", icon: "🍽️" },
+    { id: "all", name: "全部", icon: "🍽" },
     { id: "breakfast", name: "早餐", icon: "🌅" },
     { id: "lunch", name: "午餐", icon: "☀️" },
     { id: "dinner", name: "晚餐", icon: "🌙" },
@@ -112,7 +112,7 @@ export default function ConsumerHomeScreen() {
 
   return (
     <View className="flex-1 bg-gray-50">
-      {/* 顶部搜索栏 */}
+      {/* 頂部搜索欄 */}
       <LinearGradient
         colors={["#4ECDC4", "#44A08D"]}
         style={{
@@ -143,7 +143,7 @@ export default function ConsumerHomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* 搜索栏 */}
+        {/* 搜索欄 */}
         <View className="mt-2">
           <View className="flex-row bg-white rounded-full px-5 py-3 items-center">
             <TextInput
@@ -161,7 +161,7 @@ export default function ConsumerHomeScreen() {
         </View>
       </LinearGradient>
 
-      {/* 主要内容区域 */}
+      {/* 主要內容區域 */}
       <ScrollView
         className="flex-1 px-6 pt-6"
         showsVerticalScrollIndicator={false}
@@ -191,7 +191,7 @@ export default function ConsumerHomeScreen() {
           </View>
         </View>
 
-        {/* 分类选择 */}
+        {/* 分類選擇 */}
         <View className="mb-8">
           <Text className="text-xl font-bold text-gray-800 mb-5">美食分類</Text>
           <ScrollView
@@ -216,7 +216,7 @@ export default function ConsumerHomeScreen() {
           </ScrollView>
         </View>
 
-        {/* 推荐攤車 */}
+        {/* 推薦攤車 */}
         <View className="mb-8">
           <View className="flex-row justify-between items-center mb-5">
             <Text className="text-xl font-bold text-gray-800">推薦攤車</Text>
@@ -275,7 +275,7 @@ export default function ConsumerHomeScreen() {
           </View>
         </View>
 
-        {/* 附近攤車地图入口 */}
+        {/* 附近攤車地圖入口 */}
         <View className="mb-8">
           <TouchableOpacity
             className="rounded-2xl overflow-hidden"
@@ -302,7 +302,7 @@ export default function ConsumerHomeScreen() {
         </View>
       </ScrollView>
 
-      {/* 用户菜单下拉框 */}
+      {/* 用戶選單下拉框 */}
       <Modal
         visible={showUserMenu}
         transparent={true}
@@ -315,7 +315,7 @@ export default function ConsumerHomeScreen() {
         >
           <View className="flex-1 justify-start pt-20">
             <View className="mx-6 bg-white rounded-2xl shadow-lg overflow-hidden">
-              {/* 用户信息 */}
+              {/* 用戶信息 */}
               <View className="p-4 border-b border-gray-100">
                 <View className="flex-row items-center">
                   <View className="w-12 h-12 rounded-full bg-gray-200 justify-center items-center mr-4">
@@ -334,7 +334,7 @@ export default function ConsumerHomeScreen() {
                 </View>
               </View>
 
-              {/* 菜单选项 */}
+              {/* 選單選項 */}
               <View className="py-2">
                 <TouchableOpacity
                   className="flex-row items-center px-4 py-3 active:bg-gray-50"
@@ -373,7 +373,7 @@ export default function ConsumerHomeScreen() {
                   className="flex-row items-center px-4 py-3 active:bg-gray-50"
                   onPress={() => {
                     setShowUserMenu(false);
-                    // 可以添加设置页面路由
+                    // 可以添加設置頁面路由
                   }}
                 >
                   <Text className="text-lg mr-3">⚙️</Text>

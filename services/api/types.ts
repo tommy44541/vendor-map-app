@@ -1,10 +1,10 @@
-// API基础配置
+// API設定
 export interface API_SETTINGS {
   BASE_URL: string;
   TIMEOUT: number;
 }
 
-// 请求头类型
+// 請求頭類型
 export interface RequestHeaders {
   'Content-Type': string;
   'Authorization'?: string;
@@ -12,7 +12,7 @@ export interface RequestHeaders {
   [key: string]: string | undefined;
 }
 
-// 服务器错误响应类型
+// 伺服器錯誤響應類型
 export interface ServerErrorResponse {
   success: false;
   code: number;
@@ -23,7 +23,7 @@ export interface ServerErrorResponse {
   };
 }
 
-// 服务器成功响应类型
+// 伺服器成功響應類型
 export interface ServerSuccessResponse<T = any> {
   success: true;
   code: number;
@@ -31,12 +31,12 @@ export interface ServerSuccessResponse<T = any> {
   data: T;
 }
 
-// 通用API响应类型
+// 通用API響應類型
 export type ApiResponse<T = any> = ServerSuccessResponse<T> | ServerErrorResponse;
 
-// 错误代码枚举
+// 錯誤代碼枚舉
 export enum ErrorCode {
-  // 客户端错误 (4xx)
+  // 客戶端錯誤 (4xx)
   BAD_REQUEST = 400,
   UNAUTHORIZED = 401,
   FORBIDDEN = 403,
@@ -45,34 +45,34 @@ export enum ErrorCode {
   UNPROCESSABLE_ENTITY = 422,
   TOO_MANY_REQUESTS = 429,
   
-  // 服务器错误 (5xx)
+  // 伺服器錯誤 (5xx)
   INTERNAL_SERVER_ERROR = 500,
   BAD_GATEWAY = 502,
   SERVICE_UNAVAILABLE = 503,
   GATEWAY_TIMEOUT = 504,
 }
 
-// 错误代码常量
+// 錯誤代碼常量
 export const ERROR_CODES = {
-  // 用户相关错误
+  // 用戶相關錯誤
   USER_ALREADY_EXISTS: 'USER_ALREADY_EXISTS',
   USER_NOT_FOUND: 'USER_NOT_FOUND',
   INVALID_CREDENTIALS: 'INVALID_CREDENTIALS',
   EMAIL_ALREADY_REGISTERED: 'EMAIL_ALREADY_REGISTERED',
   
-  // 认证相关错误
+  // 認證相關錯誤
   TOKEN_EXPIRED: 'TOKEN_EXPIRED',
   TOKEN_INVALID: 'TOKEN_INVALID',
   INSUFFICIENT_PERMISSIONS: 'INSUFFICIENT_PERMISSIONS',
   
-  // 业务逻辑错误
+  // 業務邏輯錯誤
   STORE_ALREADY_EXISTS: 'STORE_ALREADY_EXISTS',
   INVALID_BUSINESS_LICENSE: 'INVALID_BUSINESS_LICENSE',
   ORDER_NOT_FOUND: 'ORDER_NOT_FOUND',
   INSUFFICIENT_STOCK: 'INSUFFICIENT_STOCK',
 } as const;
 
-// 用户注册响应类型
+// 用戶註冊響應類型
 export interface UserRegisterResponse {
   id: string;
   email: string;
@@ -88,7 +88,7 @@ export interface UserRegisterResponse {
   updated_at: string;
 }
 
-// 商家注册响应类型
+// 商家註冊響應類型
 export interface MerchantRegisterResponse {
   id: string;
   email: string;
@@ -109,7 +109,7 @@ export interface MerchantRegisterResponse {
   updated_at: string;
 }
 
-// 登录响应类型
+// 登入響應類型
 export interface LoginResponse {
   success: boolean;
   code: number;
@@ -135,7 +135,7 @@ export interface LoginResponse {
   };
 }
 
-// 请求配置类型
+// 請求配置類型
 export interface RequestConfig {
   method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
   headers?: Partial<RequestHeaders>;
@@ -143,7 +143,7 @@ export interface RequestConfig {
   timeout?: number;
 }
 
-// 获取用户信息响应类型
+// 獲取用戶信息響應類型
 export interface GetUserInfoResponse {
   id: string;
   email: string;
@@ -158,4 +158,23 @@ export interface GetUserInfoResponse {
   };
   created_at: string;
   updated_at: string;
+}
+
+// 刷新token響應類型
+export interface RefreshTokenResponse {
+  success: boolean;
+  code: number;
+  message: string;
+  data: {
+    access_token: string;
+    refresh_token: string;
+  };
+}
+
+// 登出響應類型
+export interface LogoutResponse {
+  success: boolean;
+  code: number;
+  message: string;
+  data: null;
 }

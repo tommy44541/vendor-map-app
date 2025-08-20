@@ -3,6 +3,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { authApi } from "../services/api/auth";
 import {
   clearAuthToken,
+  getRefreshToken,
   setAuthToken,
   setRefreshToken,
 } from "../services/api/core";
@@ -36,6 +37,15 @@ const clearUserInfo = async (): Promise<void> => {
     await AsyncStorage.removeItem(USER_INFO_KEY);
   } catch (error) {
     console.error("清除用戶訊息失敗:", error);
+  }
+};
+
+// 清除刷新token
+const clearRefreshToken = async (): Promise<void> => {
+  try {
+    await AsyncStorage.removeItem("refreshToken");
+  } catch (error) {
+    console.error("清除刷新token失敗:", error);
   }
 };
 
@@ -340,7 +350,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   // 登出
   const logout = async () => {
     try {
+      // 获取refresh token用于后端登出
+      const refreshToken = await getRefreshToken();
+
+      // 调用后端登出API
+      if (refreshToken) {
+        try {
+          await authApi.logout(refreshToken);
+        } catch (error) {
+          console.warn("后端登出失败，但继续本地清理:", error);
+        }
+      }
+
+      // 清除本地存储
       await clearAuthToken();
+      await clearRefreshToken();
       await clearUserInfo();
     } catch (error) {
       console.error("清除認證訊息失敗:", error);

@@ -1,5 +1,12 @@
 import { api } from './core';
-import { GetUserInfoResponse, LoginResponse, MerchantRegisterResponse, UserRegisterResponse } from './types';
+import {
+  GetUserInfoResponse,
+  LoginResponse,
+  LogoutResponse,
+  MerchantRegisterResponse,
+  RefreshTokenResponse,
+  UserRegisterResponse
+} from './types';
 
 // 認證相關API
 export const authApi = {
@@ -31,10 +38,12 @@ export const authApi = {
     api.post('/auth/google', { idToken }),
   
   // 刷新token
-  refreshToken: () => api.post('/auth/refresh'),
+  refreshToken: (refreshToken: string) => 
+    api.post<RefreshTokenResponse>('/auth/refresh', { refresh_token: refreshToken }),
 
   // 登出
-  logout: () => api.post('/auth/logout'),
+  logout: (refreshToken: string) => 
+    api.post<LogoutResponse>('/auth/logout', { refresh_token: refreshToken }),
   
   // 獲取用戶資訊
   getUserInfo: () => api.get<GetUserInfoResponse>('/auth/user'),

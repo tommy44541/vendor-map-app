@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_CONFIG } from '../../config/env';
+import { authApi } from './auth';
 import { getUserFriendlyMessage } from './errorHandler';
 import { API_SETTINGS, RequestConfig, RequestHeaders, ServerErrorResponse } from './types';
 
@@ -56,6 +57,15 @@ export const clearAuthToken = async (): Promise<void> => {
   }
 };
 
+// 清除刷新token
+export const clearRefreshToken = async (): Promise<void> => {
+  try {
+    await AsyncStorage.removeItem('refreshToken');
+  } catch (error) {
+    console.error('清除刷新token失敗:', error);
+  }
+};
+
 // 構建請求URL
 const buildUrl = (endpoint: string): string => {
   if (endpoint.startsWith('http')) {
@@ -91,9 +101,45 @@ const buildHeaders = async (customHeaders?: Partial<RequestHeaders>): Promise<Re
 };
 
 // 處理響應
-const handleResponse = async <T>(response: Response): Promise<T> => {
+const handleResponse = async <T>(response: Response, originalRequest?: RequestConfig): Promise<T> => {
   if (!response.ok) {
     if (response.status === 401) {
+      // 尝试自动刷新token
+      const refreshToken = await getRefreshToken();
+      if (refreshToken) {
+        try {
+          console.log('🔄 尝试自动刷新token...');
+          const refreshResponse = await authApi.refreshToken(refreshToken);
+          
+          if (refreshResponse.success) {
+            // 保存新的token
+            await setAuthToken(refreshResponse.data.access_token);
+            await setRefreshToken(refreshResponse.data.refresh_token);
+            
+            console.log('✅ Token自动刷新成功');
+            
+            // 重新发送原始请求
+            if (originalRequest) {
+              const retryHeaders = await buildHeaders(originalRequest.headers);
+              const retryResponse = await fetch(response.url, {
+                method: originalRequest.method,
+                headers: retryHeaders,
+                body: originalRequest.body
+              });
+              
+              if (retryResponse.ok) {
+                return await retryResponse.json();
+              }
+            }
+          }
+        } catch (refreshError) {
+          console.error('❌ Token自动刷新失败:', refreshError);
+          // 刷新失败，清除所有认证信息
+          await clearAuthToken();
+          await clearRefreshToken();
+        }
+      }
+      
       // 未授權，清除token
       await clearAuthToken();
       throw new Error('認證失敗，請重新登入');
@@ -181,7 +227,7 @@ const request = async <T>(
       statusText: response.statusText,
       headers: Object.fromEntries(response.headers.entries())
     });
-    return await handleResponse<T>(response);
+    return await handleResponse<T>(response, config);
   } catch (error) {
     console.error('❌ 請求失敗:', error);
     console.error('🔍 錯誤詳情:', {
