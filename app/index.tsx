@@ -12,7 +12,7 @@ export default function IndexScreen() {
       if (isAuthenticated && user) {
         // 已认证用户，根据用户类型跳转
         if (user.userType === "vendor") {
-          router.replace("/vendor/home");
+          router.replace("/vendor/(tabs)/home");
         } else {
           router.replace("/consumer/home");
         }

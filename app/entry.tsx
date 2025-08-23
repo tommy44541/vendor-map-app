@@ -10,26 +10,26 @@ export default function EntryScreen() {
 
   const handleVendorEntry = () => {
     if (isAuthenticated && user && user.userType === "vendor") {
-      // 已登录的攤商用户，直接跳转到攤商home页面
+      // 已登入的攤商用戶，直接跳轉到攤商home頁面
       router.push("/vendor/home");
     } else if (isAuthenticated && user && user.userType === "consumer") {
-      // 已登录的消费者用户，提示选择正确的身份
-      alert("您当前登录的是消费者账号，请先登出后选择攤商端注册");
+      // 已登入的消費者用戶，提示選擇正確的身份
+      alert("您當前登入的是消費者帳號，請先登出後選擇攤商端註冊");
     } else {
-      // 未登录用户，跳转到攤商注册页面
+      // 未登入用戶，跳轉到攤商註冊頁面
       router.push("/auth/register?type=vendor");
     }
   };
 
   const handleConsumerEntry = () => {
     if (isAuthenticated && user && user.userType === "consumer") {
-      // 已登录的消费者用户，直接跳转到消费者home页面
+      // 已登入的消費者用戶，直接跳轉到消費者home頁面
       router.push("/consumer/home");
     } else if (isAuthenticated && user && user.userType === "vendor") {
-      // 已登录的攤商用户，提示选择正确的身份
-      alert("您当前登录的是攤商账号，请先登出后选择消费者端注册");
+      // 已登入的攤商用戶，提示選擇正確的身份
+      alert("您當前登入的是攤商帳號，請先登出後選擇消費者端註冊");
     } else {
-      // 未登录用户，跳转到消费者注册页面
+      // 未登入用戶，跳轉到消費者註冊頁面
       router.push("/auth/register?type=consumer");
     }
   };
@@ -40,11 +40,11 @@ export default function EntryScreen() {
 
   return (
     <View className="flex-1 bg-gray-50">
-      {/* 顶部Logo区域 */}
+      {/* 頂部Logo區域 */}
       <View className="items-center pt-20">
         <Image
           source={require("../assets/images/logo.png")}
-          className="w-20 h-20 mb-4"
+          className="w-20 h-20"
           resizeMode="contain"
         />
         <Text className="text-3xl font-bold text-gray-800 mb-2">攤車雷達</Text>
@@ -53,7 +53,7 @@ export default function EntryScreen() {
         </Text>
       </View>
 
-      {/* 两个入口区块 */}
+      {/* 兩個入口區塊 */}
       <View className="flex-1 px-6 justify-center gap-6">
         {/* 攤車商家端入口 */}
         <TouchableOpacity
@@ -68,7 +68,7 @@ export default function EntryScreen() {
             end={{ x: 1, y: 1 }}
           >
             <View style={{ flex: 1, padding: 24 }}>
-              {/* 图标和标题行 */}
+              {/* 圖標和標題行 */}
               <View
                 style={{
                   flexDirection: "row",
@@ -104,7 +104,7 @@ export default function EntryScreen() {
                 </View>
               </View>
 
-              {/* 标题 */}
+              {/* 標題 */}
               <Text
                 style={{
                   fontSize: 24,
@@ -145,7 +145,7 @@ export default function EntryScreen() {
             end={{ x: 1, y: 1 }}
           >
             <View style={{ flex: 1, padding: 24 }}>
-              {/* 图标和标题行 */}
+              {/* 圖標和標題行 */}
               <View
                 style={{
                   flexDirection: "row",
@@ -181,7 +181,7 @@ export default function EntryScreen() {
                 </View>
               </View>
 
-              {/* 标题 */}
+              {/* 標題 */}
               <Text
                 style={{
                   fontSize: 24,
@@ -210,7 +210,7 @@ export default function EntryScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* 登录链接和登出选项 */}
+      {/* 登入連結和登出選項 */}
       <View className="items-center pb-6">
         {isAuthenticated ? (
           <View className="items-center">

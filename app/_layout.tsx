@@ -13,7 +13,11 @@ function AuthRouter() {
   }
 
   return (
-    <Stack>
+    <Stack
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
       {/* 主入口页面 - 处理认证后的路由跳转 */}
       <Stack.Screen name="index" options={{ headerShown: false }} />
 
@@ -23,14 +27,8 @@ function AuthRouter() {
       {/* 认证页面 - 始终可用 */}
       <Stack.Screen name="auth/register" options={{ headerShown: false }} />
 
-      {/* 商家端页面 - 始终可用，但通过认证状态控制访问 */}
-      <Stack.Screen name="vendor/home" options={{ headerShown: false }} />
-      <Stack.Screen name="vendor/profile" options={{ headerShown: false }} />
-      <Stack.Screen name="vendor/menu" options={{ headerShown: false }} />
-      <Stack.Screen name="vendor/location" options={{ headerShown: false }} />
-      <Stack.Screen name="vendor/orders" options={{ headerShown: false }} />
-      <Stack.Screen name="vendor/analytics" options={{ headerShown: false }} />
-      <Stack.Screen name="vendor/settings" options={{ headerShown: false }} />
+      {/* 商家端页面 - 使用 (tabs) 布局 */}
+      <Stack.Screen name="vendor" options={{ headerShown: false }} />
 
       {/* 消费者端页面 - 始终可用，但通过认证状态控制访问 */}
       <Stack.Screen name="consumer/home" options={{ headerShown: false }} />

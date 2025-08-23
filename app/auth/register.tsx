@@ -33,18 +33,15 @@ import {
 // 创建动态验证schema
 const createValidationSchema = (isLogin: boolean) => {
   if (isLogin) {
-    // 登录模式 - 只验证email和password
     return z.object({
       email: z.email("請輸入有效的電子郵件地址"),
-      password: z.string().min(6, "密碼至少需要6個字符"),
-      // 其他字段设为可选，不验证
+      password: z.string().min(8, "密碼至少需要8個字符"),
       name: z.string().optional(),
       confirmPassword: z.string().optional(),
       store_name: z.string().optional(),
       business_license: z.string().optional(),
     });
   } else {
-    // 注册模式 - 验证所有字段
     return z
       .object({
         name: z.string().min(2, "姓名至少需要2個字符"),
@@ -174,26 +171,19 @@ export default function RegisterScreen() {
           }
         }
       } catch (error: any) {
-        // 使用新的错误处理系统
         if (isErrorType(error, ERROR_CODES.USER_ALREADY_EXISTS)) {
-          // 特殊处理用户已存在的情况
           showErrorAlert(error, "註冊失敗", () => {
-            // 用户已存在时，自动切换到登录模式
             setIsLogin(true);
-            // 清空密码字段
             form.setValue("password", "");
             form.setValue("confirmPassword", "");
           });
         } else if (isErrorType(error, ERROR_CODES.EMAIL_ALREADY_REGISTERED)) {
-          // 处理邮箱已被注册的情况
           showErrorAlert(error, "註冊失敗", () => {
-            // 清空邮箱和密码字段
             form.setValue("email", "");
             form.setValue("password", "");
             form.setValue("confirmPassword", "");
           });
         } else {
-          // 其他错误使用通用错误处理
           showErrorAlert(error, "操作失敗");
         }
       }
@@ -245,7 +235,7 @@ export default function RegisterScreen() {
             onPress={testHealth}
             className="bg-green-500 p-3 rounded mx-6 mb-4"
           >
-            <Text className="text-white text-center">测试连接</Text>
+            <Text className="text-white text-center">測試連接</Text>
           </TouchableOpacity>
         )}
         {/* 註冊/登入切換元件 */}

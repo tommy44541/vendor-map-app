@@ -229,13 +229,13 @@ const request = async <T>(
     });
     return await handleResponse<T>(response, config);
   } catch (error) {
-    console.error('❌ 請求失敗:', error);
-    console.error('🔍 錯誤詳情:', {
-      message: (error as Error).message,
-      stack: (error as Error).stack,
-      url,
-      method: config.method
-    });
+    //console.error('❌ 請求失敗:', error);
+    //console.error('🔍 錯誤詳情:', {
+      //message: (error as Error).message,
+      //stack: (error as Error).stack,
+      //url,
+      //method: config.method
+    //});
     throw error;
   }
 };

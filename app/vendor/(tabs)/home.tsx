@@ -11,7 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "../../../contexts/AuthContext";
 
 export default function VendorHomeScreen() {
   const router = useRouter();
@@ -106,8 +106,8 @@ export default function VendorHomeScreen() {
               <Text className="text-xs text-white/80">訂單</Text>
             </View>
             <View className="items-center">
-              <Text className="text-xl font-bold text-white mb-1">¥1,280</Text>
-              <Text className="text-xs text-white/80">營業額</Text>
+              <Text className="text-xl font-bold text-white mb-1">300</Text>
+              <Text className="text-xs text-white/80">追蹤人數</Text>
             </View>
             <View className="items-center">
               <Text className="text-xl font-bold text-white mb-1">4.8</Text>
