@@ -26,31 +26,6 @@ function AuthRouter() {
 
       {/* 认证页面 - 始终可用 */}
       <Stack.Screen name="auth/register" options={{ headerShown: false }} />
-
-      {/* 商家端页面 - 使用 (tabs) 布局 */}
-      <Stack.Screen name="vendor" options={{ headerShown: false }} />
-
-      {/* 消费者端页面 - 始终可用，但通过认证状态控制访问 */}
-      <Stack.Screen name="consumer/home" options={{ headerShown: false }} />
-      <Stack.Screen name="consumer/profile" options={{ headerShown: false }} />
-      <Stack.Screen
-        name="consumer/favorites"
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen name="consumer/orders" options={{ headerShown: false }} />
-      <Stack.Screen name="consumer/search" options={{ headerShown: false }} />
-      <Stack.Screen
-        name="consumer/recommendations"
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen name="consumer/map" options={{ headerShown: false }} />
-      <Stack.Screen
-        name="consumer/vendor/[id]"
-        options={{ headerShown: false }}
-      />
-
-      {/* 保留原有的商家详情页面 */}
-      <Stack.Screen name="merchant/[id]" options={{ headerShown: false }} />
     </Stack>
   );
 }

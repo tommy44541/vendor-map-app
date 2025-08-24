@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, {
@@ -20,7 +21,7 @@ import {
   View,
 } from "react-native";
 import { z } from "zod";
-import { IS_DEV } from "../../config/env";
+import EnhancedPasswordStrengthMeter from "../../components/EnhancedPasswordStrengthMeter";
 import { useAuth } from "../../contexts/AuthContext";
 import { authApi } from "../../services/api/auth";
 import {
@@ -29,6 +30,11 @@ import {
   showErrorAlert,
   showSuccessAlert,
 } from "../../services/api/errorHandler";
+import {
+  DEFAULT_PASSWORD_REQUIREMENTS,
+  checkPasswordRequirements,
+  validatePassword,
+} from "../../utils/passwordValidation";
 
 // 创建动态验证schema
 const createValidationSchema = (isLogin: boolean) => {
@@ -49,10 +55,35 @@ const createValidationSchema = (isLogin: boolean) => {
         password: z
           .string()
           .min(8, "密碼至少需要8個字符")
-          .regex(/[A-Z]/, "密碼至少需要1個大寫字母")
-          .regex(/[a-z]/, "密碼至少需要1個小寫字母")
-          .regex(/[0-9]/, "密碼至少需要1個數字")
-          .regex(/[!@#$%^&*]/, "密碼至少需要1個特殊字符"),
+          .superRefine((password, ctx) => {
+            // 使用统一的密码要求检查函数
+            const requirementsCheck = checkPasswordRequirements(
+              password,
+              DEFAULT_PASSWORD_REQUIREMENTS
+            );
+
+            // 如果基础要求不满足，添加相应的错误信息
+            if (!requirementsCheck.isValid) {
+              ctx.addIssue({
+                code: "custom",
+                message: requirementsCheck.errorMessage || "密碼不符合要求",
+              });
+              return;
+            }
+
+            // 最后检查密码强度
+            const validation = validatePassword(
+              password,
+              DEFAULT_PASSWORD_REQUIREMENTS
+            );
+
+            if (!validation.isValid) {
+              ctx.addIssue({
+                code: "custom",
+                message: "密碼強度不足",
+              });
+            }
+          }),
         confirmPassword: z.string().min(1, "請確認密碼"),
         store_name: z.string().optional(),
         business_license: z.string().optional(),
@@ -82,6 +113,10 @@ export default function RegisterScreen() {
   const { register, login, googleLogin, isLoading } = useAuth();
 
   const [isLogin, setIsLogin] = useState(false);
+  const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] =
+    useState(false);
+
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
   // 使用 useMemo 动态创建验证 schema
   const validationSchema = useMemo(
@@ -228,45 +263,14 @@ export default function RegisterScreen() {
         <View className="flex-row justify-center items-center mb-4">
           <Text className="text-2xl font-bold text-gray-700">{pageTitle}</Text>
         </View>
-
-        {/* 健康检查按钮 */}
-        {IS_DEV && (
-          <TouchableOpacity
-            onPress={testHealth}
-            className="bg-green-500 p-3 rounded mx-6 mb-4"
-          >
-            <Text className="text-white text-center">測試連接</Text>
-          </TouchableOpacity>
-        )}
         {/* 註冊/登入切換元件 */}
         <View className="flex-row justify-center items-center my-4">
-          <View
-            style={{
-              width: 240,
-              height: 48,
-              backgroundColor: "#E5E7EB", // gray-200
-              borderRadius: 24,
-              position: "relative",
-              flexDirection: "row",
-              overflow: "hidden",
-            }}
-          >
+          <View className="relative flex flex-row overflow-hidden w-[240px] h-14 bg-[#E5E7EB] rounded-full">
             {/* 動態滑動的選中框 */}
             <Animated.View
+              className="absolute top-0 w-1/2 h-14 bg-white rounded-full shadow-black shadow-xs z-[1] elevation-sm"
               style={{
-                position: "absolute",
-                top: 0,
                 left: slideAnim,
-                width: 120,
-                height: 48,
-                backgroundColor: "#fff",
-                borderRadius: 24,
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 1 },
-                shadowOpacity: 0.08,
-                shadowRadius: 2,
-                elevation: 2,
-                zIndex: 1,
               }}
             />
             {/* 註冊按鈕 */}
@@ -337,7 +341,7 @@ export default function RegisterScreen() {
                   name="name"
                   render={({ field: { onChange, onBlur, value } }) => (
                     <TextInput
-                      className={`bg-white border rounded-xl px-4 py-4 text-base ${
+                      className={`border rounded-xl px-4 py-4 text-base leading-tight ${
                         form.formState.errors.name
                           ? "border-red-500"
                           : "border-gray-300"
@@ -364,53 +368,27 @@ export default function RegisterScreen() {
               <Text className="text-base font-semibold text-gray-700">
                 電子郵件
               </Text>
-              {isLogin ? (
-                // 登录模式 - 使用 loginForm
-                <Controller
-                  control={form.control}
-                  name="email"
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <TextInput
-                      className={`bg-white border rounded-xl px-4 py-4 text-base ${
-                        form.formState.errors.email
-                          ? "border-red-500"
-                          : "border-gray-300"
-                      }`}
-                      placeholder="請輸入您的電子郵件"
-                      placeholderTextColor="#9CA3AF"
-                      value={value}
-                      onChangeText={onChange}
-                      onBlur={onBlur}
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      returnKeyType="next"
-                    />
-                  )}
-                />
-              ) : (
-                // 注册模式 - 使用 registerForm
-                <Controller
-                  control={form.control}
-                  name="email"
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <TextInput
-                      className={`bg-white border rounded-xl px-4 py-4 text-base ${
-                        form.formState.errors.email
-                          ? "border-red-500"
-                          : "border-gray-300"
-                      }`}
-                      placeholder="請輸入您的電子郵件"
-                      placeholderTextColor="#9CA3AF"
-                      value={value}
-                      onChangeText={onChange}
-                      onBlur={onBlur}
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      returnKeyType="next"
-                    />
-                  )}
-                />
-              )}
+              <Controller
+                control={form.control}
+                name="email"
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <TextInput
+                    className={`bg-white border rounded-xl px-4 py-4 text-base leading-tight ${
+                      form.formState.errors.email
+                        ? "border-red-500"
+                        : "border-gray-300"
+                    }`}
+                    placeholder="請輸入您的電子郵件"
+                    placeholderTextColor="#9CA3AF"
+                    value={value}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    returnKeyType="next"
+                  />
+                )}
+              />
               {/* 错误显示 */}
               {isLogin
                 ? form.formState.errors.email && (
@@ -429,14 +407,13 @@ export default function RegisterScreen() {
               <Text className="text-base font-semibold text-gray-700">
                 密碼
               </Text>
-              {isLogin ? (
-                // 登录模式 - 使用 loginForm
-                <Controller
-                  control={form.control}
-                  name="password"
-                  render={({ field: { onChange, onBlur, value } }) => (
+              <Controller
+                control={form.control}
+                name="password"
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <View className="relative">
                     <TextInput
-                      className={`bg-white border rounded-xl px-4 py-4 text-base ${
+                      className={`bg-white border rounded-xl px-4 py-4 text-base leading-tight ${
                         form.formState.errors.password
                           ? "border-red-500"
                           : "border-gray-300"
@@ -446,48 +423,38 @@ export default function RegisterScreen() {
                       value={value}
                       onChangeText={onChange}
                       onBlur={onBlur}
-                      secureTextEntry
+                      secureTextEntry={!isPasswordVisible}
                       returnKeyType="done"
                     />
-                  )}
-                />
-              ) : (
-                // 注册模式 - 使用 registerForm
-                <Controller
-                  control={form.control}
-                  name="password"
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <TextInput
-                      className={`bg-white border rounded-xl px-4 py-4 text-base ${
-                        form.formState.errors.password
-                          ? "border-red-500"
-                          : "border-gray-300"
-                      }`}
-                      placeholder="請輸入您的密碼"
-                      placeholderTextColor="#9CA3AF"
-                      value={value}
-                      onChangeText={onChange}
-                      onBlur={onBlur}
-                      secureTextEntry
-                      returnKeyType="next"
-                    />
-                  )}
+                    <View className="absolute right-4 top-1/2 -translate-y-1/2">
+                      <Ionicons
+                        name={isPasswordVisible ? "eye-off" : "eye"}
+                        size={24}
+                        color="#9CA3AF"
+                        onPress={() => setIsPasswordVisible(!isPasswordVisible)}
+                      />
+                    </View>
+                  </View>
+                )}
+              />
+
+              {/* 密码强度检查 - 仅在注册模式显示 */}
+              {!isLogin && form.watch("password") && (
+                <EnhancedPasswordStrengthMeter
+                  password={form.watch("password")}
+                  showHIBPCheck={true}
                 />
               )}
-              {/* 错误显示 */}
-              {isLogin
-                ? form.formState.errors.password && (
-                    <Text className="text-red-500 text-sm ml-1">
-                      {form.formState.errors.password.message}
-                    </Text>
-                  )
-                : form.formState.errors.password && (
-                    <Text className="text-red-500 text-sm ml-1">
-                      {form.formState.errors.password.message}
-                    </Text>
-                  )}
-            </View>
 
+              {/* 错误显示 */}
+              {form.formState.errors.password && (
+                <View className="flex-row items-center space-x-2">
+                  <Text className="text-red-500 text-sm">
+                    {form.formState.errors.password.message}
+                  </Text>
+                </View>
+              )}
+            </View>
             {!isLogin && (
               <View className="space-y-2">
                 <Text className="text-base font-semibold text-gray-700">
@@ -497,20 +464,34 @@ export default function RegisterScreen() {
                   control={form.control}
                   name="confirmPassword"
                   render={({ field: { onChange, onBlur, value } }) => (
-                    <TextInput
-                      className={`bg-white border rounded-xl px-4 py-4 text-base ${
-                        form.formState.errors.confirmPassword
-                          ? "border-red-500"
-                          : "border-gray-300"
-                      }`}
-                      placeholder="請再次輸入密碼"
-                      placeholderTextColor="#9CA3AF"
-                      value={value}
-                      onChangeText={onChange}
-                      onBlur={onBlur}
-                      secureTextEntry
-                      returnKeyType="done"
-                    />
+                    <View className="relative">
+                      <TextInput
+                        className={`bg-white border rounded-xl px-4 py-4 text-base leading-tight ${
+                          form.formState.errors.confirmPassword
+                            ? "border-red-500"
+                            : "border-gray-300"
+                        }`}
+                        placeholder="請再次輸入密碼"
+                        placeholderTextColor="#9CA3AF"
+                        value={value}
+                        onChangeText={onChange}
+                        onBlur={onBlur}
+                        secureTextEntry={!isConfirmPasswordVisible}
+                        returnKeyType="done"
+                      />
+                      <View className="absolute right-4 top-1/2 -translate-y-1/2">
+                        <Ionicons
+                          name={isConfirmPasswordVisible ? "eye-off" : "eye"}
+                          size={24}
+                          color="#9CA3AF"
+                          onPress={() =>
+                            setIsConfirmPasswordVisible(
+                              !isConfirmPasswordVisible
+                            )
+                          }
+                        />
+                      </View>
+                    </View>
                   )}
                 />
                 {form.formState.errors.confirmPassword && (
@@ -533,7 +514,7 @@ export default function RegisterScreen() {
                     name="store_name"
                     render={({ field: { onChange, onBlur, value } }) => (
                       <TextInput
-                        className={`bg-white border rounded-xl px-4 py-4 text-base ${
+                        className={`bg-white border rounded-xl px-4 py-4 text-base leading-tight ${
                           form.formState.errors.store_name
                             ? "border-red-500"
                             : "border-gray-300"
@@ -564,7 +545,7 @@ export default function RegisterScreen() {
                     name="business_license"
                     render={({ field: { onChange, onBlur, value } }) => (
                       <TextInput
-                        className={`bg-white border rounded-xl px-4 py-4 text-base ${
+                        className={`bg-white border rounded-xl px-4 py-4 text-base leading-tight  ${
                           form.formState.errors.business_license
                             ? "border-red-500"
                             : "border-gray-300"
