@@ -52,7 +52,6 @@ export default function EntryScreen() {
           發現身邊的美食攤車
         </Text>
       </View>
-
       {/* 兩個入口區塊 */}
       <View className="flex-1 px-6 justify-center gap-6">
         {/* 攤車商家端入口 */}

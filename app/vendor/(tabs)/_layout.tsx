@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import { TouchableOpacity, View } from "react-native";
 
-const _layout = () => {
+const VendorLayout = () => {
   return (
     <Tabs
       screenOptions={{
@@ -82,4 +82,4 @@ const _layout = () => {
   );
 };
 
-export default _layout;
+export default VendorLayout;

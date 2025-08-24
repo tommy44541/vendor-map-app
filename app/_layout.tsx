@@ -5,7 +5,7 @@ import "./globals.css";
 
 // 认证路由组件
 function AuthRouter() {
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
 
   // 如果正在加载，显示加载状态
   if (isLoading) {
@@ -20,12 +20,14 @@ function AuthRouter() {
     >
       {/* 主入口页面 - 处理认证后的路由跳转 */}
       <Stack.Screen name="index" options={{ headerShown: false }} />
-
       {/* 入口页面 - 始终可用 */}
       <Stack.Screen name="entry" options={{ headerShown: false }} />
-
       {/* 认证页面 - 始终可用 */}
       <Stack.Screen name="auth/register" options={{ headerShown: false }} />
+      <Stack.Protected guard={isAuthenticated}>
+        <Stack.Screen name="vendor" options={{ headerShown: false }} />
+        <Stack.Screen name="consumer" options={{ headerShown: false }} />
+      </Stack.Protected>
     </Stack>
   );
 }
