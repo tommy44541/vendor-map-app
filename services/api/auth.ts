@@ -1,11 +1,11 @@
 import { api } from './core';
 import {
-  GetUserInfoResponse,
-  LoginResponse,
-  LogoutResponse,
-  MerchantRegisterResponse,
-  RefreshTokenResponse,
-  UserRegisterResponse
+    GetUserInfoResponse,
+    LoginResponse,
+    LogoutResponse,
+    MerchantRegisterResponse,
+    RefreshTokenResponse,
+    UserRegisterResponse
 } from './types';
 
 // 認證相關API
