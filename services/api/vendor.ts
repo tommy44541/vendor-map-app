@@ -1,42 +1,32 @@
-import { api } from './core';
+import { request } from './shared';
+
+// 商家信息类型
+export interface VendorInfo {
+  id: string;
+  user_id: string;
+  store_name: string;
+  store_description: string;
+  business_license: string;
+  rating: number;
+  review_count: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+
+// 获取商家信息响应
+export interface GetVendorInfoResponse extends VendorInfo {}
+
+// 更新商家信息响应
+export interface UpdateVendorInfoResponse extends VendorInfo {}
+
+// 核心API请求函数
+
 
 // 商家相关API
 export const vendorApi = {
   // 获取商家信息
-  getVendorInfo: (vendorId: string) => api.get(`/vendor/${vendorId}`),
-  
-  // 更新商家信息
-  updateVendorInfo: (vendorId: string, data: any) =>
-    api.put(`/vendor/${vendorId}`, data),
-  
-  // 获取商家列表
-  getVendorList: (params?: any) => api.get('/vendor/list', params),
-  
-  // 创建商家
-  createVendor: (vendorData: any) => api.post('/vendor', vendorData),
-  
-  // 删除商家
-  deleteVendor: (vendorId: string) => api.delete(`/vendor/${vendorId}`),
-  
-  // 获取商家菜单
-  getVendorMenu: (vendorId: string) => api.get(`/vendor/${vendorId}/menu`),
-  
-  // 更新商家菜单
-  updateVendorMenu: (vendorId: string, menuData: any) =>
-    api.put(`/vendor/${vendorId}/menu`, menuData),
-  
-  // 获取商家营业时间
-  getBusinessHours: (vendorId: string) => api.get(`/vendor/${vendorId}/hours`),
-  
-  // 更新商家营业时间
-  updateBusinessHours: (vendorId: string, hoursData: any) =>
-    api.put(`/vendor/${vendorId}/hours`, hoursData),
-  
-  // 获取商家评价
-  getVendorReviews: (vendorId: string, params?: any) =>
-    api.get(`/vendor/${vendorId}/reviews`, params),
-  
-  // 商家上传图片
-  uploadVendorImage: (vendorId: string, formData: FormData) =>
-    api.post(`/vendor/${vendorId}/images`, formData),
+  getVendorInfo: (vendorId: string) => request<GetVendorInfoResponse>(`/vendor/${vendorId}`, 'GET'),
+
 };

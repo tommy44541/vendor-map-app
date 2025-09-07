@@ -29,7 +29,7 @@ import {
   isErrorType,
   showErrorAlert,
   showSuccessAlert,
-} from "../../services/api/errorHandler";
+} from "../../utils/errorHandler";
 import {
   DEFAULT_PASSWORD_REQUIREMENTS,
   checkPasswordRequirements,
@@ -159,15 +159,6 @@ export default function RegisterScreen() {
       useNativeDriver: false, // 因为我们要动画left属性
     }).start();
   }, [isLogin, slideAnim]);
-
-  // Google OAuth配置
-  // const [request, response, promptAsync] = AuthSession.useAuthRequest({
-  //   clientId: "YOUR_GOOGLE_CLIENT_ID", // 替换为你的Google Client ID
-  //   scopes: ["openid", "profile", "email"],
-  //   redirectUri: AuthSession.makeRedirectUri({
-  //     scheme: "your-app-scheme", // 替换为你的应用scheme
-  //   }),
-  // });
 
   // 处理表单提交
   const onSubmit = useCallback(
@@ -607,6 +598,7 @@ export default function RegisterScreen() {
             <TouchableOpacity
               className="bg-white border border-gray-300 rounded-xl py-4 items-center"
               //onPress={startGoogleLogin}
+              onPress={googleLogin}
               disabled={isLoading}
             >
               <Text className="text-gray-700 text-base font-medium">
