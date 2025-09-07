@@ -122,7 +122,7 @@ interface AuthContextType extends AuthState {
     store_name?: string;
     business_license?: string;
   }) => Promise<void>;
-  googleLogin: () => Promise<void>;
+  googleLogin: (userType?: UserType) => Promise<void>;
   googleLogout: () => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (userData: Partial<User>) => void;
@@ -354,7 +354,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   // Google登入
-  const googleLogin = async () => {
+  const googleLogin = async (userType?: UserType) => {
     try {
       setAuthState((prev) => ({ ...prev, isLoading: true }));
       await GoogleSignin.hasPlayServices();
@@ -377,12 +377,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
               await setRefreshToken(refresh_token);
             }
 
-            // 转换用户数据格式 - Google OAuth用户默认为消费者
+            //TODO: 目前為前端判斷，未來考慮後端回傳結構判斷
+            let actualUserType: UserType = "consumer"; // 默认为消费者
+
+            if (userType) {
+              actualUserType = userType;
+            }
+
+            // 转换用户数据格式
             const userData: User = {
               id: user.id,
               email: user.email,
               name: user.name,
-              userType: "consumer", // Google OAuth用户默认为消费者
+              userType: actualUserType,
               createdAt: user.created_at,
             };
 
@@ -397,7 +404,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
               isAuthenticated: true,
             });
 
-            console.log("✅ Google OAuth登录成功，用户已认证");
+            console.log(`✅ Google OAuth登录成功，用户类型: ${actualUserType}`);
           } else {
             throw new Error("Google OAuth回调失败");
           }

@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, {
@@ -23,12 +24,10 @@ import {
 import { z } from "zod";
 import EnhancedPasswordStrengthMeter from "../../components/EnhancedPasswordStrengthMeter";
 import { useAuth } from "../../contexts/AuthContext";
-import { authApi } from "../../services/api/auth";
 import {
   ERROR_CODES,
   isErrorType,
   showErrorAlert,
-  showSuccessAlert,
 } from "../../utils/errorHandler";
 import {
   DEFAULT_PASSWORD_REQUIREMENTS,
@@ -221,16 +220,6 @@ export default function RegisterScreen() {
   const pageTitle = isLogin
     ? `登入${userTypeText}帳戶`
     : `註冊${userTypeText}帳戶`;
-
-  // 健康检查功能
-  const testHealth = async () => {
-    try {
-      const result = await authApi.healthCheck();
-      showSuccessAlert(`健康检查通过: ${JSON.stringify(result)}`, "连接测试");
-    } catch (error: any) {
-      showErrorAlert(error, "连接测试失败");
-    }
-  };
 
   return (
     <KeyboardAvoidingView
@@ -596,11 +585,13 @@ export default function RegisterScreen() {
 
             {/* Google登录按钮 */}
             <TouchableOpacity
-              className="bg-white border border-gray-300 rounded-xl py-4 items-center"
-              //onPress={startGoogleLogin}
-              onPress={googleLogin}
+              className="bg-white border border-gray-300 rounded-xl py-4 items-center relative"
+              onPress={() => googleLogin(type as "vendor" | "consumer")}
               disabled={isLoading}
             >
+              <View className="absolute left-4 top-1/2">
+                <FontAwesome name="google" size={24} color="black" />
+              </View>
               <Text className="text-gray-700 text-base font-medium">
                 使用 Google 帳戶繼續
               </Text>
