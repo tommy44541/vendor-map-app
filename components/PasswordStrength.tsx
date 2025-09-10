@@ -6,7 +6,7 @@ import {
   checkPasswordRequirements,
 } from "../utils/passwordValidation";
 
-interface EnhancedPasswordStrengthMeterProps {
+interface PasswordStrengthProps {
   password: string;
   showHIBPCheck?: boolean;
   onValidationChange?: (isValid: boolean) => void;
@@ -26,11 +26,11 @@ const strengthLevels: StrengthLevel[] = [
   { label: "非常強", color: "#16A34A", score: 4 },
 ];
 
-export default function EnhancedPasswordStrengthMeter({
+export default function PasswordStrength({
   password,
   showHIBPCheck = false, // 默认关闭HIBP功能
   onValidationChange,
-}: EnhancedPasswordStrengthMeterProps) {
+}: PasswordStrengthProps) {
   const result = useMemo(() => {
     if (!password) return null;
     return zxcvbn(password);

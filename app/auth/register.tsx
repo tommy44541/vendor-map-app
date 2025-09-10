@@ -22,7 +22,7 @@ import {
   View,
 } from "react-native";
 import { z } from "zod";
-import EnhancedPasswordStrengthMeter from "../../components/EnhancedPasswordStrengthMeter";
+import PasswordStrength from "../../components/PasswordStrength";
 import { useAuth } from "../../contexts/AuthContext";
 import {
   ERROR_CODES,
@@ -35,7 +35,6 @@ import {
   validatePassword,
 } from "../../utils/passwordValidation";
 
-// 创建动态验证schema
 const createValidationSchema = (isLogin: boolean) => {
   if (isLogin) {
     return z.object({
@@ -55,13 +54,11 @@ const createValidationSchema = (isLogin: boolean) => {
           .string()
           .min(8, "密碼至少需要8個字符")
           .superRefine((password, ctx) => {
-            // 使用统一的密码要求检查函数
             const requirementsCheck = checkPasswordRequirements(
               password,
               DEFAULT_PASSWORD_REQUIREMENTS
             );
 
-            // 如果基础要求不满足，添加相应的错误信息
             if (!requirementsCheck.isValid) {
               ctx.addIssue({
                 code: "custom",
@@ -70,7 +67,6 @@ const createValidationSchema = (isLogin: boolean) => {
               return;
             }
 
-            // 最后检查密码强度
             const validation = validatePassword(
               password,
               DEFAULT_PASSWORD_REQUIREMENTS
@@ -117,13 +113,11 @@ export default function RegisterScreen() {
 
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
-  // 使用 useMemo 动态创建验证 schema
   const validationSchema = useMemo(
     () => createValidationSchema(isLogin),
     [isLogin]
   );
 
-  // 使用单个表单，支持所有字段
   const form = useForm<RegisterFormData>({
     resolver: zodResolver(validationSchema),
     defaultValues: {
@@ -155,21 +149,18 @@ export default function RegisterScreen() {
     Animated.timing(slideAnim, {
       toValue: isLogin ? 120 : 0,
       duration: 300,
-      useNativeDriver: false, // 因为我们要动画left属性
+      useNativeDriver: false,
     }).start();
   }, [isLogin, slideAnim]);
 
-  // 处理表单提交
   const onSubmit = useCallback(
     async (data: RegisterFormData) => {
       try {
         const userType = (type as "vendor" | "consumer") || "consumer";
 
         if (isLogin) {
-          // 登录逻辑 - 只使用email和password
           await login(data.email, data.password, userType);
         } else {
-          // 注册逻辑 - 使用所有字段，确保name存在
           if (!data.name) {
             showErrorAlert("請輸入姓名", "驗證錯誤");
             return;
@@ -186,8 +177,6 @@ export default function RegisterScreen() {
           });
         }
 
-        // 登录成功后，AuthContext会自动处理路由跳转
-        // 注册成功后自动跳转到对应首页
         if (!isLogin) {
           if (userType === "vendor") {
             router.replace("/vendor/home");
@@ -233,7 +222,6 @@ export default function RegisterScreen() {
         contentContainerStyle={{ paddingBottom: 100 }}
         keyboardShouldPersistTaps="handled"
       >
-        {/* 返回上一頁箭頭 */}
         <TouchableOpacity
           className="rounded-xl p-2 pt-4 ml-4"
           onPress={() => router.back()}
@@ -420,7 +408,7 @@ export default function RegisterScreen() {
 
               {/* 密码强度检查 - 仅在注册模式显示 */}
               {!isLogin && form.watch("password") && (
-                <EnhancedPasswordStrengthMeter
+                <PasswordStrength
                   password={form.watch("password")}
                   showHIBPCheck={true}
                 />

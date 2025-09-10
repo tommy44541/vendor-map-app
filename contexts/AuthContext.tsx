@@ -5,12 +5,11 @@ import {
 } from "@react-native-google-signin/google-signin";
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { authApi } from "../services/api/auth";
+import { IOS_CLIENT_ID, WEB_CLIENT_ID } from "../utils/constants";
 
 GoogleSignin.configure({
-  webClientId:
-    "855661511974-nonh1qvbcp94g14acoljt174ebjrgkto.apps.googleusercontent.com",
-  iosClientId:
-    "855661511974-s71oucspmgs5hsdigggck739u365pftt.apps.googleusercontent.com",
+  webClientId: WEB_CLIENT_ID,
+  iosClientId: IOS_CLIENT_ID,
 });
 // 設置認證token
 const setAuthToken = async (token: string): Promise<void> => {
@@ -18,6 +17,16 @@ const setAuthToken = async (token: string): Promise<void> => {
     await AsyncStorage.setItem("authToken", token);
   } catch (error) {
     console.error("設置認證token失敗:", error);
+  }
+};
+
+// 獲取認證token
+const getAuthToken = async (): Promise<string | null> => {
+  try {
+    return await AsyncStorage.getItem("authToken");
+  } catch (error) {
+    console.error("獲取認證token失敗:", error);
+    return null;
   }
 };
 
@@ -150,7 +159,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   // 初始化認證狀態
   const initializeAuth = async () => {
     try {
-      const token = await AsyncStorage.getItem("authToken");
+      const token = await getAuthToken();
       if (token) {
         // 首先嘗試從本地儲存獲取用戶訊息
         const localUser = await getUserInfo();
@@ -164,53 +173,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             isAuthenticated: true,
           });
           return;
-        }
-
-        // 如果沒有本地用戶訊息，嘗試從API獲取
-        try {
-          // 要區分用戶類型，消費者或商家的資料
-          const response = (await authApi.getUserInfo()) as any;
-
-          // 轉換用戶數據格式
-          const user: User = {
-            id: response.id,
-            email: response.email,
-            name: response.name,
-            userType: response.merchant_profile ? "vendor" : "consumer",
-            createdAt: response.created_at,
-          };
-
-          // 保存用戶訊息到本地儲存
-          await saveUserInfo(user);
-
-          setAuthState({
-            user,
-            token,
-            isLoading: false,
-            isAuthenticated: true,
-          });
-        } catch (error) {
-          console.error("Token驗證失敗:", error);
-
-          if (error instanceof Error && error.message.includes("404")) {
-            console.warn("API端點不存在，保持當前認證狀態");
-            setAuthState({
-              user: null,
-              token,
-              isLoading: false,
-              isAuthenticated: false,
-            });
-          } else {
-            // 其他錯誤，清除認證狀態
-            await clearAuthToken();
-            await clearUserInfo();
-            setAuthState({
-              user: null,
-              token: null,
-              isLoading: false,
-              isAuthenticated: false,
-            });
-          }
         }
       } else {
         setAuthState({
