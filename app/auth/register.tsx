@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, {
@@ -21,22 +22,19 @@ import {
   View,
 } from "react-native";
 import { z } from "zod";
-import EnhancedPasswordStrengthMeter from "../../components/EnhancedPasswordStrengthMeter";
+import PasswordStrength from "../../components/PasswordStrength";
 import { useAuth } from "../../contexts/AuthContext";
-import { authApi } from "../../services/api/auth";
 import {
   ERROR_CODES,
   isErrorType,
   showErrorAlert,
-  showSuccessAlert,
-} from "../../services/api/errorHandler";
+} from "../../utils/errorHandler";
 import {
   DEFAULT_PASSWORD_REQUIREMENTS,
   checkPasswordRequirements,
   validatePassword,
 } from "../../utils/passwordValidation";
 
-// 创建动态验证schema
 const createValidationSchema = (isLogin: boolean) => {
   if (isLogin) {
     return z.object({
@@ -56,13 +54,11 @@ const createValidationSchema = (isLogin: boolean) => {
           .string()
           .min(8, "密碼至少需要8個字符")
           .superRefine((password, ctx) => {
-            // 使用统一的密码要求检查函数
             const requirementsCheck = checkPasswordRequirements(
               password,
               DEFAULT_PASSWORD_REQUIREMENTS
             );
 
-            // 如果基础要求不满足，添加相应的错误信息
             if (!requirementsCheck.isValid) {
               ctx.addIssue({
                 code: "custom",
@@ -71,7 +67,6 @@ const createValidationSchema = (isLogin: boolean) => {
               return;
             }
 
-            // 最后检查密码强度
             const validation = validatePassword(
               password,
               DEFAULT_PASSWORD_REQUIREMENTS
@@ -118,13 +113,11 @@ export default function RegisterScreen() {
 
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
-  // 使用 useMemo 动态创建验证 schema
   const validationSchema = useMemo(
     () => createValidationSchema(isLogin),
     [isLogin]
   );
 
-  // 使用单个表单，支持所有字段
   const form = useForm<RegisterFormData>({
     resolver: zodResolver(validationSchema),
     defaultValues: {
@@ -156,30 +149,18 @@ export default function RegisterScreen() {
     Animated.timing(slideAnim, {
       toValue: isLogin ? 120 : 0,
       duration: 300,
-      useNativeDriver: false, // 因为我们要动画left属性
+      useNativeDriver: false,
     }).start();
   }, [isLogin, slideAnim]);
 
-  // Google OAuth配置
-  // const [request, response, promptAsync] = AuthSession.useAuthRequest({
-  //   clientId: "YOUR_GOOGLE_CLIENT_ID", // 替换为你的Google Client ID
-  //   scopes: ["openid", "profile", "email"],
-  //   redirectUri: AuthSession.makeRedirectUri({
-  //     scheme: "your-app-scheme", // 替换为你的应用scheme
-  //   }),
-  // });
-
-  // 处理表单提交
   const onSubmit = useCallback(
     async (data: RegisterFormData) => {
       try {
         const userType = (type as "vendor" | "consumer") || "consumer";
 
         if (isLogin) {
-          // 登录逻辑 - 只使用email和password
           await login(data.email, data.password, userType);
         } else {
-          // 注册逻辑 - 使用所有字段，确保name存在
           if (!data.name) {
             showErrorAlert("請輸入姓名", "驗證錯誤");
             return;
@@ -196,8 +177,6 @@ export default function RegisterScreen() {
           });
         }
 
-        // 登录成功后，AuthContext会自动处理路由跳转
-        // 注册成功后自动跳转到对应首页
         if (!isLogin) {
           if (userType === "vendor") {
             router.replace("/vendor/home");
@@ -231,16 +210,6 @@ export default function RegisterScreen() {
     ? `登入${userTypeText}帳戶`
     : `註冊${userTypeText}帳戶`;
 
-  // 健康检查功能
-  const testHealth = async () => {
-    try {
-      const result = await authApi.healthCheck();
-      showSuccessAlert(`健康检查通过: ${JSON.stringify(result)}`, "连接测试");
-    } catch (error: any) {
-      showErrorAlert(error, "连接测试失败");
-    }
-  };
-
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-gray-50"
@@ -253,7 +222,6 @@ export default function RegisterScreen() {
         contentContainerStyle={{ paddingBottom: 100 }}
         keyboardShouldPersistTaps="handled"
       >
-        {/* 返回上一頁箭頭 */}
         <TouchableOpacity
           className="rounded-xl p-2 pt-4 ml-4"
           onPress={() => router.back()}
@@ -440,7 +408,7 @@ export default function RegisterScreen() {
 
               {/* 密码强度检查 - 仅在注册模式显示 */}
               {!isLogin && form.watch("password") && (
-                <EnhancedPasswordStrengthMeter
+                <PasswordStrength
                   password={form.watch("password")}
                   showHIBPCheck={true}
                 />
@@ -605,10 +573,13 @@ export default function RegisterScreen() {
 
             {/* Google登录按钮 */}
             <TouchableOpacity
-              className="bg-white border border-gray-300 rounded-xl py-4 items-center"
-              //onPress={startGoogleLogin}
+              className="bg-white border border-gray-300 rounded-xl py-4 items-center relative"
+              onPress={() => googleLogin(type as "vendor" | "consumer")}
               disabled={isLoading}
             >
+              <View className="absolute left-4 top-1/2">
+                <FontAwesome name="google" size={24} color="black" />
+              </View>
               <Text className="text-gray-700 text-base font-medium">
                 使用 Google 帳戶繼續
               </Text>

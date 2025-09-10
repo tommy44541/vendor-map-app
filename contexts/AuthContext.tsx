@@ -1,13 +1,69 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+  GoogleSignin,
+  isSuccessResponse,
+} from "@react-native-google-signin/google-signin";
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { authApi } from "../services/api/auth";
-import {
-  clearAuthToken,
-  getRefreshToken,
-  setAuthToken,
-  setRefreshToken,
-} from "../services/api/core";
+import { IOS_CLIENT_ID, WEB_CLIENT_ID } from "../utils/constants";
 
+GoogleSignin.configure({
+  webClientId: WEB_CLIENT_ID,
+  iosClientId: IOS_CLIENT_ID,
+});
+// 設置認證token
+const setAuthToken = async (token: string): Promise<void> => {
+  try {
+    await AsyncStorage.setItem("authToken", token);
+  } catch (error) {
+    console.error("設置認證token失敗:", error);
+  }
+};
+
+// 獲取認證token
+const getAuthToken = async (): Promise<string | null> => {
+  try {
+    return await AsyncStorage.getItem("authToken");
+  } catch (error) {
+    console.error("獲取認證token失敗:", error);
+    return null;
+  }
+};
+
+// 設置刷新token
+const setRefreshToken = async (refreshToken: string): Promise<void> => {
+  try {
+    await AsyncStorage.setItem("refreshToken", refreshToken);
+  } catch (error) {
+    console.error("設置刷新token失敗:", error);
+  }
+};
+
+// 獲取刷新token
+const getRefreshToken = async (): Promise<string | null> => {
+  try {
+    return await AsyncStorage.getItem("refreshToken");
+  } catch (error) {
+    console.error("獲取刷新token失敗:", error);
+    return null;
+  }
+};
+
+const clearAuthToken = async (): Promise<void> => {
+  try {
+    await AsyncStorage.removeItem("authToken");
+  } catch (error) {
+    console.error("清除認證token失敗:", error);
+  }
+};
+
+const clearRefreshToken = async (): Promise<void> => {
+  try {
+    await AsyncStorage.removeItem("refreshToken");
+  } catch (error) {
+    console.error("清除刷新token失敗:", error);
+  }
+};
 // 用戶訊息鍵
 const USER_INFO_KEY = "userInfo";
 
@@ -40,18 +96,8 @@ const clearUserInfo = async (): Promise<void> => {
   }
 };
 
-// 清除刷新token
-const clearRefreshToken = async (): Promise<void> => {
-  try {
-    await AsyncStorage.removeItem("refreshToken");
-  } catch (error) {
-    console.error("清除刷新token失敗:", error);
-  }
-};
-
 // 用戶類型
 export type UserType = "vendor" | "consumer";
-
 // 用戶訊息介面
 export interface User {
   id: string;
@@ -85,7 +131,8 @@ interface AuthContextType extends AuthState {
     store_name?: string;
     business_license?: string;
   }) => Promise<void>;
-  googleLogin: (idToken: string) => Promise<void>;
+  googleLogin: (userType?: UserType) => Promise<void>;
+  googleLogout: () => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (userData: Partial<User>) => void;
 }
@@ -112,7 +159,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   // 初始化認證狀態
   const initializeAuth = async () => {
     try {
-      const token = await AsyncStorage.getItem("authToken");
+      const token = await getAuthToken();
       if (token) {
         // 首先嘗試從本地儲存獲取用戶訊息
         const localUser = await getUserInfo();
@@ -126,53 +173,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             isAuthenticated: true,
           });
           return;
-        }
-
-        // 如果沒有本地用戶訊息，嘗試從API獲取
-        try {
-          // 要區分用戶類型，消費者或商家的資料
-          const response = (await authApi.getUserInfo()) as any;
-
-          // 轉換用戶數據格式
-          const user: User = {
-            id: response.id,
-            email: response.email,
-            name: response.name,
-            userType: response.merchant_profile ? "vendor" : "consumer",
-            createdAt: response.created_at,
-          };
-
-          // 保存用戶訊息到本地儲存
-          await saveUserInfo(user);
-
-          setAuthState({
-            user,
-            token,
-            isLoading: false,
-            isAuthenticated: true,
-          });
-        } catch (error) {
-          console.error("Token驗證失敗:", error);
-
-          if (error instanceof Error && error.message.includes("404")) {
-            console.warn("API端點不存在，保持當前認證狀態");
-            setAuthState({
-              user: null,
-              token,
-              isLoading: false,
-              isAuthenticated: false,
-            });
-          } else {
-            // 其他錯誤，清除認證狀態
-            await clearAuthToken();
-            await clearUserInfo();
-            setAuthState({
-              user: null,
-              token: null,
-              isLoading: false,
-              isAuthenticated: false,
-            });
-          }
         }
       } else {
         setAuthState({
@@ -316,31 +316,79 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   // Google登入
-  const googleLogin = async (idToken: string) => {
+  const googleLogin = async (userType?: UserType) => {
     try {
       setAuthState((prev) => ({ ...prev, isLoading: true }));
+      await GoogleSignin.hasPlayServices();
+      const response = await GoogleSignin.signIn();
+      if (isSuccessResponse(response)) {
+        if (response.data.idToken) {
+          console.log("🔄 Google sign in idToken:", response.data.idToken);
+          const callbackResponse = await authApi.googleLoginCallback(
+            response.data.idToken
+          );
+          console.log("🔄 Google sign in callback response:", callbackResponse);
 
-      // 模擬Google登錄成功
-      const mockUser: User = {
-        id: "1",
-        email: "google_user@example.com",
-        name: "Google用戶",
-        userType: "consumer",
-        createdAt: new Date().toISOString(),
-      };
+          // 检查回调响应是否成功
+          if (callbackResponse.success && callbackResponse.data) {
+            const { access_token, refresh_token, user } = callbackResponse.data;
 
-      const mockToken = "google_token_" + Date.now();
-      await AsyncStorage.setItem("authToken", mockToken);
+            // 保存tokens
+            await setAuthToken(access_token);
+            if (refresh_token) {
+              await setRefreshToken(refresh_token);
+            }
 
-      // 保存用戶訊息到本地儲存
-      await saveUserInfo(mockUser);
+            //TODO: 目前為前端判斷，未來考慮後端回傳結構判斷
+            let actualUserType: UserType = "consumer"; // 默认为消费者
 
-      setAuthState({
-        user: mockUser,
-        token: mockToken,
-        isLoading: false,
-        isAuthenticated: true,
-      });
+            if (userType) {
+              actualUserType = userType;
+            }
+
+            // 转换用户数据格式
+            const userData: User = {
+              id: user.id,
+              email: user.email,
+              name: user.name,
+              userType: actualUserType,
+              createdAt: user.created_at,
+            };
+
+            // 保存用户信息到本地存储
+            await saveUserInfo(userData);
+
+            // 更新认证状态
+            setAuthState({
+              user: userData,
+              token: access_token,
+              isLoading: false,
+              isAuthenticated: true,
+            });
+
+            console.log(`✅ Google OAuth登录成功，用户类型: ${actualUserType}`);
+          } else {
+            throw new Error("Google OAuth回调失败");
+          }
+        } else {
+          console.error("Google sign in failed - 没有idToken");
+          throw new Error("Google登录失败");
+        }
+      } else {
+        console.error("Google sign cancelled");
+        setAuthState((prev) => ({ ...prev, isLoading: false }));
+      }
+    } catch (error) {
+      console.error("Google登录错误:", error);
+      setAuthState((prev) => ({ ...prev, isLoading: false }));
+      throw error;
+    }
+  };
+
+  const googleLogout = async () => {
+    try {
+      await GoogleSignin.signOut();
+      setAuthState((prev) => ({ ...prev, isLoading: false }));
     } catch (error) {
       setAuthState((prev) => ({ ...prev, isLoading: false }));
       throw error;
@@ -400,6 +448,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     login,
     register,
     googleLogin,
+    googleLogout,
     logout,
     updateUser,
   };
