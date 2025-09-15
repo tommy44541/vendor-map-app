@@ -31,7 +31,7 @@ export default function VendorHomeScreen() {
   const handleLogout = async () => {
     try {
       await logout();
-      router.replace("/entry");
+      router.push("/");
     } catch (error) {
       console.error("登出失败:", error);
     }
