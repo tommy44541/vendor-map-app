@@ -32,7 +32,7 @@ export default function ConsumerHomeScreen() {
   const handleLogout = async () => {
     try {
       await logout();
-      router.replace("/entry");
+      router.replace("/");
     } catch (error) {
       console.error("登出失敗:", error);
     }

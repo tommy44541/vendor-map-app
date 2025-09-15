@@ -25,7 +25,7 @@ import { z } from "zod";
 import PasswordStrength from "../../components/PasswordStrength";
 import { useAuth } from "../../contexts/AuthContext";
 import {
-  ERROR_CODES,
+  ErrorCode,
   isErrorType,
   showErrorAlert,
 } from "../../utils/errorHandler";
@@ -122,8 +122,8 @@ export default function RegisterScreen() {
     resolver: zodResolver(validationSchema),
     defaultValues: {
       name: "",
-      email: "",
-      password: "",
+      email: "test@test.com",
+      password: "P@ssword123",
       confirmPassword: "",
       store_name: "",
       business_license: "",
@@ -135,8 +135,8 @@ export default function RegisterScreen() {
     form.clearErrors();
     form.reset({
       name: "",
-      email: "",
-      password: "",
+      email: "test@test.com",
+      password: "P@ssword123",
       confirmPassword: "",
       store_name: "",
       business_license: "",
@@ -156,7 +156,7 @@ export default function RegisterScreen() {
   const onSubmit = useCallback(
     async (data: RegisterFormData) => {
       try {
-        const userType = (type as "vendor" | "consumer") || "consumer";
+        const userType = type as "vendor" | "consumer";
 
         if (isLogin) {
           await login(data.email, data.password, userType);
@@ -165,7 +165,6 @@ export default function RegisterScreen() {
             showErrorAlert("請輸入姓名", "驗證錯誤");
             return;
           }
-
           await register({
             email: data.email,
             password: data.password,
@@ -176,33 +175,16 @@ export default function RegisterScreen() {
               userType === "vendor" ? data.business_license : undefined,
           });
         }
-
-        if (!isLogin) {
-          if (userType === "vendor") {
-            router.replace("/vendor/home");
-          } else {
-            router.replace("/consumer/home");
-          }
-        }
       } catch (error: any) {
-        if (isErrorType(error, ERROR_CODES.USER_ALREADY_EXISTS)) {
-          showErrorAlert(error, "註冊失敗", () => {
-            setIsLogin(true);
-            form.setValue("password", "");
-            form.setValue("confirmPassword", "");
-          });
-        } else if (isErrorType(error, ERROR_CODES.EMAIL_ALREADY_REGISTERED)) {
-          showErrorAlert(error, "註冊失敗", () => {
-            form.setValue("email", "");
-            form.setValue("password", "");
-            form.setValue("confirmPassword", "");
-          });
+        if (isErrorType(error.cause.status, ErrorCode.UNAUTHORIZED)) {
+          showErrorAlert(error.cause.status);
         } else {
           showErrorAlert(error, "操作失敗");
         }
+        form.reset();
       }
     },
-    [isLogin, register, login, type, router, form]
+    [isLogin, register, login, type, form]
   );
 
   const userTypeText = type === "vendor" ? "攤車商家" : "消費者";

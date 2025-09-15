@@ -11,7 +11,9 @@ GoogleSignin.configure({
   webClientId: WEB_CLIENT_ID,
   iosClientId: IOS_CLIENT_ID,
 });
-// 設置認證token
+
+const USER_INFO_KEY = "userInfo";
+
 const setAuthToken = async (token: string): Promise<void> => {
   try {
     await AsyncStorage.setItem("authToken", token);
@@ -20,7 +22,6 @@ const setAuthToken = async (token: string): Promise<void> => {
   }
 };
 
-// 獲取認證token
 const getAuthToken = async (): Promise<string | null> => {
   try {
     return await AsyncStorage.getItem("authToken");
@@ -30,7 +31,6 @@ const getAuthToken = async (): Promise<string | null> => {
   }
 };
 
-// 設置刷新token
 const setRefreshToken = async (refreshToken: string): Promise<void> => {
   try {
     await AsyncStorage.setItem("refreshToken", refreshToken);
@@ -39,7 +39,6 @@ const setRefreshToken = async (refreshToken: string): Promise<void> => {
   }
 };
 
-// 獲取刷新token
 const getRefreshToken = async (): Promise<string | null> => {
   try {
     return await AsyncStorage.getItem("refreshToken");
@@ -64,10 +63,7 @@ const clearRefreshToken = async (): Promise<void> => {
     console.error("清除刷新token失敗:", error);
   }
 };
-// 用戶訊息鍵
-const USER_INFO_KEY = "userInfo";
 
-// 保存用戶訊息到本地儲存
 const saveUserInfo = async (user: any): Promise<void> => {
   try {
     await AsyncStorage.setItem(USER_INFO_KEY, JSON.stringify(user));
@@ -76,7 +72,6 @@ const saveUserInfo = async (user: any): Promise<void> => {
   }
 };
 
-// 獲取本地儲存的使用者訊息
 const getUserInfo = async (): Promise<any | null> => {
   try {
     const userData = await AsyncStorage.getItem(USER_INFO_KEY);
@@ -87,7 +82,6 @@ const getUserInfo = async (): Promise<any | null> => {
   }
 };
 
-// 清除本地儲存的使用者訊息
 const clearUserInfo = async (): Promise<void> => {
   try {
     await AsyncStorage.removeItem(USER_INFO_KEY);
@@ -96,9 +90,7 @@ const clearUserInfo = async (): Promise<void> => {
   }
 };
 
-// 用戶類型
 export type UserType = "vendor" | "consumer";
-// 用戶訊息介面
 export interface User {
   id: string;
   email: string;
@@ -108,7 +100,6 @@ export interface User {
   createdAt: string;
 }
 
-// 認證狀態介面
 interface AuthState {
   user: User | null;
   token: string | null;
@@ -116,7 +107,6 @@ interface AuthState {
   isAuthenticated: boolean;
 }
 
-// 認證上下文介面
 interface AuthContextType extends AuthState {
   login: (
     email: string,
@@ -137,10 +127,8 @@ interface AuthContextType extends AuthState {
   updateUser: (userData: Partial<User>) => void;
 }
 
-// 創建認證上下文
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// 認證提供者元件
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
@@ -151,21 +139,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     isAuthenticated: false,
   });
 
-  // 初始化認證狀態
   useEffect(() => {
     initializeAuth();
   }, []);
 
-  // 初始化認證狀態
   const initializeAuth = async () => {
     try {
       const token = await getAuthToken();
       if (token) {
-        // 首先嘗試從本地儲存獲取用戶訊息
         const localUser = await getUserInfo();
 
         if (localUser) {
-          // 如果有本地用戶訊息，直接使用
           setAuthState({
             user: localUser,
             token,
@@ -193,7 +177,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  // 登入
   const login = async (
     email: string,
     password: string,
@@ -204,31 +187,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
       const response = await authApi.login({ email, password });
 
-      // 添加詳細日誌
       console.log("🔐 登入API返回數據:", JSON.stringify(response, null, 2));
       console.log("🔑 AccessToken值:", response.data.access_token);
       console.log("🔄 RefreshToken值:", response.data.refresh_token);
       console.log("👤 用戶數據:", response.data.user);
 
-      // 检查token是否存在
       if (!response.data.access_token) {
         throw new Error("登入響應中缺少access_token欄位");
       }
 
-      // 保存token
       await setAuthToken(response.data.access_token);
 
-      // 保存刷新token
       if (response.data.refresh_token) {
         await setRefreshToken(response.data.refresh_token);
       }
 
-      // 轉換用戶數據格式
       const actualUserType = response.data.user.merchant_profile
         ? "vendor"
         : "consumer";
 
-      // 驗證用戶類型是否匹配
       if (actualUserType !== userType) {
         throw new Error(
           `此帳號是${
@@ -245,7 +222,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         createdAt: response.data.user.created_at,
       };
 
-      // 保存用戶訊息到本地儲存
       await saveUserInfo(user);
 
       setAuthState({
@@ -255,12 +231,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         isAuthenticated: true,
       });
     } catch (error) {
+      console.error("login error:", error);
       setAuthState((prev) => ({ ...prev, isLoading: false }));
       throw error;
     }
   };
 
-  // 註冊
   const register = async (userData: {
     email: string;
     password: string;
@@ -270,7 +246,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     business_license?: string;
   }) => {
     try {
-      console.log("🔐 AuthContext: 开始注册流程");
       console.log("📝 注册数据:", JSON.stringify(userData, null, 2));
 
       setAuthState((prev) => ({ ...prev, isLoading: true }));

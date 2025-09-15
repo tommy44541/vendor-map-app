@@ -106,7 +106,7 @@ export const request = async <T>(
   if (!response.ok) {
     const errorText = await response.text();
     console.error(`❌ HTTP 錯誤: ${response.status}`, errorText);
-    throw new Error(`HTTP error! status: ${response.status}`);
+    throw new Error(`HTTP error! status: ${response.status}`, { cause: response });
   }
 
   const result = await response.json();
