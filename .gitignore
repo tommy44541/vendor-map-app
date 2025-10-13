@@ -11,6 +11,9 @@ dist/
 web-build/
 expo-env.d.ts
 
+# spec-workflow
+.spec-workflow/
+
 # Native
 .kotlin/
 *.orig.*

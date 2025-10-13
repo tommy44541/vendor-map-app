@@ -104,7 +104,7 @@ type RegisterFormData = z.infer<ReturnType<typeof createValidationSchema>>;
 export default function RegisterScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ type: string }>();
-  const type = params?.type || "consumer";
+  const type = params?.type;
   const { register, login, googleLogin, isLoading } = useAuth();
 
   const [isLogin, setIsLogin] = useState(false);
