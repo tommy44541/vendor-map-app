@@ -8,16 +8,14 @@ import {
   ScrollView,
   StatusBar,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "../../../contexts/AuthContext";
 
 export default function ConsumerHomeScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
-  const [searchQuery, setSearchQuery] = useState("");
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   // 設置狀態欄樣式
@@ -36,15 +34,6 @@ export default function ConsumerHomeScreen() {
     } catch (error) {
       console.error("登出失敗:", error);
     }
-  };
-
-  const handleSearch = () => {
-    // TODO: 搜尋功能
-    // if (searchQuery.trim()) {
-    //   router.push(
-    //     `/consumer/search?q=${encodeURIComponent(searchQuery.trim())}`
-    //   );
-    // }
   };
 
   const categories = [
@@ -86,30 +75,6 @@ export default function ConsumerHomeScreen() {
     },
   ];
 
-  const quickActions = [
-    {
-      id: "favorites",
-      title: "我的收藏",
-      icon: "❤️",
-      color: "#FF6B6B",
-      onPress: () => router.push("/consumer/favorites"),
-    },
-    {
-      id: "orders",
-      title: "訂單記錄",
-      icon: "📋",
-      color: "#4ECDC4",
-      onPress: () => router.push("/consumer/orders"),
-    },
-    {
-      id: "profile",
-      title: "個人資料",
-      icon: "👤",
-      color: "#45B7D1",
-      onPress: () => router.push("/consumer/profile"),
-    },
-  ];
-
   return (
     <View className="flex-1 bg-gray-50">
       {/* 頂部搜索欄 */}
@@ -123,7 +88,7 @@ export default function ConsumerHomeScreen() {
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
       >
-        <View className="flex-row justify-between items-center mb-6">
+        <View className="flex-row justify-between items-center mb-3">
           <TouchableOpacity
             className="flex-row items-center flex-1"
             onPress={() => setShowUserMenu(true)}
@@ -142,23 +107,6 @@ export default function ConsumerHomeScreen() {
             </View>
           </TouchableOpacity>
         </View>
-
-        {/* 搜索欄 */}
-        <View className="mt-2">
-          <View className="flex-row bg-white rounded-full px-5 py-3 items-center">
-            <TextInput
-              className="flex-1 text-base text-gray-800"
-              placeholder="搜尋美食攤車..."
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              onSubmitEditing={handleSearch}
-              returnKeyType="search"
-            />
-            <TouchableOpacity className="ml-3" onPress={handleSearch}>
-              <Text className="text-lg">🔍</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
       </LinearGradient>
 
       {/* 主要內容區域 */}
@@ -166,31 +114,6 @@ export default function ConsumerHomeScreen() {
         className="flex-1 px-6 pt-6"
         showsVerticalScrollIndicator={false}
       >
-        {/* 快速功能 */}
-        <View className="mb-8">
-          <Text className="text-xl font-bold text-gray-800 mb-5">快速功能</Text>
-          <View className="flex-row justify-between gap-4">
-            {quickActions.map((action) => (
-              <TouchableOpacity
-                key={action.id}
-                className="flex-1 bg-white rounded-2xl p-5 items-center shadow-sm"
-                onPress={action.onPress}
-                activeOpacity={0.8}
-              >
-                <View
-                  className="w-12 h-12 rounded-full justify-center items-center mb-3"
-                  style={{ backgroundColor: action.color }}
-                >
-                  <Text className="text-2xl">{action.icon}</Text>
-                </View>
-                <Text className="text-sm font-semibold text-gray-800 text-center">
-                  {action.title}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
         {/* 分類選擇 */}
         <View className="mb-8">
           <Text className="text-xl font-bold text-gray-800 mb-5">美食分類</Text>
@@ -279,7 +202,7 @@ export default function ConsumerHomeScreen() {
         <View className="mb-8">
           <TouchableOpacity
             className="rounded-2xl overflow-hidden"
-            onPress={() => router.push("/consumer/map")}
+            onPress={() => router.push("/consumer/location")}
             activeOpacity={0.8}
           >
             <LinearGradient

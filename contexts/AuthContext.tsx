@@ -108,11 +108,7 @@ interface AuthState {
 }
 
 interface AuthContextType extends AuthState {
-  login: (
-    email: string,
-    password: string,
-    userType?: UserType
-  ) => Promise<void>;
+  login: (email: string, password: string, userType: UserType) => Promise<void>;
   register: (userData: {
     email: string;
     password: string;
@@ -121,7 +117,7 @@ interface AuthContextType extends AuthState {
     store_name?: string;
     business_license?: string;
   }) => Promise<void>;
-  googleLogin: (userType?: UserType) => Promise<void>;
+  googleLogin: (userType: UserType) => Promise<void>;
   googleLogout: () => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (userData: Partial<User>) => void;
@@ -177,11 +173,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  const login = async (
-    email: string,
-    password: string,
-    userType: UserType = "consumer"
-  ) => {
+  const login = async (email: string, password: string, userType: UserType) => {
     try {
       setAuthState((prev) => ({ ...prev, isLoading: true }));
 
@@ -202,23 +194,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         await setRefreshToken(response.data.refresh_token);
       }
 
-      const actualUserType = response.data.user.merchant_profile
-        ? "vendor"
-        : "consumer";
-
-      if (actualUserType !== userType) {
-        throw new Error(
-          `此帳號是${
-            actualUserType === "vendor" ? "攤車商家" : "消費者"
-          }帳號，請選擇正確的身份`
-        );
-      }
-
       const user: User = {
         id: response.data.user.id,
         email: response.data.user.email,
         name: response.data.user.name,
-        userType: actualUserType,
+        userType: userType,
         createdAt: response.data.user.created_at,
       };
 
@@ -291,7 +271,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   // Google登入
-  const googleLogin = async (userType?: UserType) => {
+  const googleLogin = async (userType: UserType) => {
     try {
       setAuthState((prev) => ({ ...prev, isLoading: true }));
       await GoogleSignin.hasPlayServices();

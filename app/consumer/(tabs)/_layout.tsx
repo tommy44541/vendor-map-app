@@ -1,9 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
-import Octicons from "@expo/vector-icons/Octicons";
 import { Tabs } from "expo-router";
-import { TouchableOpacity, View } from "react-native";
 
-const VendorLayout = () => {
+const ConsumerLayout = () => {
   return (
     <Tabs
       screenOptions={{
@@ -21,7 +19,7 @@ const VendorLayout = () => {
           position: "absolute",
           elevation: 0,
         },
-        tabBarActiveTintColor: "#FF6B6B",
+        tabBarActiveTintColor: "#667eea",
         tabBarInactiveTintColor: "#9ca3af",
       }}
     >
@@ -43,7 +41,8 @@ const VendorLayout = () => {
           ),
         }}
       />
-      <Tabs.Screen
+      {/* TODO: 主動掃描附近開啟攤車 */}
+      {/* <Tabs.Screen
         name="notifications"
         options={{
           tabBarLabelStyle: {
@@ -60,7 +59,7 @@ const VendorLayout = () => {
             </TouchableOpacity>
           ),
         }}
-      />
+      /> */}
       <Tabs.Screen
         name="location"
         options={{
@@ -80,19 +79,37 @@ const VendorLayout = () => {
         }}
       />
       <Tabs.Screen
-        name="analytics"
+        name="orders"
         options={{
-          href: null,
+          title: "訂單",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="receipt" size={24} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
-        name="order"
+        name="favorites"
         options={{
-          href: null,
+          title: "收藏",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="heart" size={24} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="recommendations"
+        options={{
+          href: null, // 隱藏tab但保持頁面可訪問
+        }}
+      />
+      <Tabs.Screen
+        name="vendor/[id]"
+        options={{
+          href: null, // 隱藏tab但保持頁面可訪問
         }}
       />
     </Tabs>
   );
 };
 
-export default VendorLayout;
+export default ConsumerLayout;

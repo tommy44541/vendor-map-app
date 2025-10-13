@@ -58,6 +58,58 @@ const getAuthToken = async (): Promise<string | null> => {
   }
 };
 
+// 獲取刷新token
+const getRefreshToken = async (): Promise<string | null> => {
+  try {
+    return await AsyncStorage.getItem('refreshToken');
+  } catch (error) {
+    console.error('獲取刷新token失敗:', error);
+    return null;
+  }
+};
+
+// 刷新token
+const refreshAuthToken = async (): Promise<string | null> => {
+  try {
+    const refreshToken = await getRefreshToken();
+    if (!refreshToken) {
+      console.error('❌ 沒有找到刷新token');
+      return null;
+    }
+
+    const url = `${process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8081'}/auth/refresh`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+
+    if (!response.ok) {
+      console.error('❌ 刷新token失敗:', response.status);
+      return null;
+    }
+
+    const result = await response.json();
+    if (result.success && result.data.access_token) {
+      // 保存新的access token
+      await AsyncStorage.setItem('authToken', result.data.access_token);
+      if (result.data.refresh_token) {
+        await AsyncStorage.setItem('refreshToken', result.data.refresh_token);
+      }
+      console.log('✅ Token刷新成功');
+      return result.data.access_token;
+    }
+
+    return null;
+  } catch (error) {
+    console.error('❌ 刷新token時發生錯誤:', error);
+    return null;
+  }
+};
+
 // 簡潔的請求函數
 export const request = async <T>(
   endpoint: string,
@@ -102,6 +154,44 @@ export const request = async <T>(
   }
 
   const response = await fetch(url, fetchConfig);
+
+  // 如果是401錯誤且需要認證，嘗試刷新token
+  if (response.status === 401 && requireAuth) {
+    console.log('🔄 Token已過期，嘗試刷新...');
+    const newToken = await refreshAuthToken();
+    
+    if (newToken) {
+      // 使用新token重新發送請求
+      const newHeaders = {
+        ...requestHeaders,
+        Authorization: `Bearer ${newToken}`,
+      };
+      
+      const newFetchConfig: RequestInit = {
+        method,
+        headers: newHeaders,
+      };
+      
+      if (body && method !== 'GET') {
+        newFetchConfig.body = JSON.stringify(body);
+      }
+      
+      const retryResponse = await fetch(url, newFetchConfig);
+      
+      if (!retryResponse.ok) {
+        const errorText = await retryResponse.text();
+        console.error(`❌ 重試請求後仍失敗: ${retryResponse.status}`, errorText);
+        throw new Error(`HTTP error! status: ${retryResponse.status}`, { cause: retryResponse });
+      }
+      
+      const result = await retryResponse.json();
+      console.log(`✅ API 響應成功 (使用新token):`, result);
+      return result;
+    } else {
+      console.error('❌ 無法刷新token，需要重新登入');
+      throw new Error('Token已過期且無法刷新，請重新登入');
+    }
+  }
 
   if (!response.ok) {
     const errorText = await response.text();

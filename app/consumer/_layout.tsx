@@ -7,12 +7,8 @@ const _layout = () => {
         headerShown: false,
       }}
     >
-      <Stack.Screen name="home" />
-      <Stack.Screen name="map" />
-      <Stack.Screen name="favorites" />
-      <Stack.Screen name="profile" />
-      <Stack.Screen name="orders" />
-      <Stack.Screen name="recommendations" />
+      <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="vendor/:id" />
     </Stack>
   );
 };
