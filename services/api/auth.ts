@@ -57,27 +57,7 @@ export interface TokenData {
   refresh_token: string;
 }
 
-// Google OAuth 用戶資料類型
-export interface GoogleUserData {
-  id: string;
-  email: string;
-  name: string;
-  user_profile: {
-    user_id: string;
-    addresses: any[];
-    loyalty_points: number;
-    updated_at: string;
-  };
-  created_at: string;
-  updated_at: string;
-}
 
-// Google OAuth 登入資料類型
-export interface GoogleLoginData {
-  access_token: string;
-  refresh_token: string;
-  user: GoogleUserData;
-}
 
 // 響應類型定義
 export type UserRegisterResponse = ServerSuccessResponse<UserData>;
@@ -85,7 +65,7 @@ export type MerchantRegisterResponse = ServerSuccessResponse<MerchantData>;
 export type LoginResponse = ServerSuccessResponse<LoginData>;
 export type GetUserInfoResponse = ServerSuccessResponse<UserData>;
 export type RefreshTokenResponse = ServerSuccessResponse<TokenData>;
-export type GoogleOAuthResponse = ServerSuccessResponse<GoogleLoginData>;
+
 export type LogoutResponse = ServerSuccessResponse<null>;
 
 // 認證相關API
@@ -119,11 +99,7 @@ export const authApi = {
       body: credentials,
     }),
   
-  // Google登入
-  googleLoginCallback: (id_token: string) =>
-    request<GoogleOAuthResponse>('/oauth/google/callback', { 
-      body: { id_token, state: "optional_state" } 
-    }),
+
   
   // 刷新token
   refreshToken: (refreshToken: string) => 

@@ -12,7 +12,6 @@ import {
   View,
 } from "react-native";
 import { useAuth } from "../../../contexts/AuthContext";
-import { authApi } from "../../../services/api/auth";
 
 export default function VendorHomeScreen() {
   const router = useRouter();
@@ -153,7 +152,7 @@ export default function VendorHomeScreen() {
         {/* 最近活动 */}
         <View className="mb-8">
           <Text className="text-xl font-bold text-gray-800 mb-5">最近活動</Text>
-          <View className="bg-white rounded-2xl p-5 space-y-4">
+          <View className="bg-white rounded-2xl p-5 space-y-4 gap-4">
             <View className="flex-row items-center">
               <View className="w-10 h-10 rounded-full bg-gray-100 justify-center items-center mr-4">
                 <Text className="text-lg">🆕</Text>
@@ -189,12 +188,12 @@ export default function VendorHomeScreen() {
             </View>
           </View>
         </View>
-        <TouchableOpacity
+        {/* <TouchableOpacity
           className="bg-blue-500 rounded-md p-2"
           onPress={async () => await authApi.testAuth()}
         >
           <Text className="text-white">測試帶權限請求</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </ScrollView>
 
       {/* 用户菜单下拉框 */}

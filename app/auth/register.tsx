@@ -1,5 +1,4 @@
 import { Ionicons } from "@expo/vector-icons";
-import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, {
@@ -16,11 +15,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  StatusBar,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { z } from "zod";
 import PasswordStrength from "../../components/PasswordStrength";
 import { useAuth } from "../../contexts/AuthContext";
@@ -105,13 +106,14 @@ export default function RegisterScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ type: string }>();
   const type = params?.type;
-  const { register, login, googleLogin, isLoading } = useAuth();
+  const { register, login, isLoading } = useAuth();
 
   const [isLogin, setIsLogin] = useState(false);
   const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] =
     useState(false);
 
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const [toggleContainerWidth, setToggleContainerWidth] = useState(0);
 
   const validationSchema = useMemo(
     () => createValidationSchema(isLogin),
@@ -147,7 +149,7 @@ export default function RegisterScreen() {
 
   useEffect(() => {
     Animated.timing(slideAnim, {
-      toValue: isLogin ? 120 : 0,
+      toValue: isLogin ? 1 : 0,
       duration: 300,
       useNativeDriver: false,
     }).start();
@@ -188,288 +190,123 @@ export default function RegisterScreen() {
   );
 
   const userTypeText = type === "vendor" ? "攤車商家" : "消費者";
-  const pageTitle = isLogin
-    ? `登入${userTypeText}帳戶`
-    : `註冊${userTypeText}帳戶`;
+
+  // Toggle 容器是 p-1（4px），滑塊要在內邊距內移動，避免右側「貼邊」或不置中
+  const TOGGLE_PADDING = 4;
+  const toggleThumbWidth =
+    toggleContainerWidth > 0
+      ? (toggleContainerWidth - TOGGLE_PADDING * 2) / 2
+      : 0;
+
+  const slideLeft = useMemo(
+    () =>
+      slideAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [
+          TOGGLE_PADDING,
+          TOGGLE_PADDING + toggleThumbWidth, // 右側起點 = 左 padding + 半寬
+        ],
+      }),
+    [slideAnim, toggleThumbWidth]
+  );
 
   return (
-    <KeyboardAvoidingView
-      className="flex-1 bg-gray-50"
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={{ flex: 1 }}
-    >
-      <ScrollView
-        className="flex-1 bg-gray-50 mt-20"
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 100 }}
-        keyboardShouldPersistTaps="handled"
-      >
-        <TouchableOpacity
-          className="rounded-xl p-2 pt-4 ml-4"
-          onPress={() => router.back()}
+    <View className="flex-1 bg-ui-background">
+      <StatusBar barStyle="dark-content" />
+      <SafeAreaView className="flex-1">
+        <KeyboardAvoidingView
+          className="flex-1"
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
         >
-          <Text className="text-2xl font-bold text-gray-700">←</Text>
-        </TouchableOpacity>
-        <View className="flex-row justify-center items-center mb-4">
-          <Text className="text-2xl font-bold text-gray-700">{pageTitle}</Text>
-        </View>
-        {/* 註冊/登入切換元件 */}
-        <View className="flex-row justify-center items-center my-4">
-          <View className="relative flex flex-row overflow-hidden w-[240px] h-14 bg-[#E5E7EB] rounded-full">
-            {/* 動態滑動的選中框 */}
-            <Animated.View
-              className="absolute top-0 w-1/2 h-14 bg-white rounded-full shadow-black shadow-xs z-[1] elevation-sm"
-              style={{
-                left: slideAnim,
-              }}
-            />
-            {/* 註冊按鈕 */}
-            <TouchableOpacity
-              style={{
-                width: 120,
-                height: 48,
-                justifyContent: "center",
-                alignItems: "center",
-                zIndex: 2,
-              }}
-              activeOpacity={0.8}
-              onPress={() => {
-                if (isLogin) {
-                  setIsLogin(false);
-                }
-              }}
-            >
-              <Text
-                style={{
-                  color: !isLogin ? "#4F46E5" : "#6B7280", // indigo-600 or gray-500
-                  fontWeight: "bold",
-                  fontSize: 16,
-                }}
+          <ScrollView
+            className="flex-1 px-6"
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 40 }}
+            keyboardShouldPersistTaps="handled"
+          >
+            {/* Header */}
+            <View className="flex-row items-center py-4 mb-6">
+              <TouchableOpacity
+                className="w-10 h-10 bg-white rounded-full items-center justify-center shadow-sm border border-ui-border"
+                onPress={() => router.back()}
               >
-                註冊
+                <Ionicons name="arrow-back" size={24} color="#4B5563" />
+              </TouchableOpacity>
+            </View>
+
+            <View className="mb-8">
+              <Text className="text-3xl font-bold text-brand-dark mb-2">
+                {isLogin ? "歡迎回來" : "建立帳戶"}
               </Text>
-            </TouchableOpacity>
-            {/* 登入按鈕 */}
-            <TouchableOpacity
-              style={{
-                width: 120,
-                height: 48,
-                justifyContent: "center",
-                alignItems: "center",
-                zIndex: 2,
-              }}
-              activeOpacity={0.8}
-              onPress={() => {
-                if (!isLogin) {
-                  setIsLogin(true);
-                }
-              }}
+              <Text className="text-ui-text-secondary text-base">
+                {isLogin
+                  ? "請輸入您的帳號密碼以繼續"
+                  : `填寫以下資料以註冊${userTypeText}帳戶`}
+              </Text>
+            </View>
+
+            {/* Toggle Switch */}
+            <View
+              className="bg-gray-100 rounded-2xl p-1 mb-8 h-14 relative justify-center"
+              onLayout={(e) =>
+                setToggleContainerWidth(e.nativeEvent.layout.width)
+              }
             >
-              <Text
+              <Animated.View
+                className="absolute top-1 bottom-1 bg-white rounded-xl shadow-sm"
                 style={{
-                  color: isLogin ? "#4F46E5" : "#6B7280", // indigo-600 or gray-500
-                  fontWeight: "bold",
-                  fontSize: 16,
+                  left: slideLeft,
+                  width: toggleThumbWidth,
                 }}
-              >
-                登入
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View className="flex-1 px-6">
-          {/* 表单 */}
-          <View className="space-y-5">
-            {!isLogin && (
-              <View className="space-y-2">
-                <Text className="text-base font-semibold text-gray-700">
-                  姓名
-                </Text>
-                <Controller
-                  control={form.control}
-                  name="name"
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <TextInput
-                      className={`border rounded-xl px-4 py-4 text-base leading-tight ${
-                        form.formState.errors.name
-                          ? "border-red-500"
-                          : "border-gray-300"
-                      }`}
-                      placeholder="請輸入您的姓名"
-                      placeholderTextColor="#9CA3AF"
-                      value={value}
-                      onChangeText={onChange}
-                      onBlur={onBlur}
-                      autoCapitalize="words"
-                      returnKeyType="next"
-                    />
-                  )}
-                />
-                {form.formState.errors.name && (
-                  <Text className="text-red-500 text-sm ml-1">
-                    {form.formState.errors.name.message}
-                  </Text>
-                )}
-              </View>
-            )}
-
-            <View className="space-y-2">
-              <Text className="text-base font-semibold text-gray-700">
-                電子郵件
-              </Text>
-              <Controller
-                control={form.control}
-                name="email"
-                render={({ field: { onChange, onBlur, value } }) => (
-                  <TextInput
-                    className={`bg-white border rounded-xl px-4 py-4 text-base leading-tight ${
-                      form.formState.errors.email
-                        ? "border-red-500"
-                        : "border-gray-300"
+              />
+              <View className="flex-row h-full">
+                <TouchableOpacity
+                  className="flex-1 items-center justify-center z-10"
+                  onPress={() => setIsLogin(false)}
+                  activeOpacity={1}
+                >
+                  <Text
+                    className={`text-base font-semibold ${
+                      !isLogin ? "text-brand-primary" : "text-gray-500"
                     }`}
-                    placeholder="請輸入您的電子郵件"
-                    placeholderTextColor="#9CA3AF"
-                    value={value}
-                    onChangeText={onChange}
-                    onBlur={onBlur}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    returnKeyType="next"
-                  />
-                )}
-              />
-              {/* 错误显示 */}
-              {isLogin
-                ? form.formState.errors.email && (
-                    <Text className="text-red-500 text-sm ml-1">
-                      {form.formState.errors.email.message}
-                    </Text>
-                  )
-                : form.formState.errors.email && (
-                    <Text className="text-red-500 text-sm ml-1">
-                      {form.formState.errors.email.message}
-                    </Text>
-                  )}
-            </View>
-
-            <View className="space-y-2">
-              <Text className="text-base font-semibold text-gray-700">
-                密碼
-              </Text>
-              <Controller
-                control={form.control}
-                name="password"
-                render={({ field: { onChange, onBlur, value } }) => (
-                  <View className="relative">
-                    <TextInput
-                      className={`bg-white border rounded-xl px-4 py-4 text-base leading-tight ${
-                        form.formState.errors.password
-                          ? "border-red-500"
-                          : "border-gray-300"
-                      }`}
-                      placeholder="請輸入您的密碼"
-                      placeholderTextColor="#9CA3AF"
-                      value={value}
-                      onChangeText={onChange}
-                      onBlur={onBlur}
-                      secureTextEntry={!isPasswordVisible}
-                      returnKeyType="done"
-                    />
-                    <View className="absolute right-4 top-1/2 -translate-y-1/2">
-                      <Ionicons
-                        name={isPasswordVisible ? "eye-off" : "eye"}
-                        size={24}
-                        color="#9CA3AF"
-                        onPress={() => setIsPasswordVisible(!isPasswordVisible)}
-                      />
-                    </View>
-                  </View>
-                )}
-              />
-
-              {/* 密码强度检查 - 仅在注册模式显示 */}
-              {!isLogin && form.watch("password") && (
-                <PasswordStrength
-                  password={form.watch("password")}
-                  showHIBPCheck={true}
-                />
-              )}
-
-              {/* 错误显示 */}
-              {form.formState.errors.password && (
-                <View className="flex-row items-center space-x-2">
-                  <Text className="text-red-500 text-sm">
-                    {form.formState.errors.password.message}
+                  >
+                    註冊
                   </Text>
-                </View>
-              )}
-            </View>
-            {!isLogin && (
-              <View className="space-y-2">
-                <Text className="text-base font-semibold text-gray-700">
-                  確認密碼
-                </Text>
-                <Controller
-                  control={form.control}
-                  name="confirmPassword"
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <View className="relative">
-                      <TextInput
-                        className={`bg-white border rounded-xl px-4 py-4 text-base leading-tight ${
-                          form.formState.errors.confirmPassword
-                            ? "border-red-500"
-                            : "border-gray-300"
-                        }`}
-                        placeholder="請再次輸入密碼"
-                        placeholderTextColor="#9CA3AF"
-                        value={value}
-                        onChangeText={onChange}
-                        onBlur={onBlur}
-                        secureTextEntry={!isConfirmPasswordVisible}
-                        returnKeyType="done"
-                      />
-                      <View className="absolute right-4 top-1/2 -translate-y-1/2">
-                        <Ionicons
-                          name={isConfirmPasswordVisible ? "eye-off" : "eye"}
-                          size={24}
-                          color="#9CA3AF"
-                          onPress={() =>
-                            setIsConfirmPasswordVisible(
-                              !isConfirmPasswordVisible
-                            )
-                          }
-                        />
-                      </View>
-                    </View>
-                  )}
-                />
-                {form.formState.errors.confirmPassword && (
-                  <Text className="text-red-500 text-sm ml-1">
-                    {form.formState.errors.confirmPassword.message}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  className="flex-1 items-center justify-center z-10"
+                  onPress={() => setIsLogin(true)}
+                  activeOpacity={1}
+                >
+                  <Text
+                    className={`text-base font-semibold ${
+                      isLogin ? "text-brand-primary" : "text-gray-500"
+                    }`}
+                  >
+                    登入
                   </Text>
-                )}
+                </TouchableOpacity>
               </View>
-            )}
+            </View>
 
-            {/* 商家註冊額外欄位 */}
-            {!isLogin && type === "vendor" && (
-              <>
+            {/* Form */}
+            <View className="space-y-5">
+              {!isLogin && (
                 <View className="space-y-2">
-                  <Text className="text-base font-semibold text-gray-700">
-                    店名
+                  <Text className="text-sm font-medium text-ui-text-primary ml-1">
+                    姓名
                   </Text>
                   <Controller
                     control={form.control}
-                    name="store_name"
+                    name="name"
                     render={({ field: { onChange, onBlur, value } }) => (
                       <TextInput
-                        className={`bg-white border rounded-xl px-4 py-4 text-base leading-tight ${
-                          form.formState.errors.store_name
-                            ? "border-red-500"
-                            : "border-gray-300"
+                        className={`bg-white border rounded-xl px-4 py-3.5 text-base text-ui-text-primary ${
+                          form.formState.errors.name
+                            ? "border-ui-error"
+                            : "border-ui-border focus:border-brand-secondary"
                         }`}
-                        placeholder="請輸入您的店名"
+                        placeholder="請輸入您的姓名"
                         placeholderTextColor="#9CA3AF"
                         value={value}
                         onChangeText={onChange}
@@ -479,96 +316,244 @@ export default function RegisterScreen() {
                       />
                     )}
                   />
-                  {form.formState.errors.store_name && (
-                    <Text className="text-red-500 text-sm ml-1">
-                      {form.formState.errors.store_name.message}
+                  {form.formState.errors.name && (
+                    <Text className="text-red-500 text-xs ml-1">
+                      {form.formState.errors.name.message}
                     </Text>
                   )}
                 </View>
+              )}
 
-                <View className="space-y-2">
-                  <Text className="text-base font-semibold text-gray-700">
-                    營業執照號碼
+              <View className="space-y-2">
+                <Text className="text-sm font-medium text-ui-text-primary ml-1">
+                  電子郵件
+                </Text>
+                <Controller
+                  control={form.control}
+                  name="email"
+                  render={({ field: { onChange, onBlur, value } }) => (
+                    <TextInput
+                      className={`bg-white border rounded-xl px-4 py-3.5 text-base text-ui-text-primary ${
+                        form.formState.errors.email
+                          ? "border-ui-error"
+                          : "border-ui-border focus:border-brand-secondary"
+                      }`}
+                      placeholder="請輸入您的電子郵件"
+                      placeholderTextColor="#9CA3AF"
+                      value={value}
+                      onChangeText={onChange}
+                      onBlur={onBlur}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      returnKeyType="next"
+                    />
+                  )}
+                />
+                {form.formState.errors.email && (
+                  <Text className="text-red-500 text-xs ml-1">
+                    {form.formState.errors.email.message}
                   </Text>
-                  <Controller
-                    control={form.control}
-                    name="business_license"
-                    render={({ field: { onChange, onBlur, value } }) => (
+                )}
+              </View>
+
+              <View className="space-y-2">
+                <Text className="text-sm font-medium text-ui-text-primary ml-1">
+                  密碼
+                </Text>
+                <Controller
+                  control={form.control}
+                  name="password"
+                  render={({ field: { onChange, onBlur, value } }) => (
+                    <View className="relative">
                       <TextInput
-                        className={`bg-white border rounded-xl px-4 py-4 text-base leading-tight  ${
-                          form.formState.errors.business_license
-                            ? "border-red-500"
-                            : "border-gray-300"
+                        className={`bg-white border rounded-xl px-4 py-3.5 text-base text-ui-text-primary pr-12 ${
+                          form.formState.errors.password
+                            ? "border-ui-error"
+                            : "border-ui-border focus:border-brand-secondary"
                         }`}
-                        placeholder="請輸入營業執照號碼"
+                        placeholder="請輸入您的密碼"
                         placeholderTextColor="#9CA3AF"
                         value={value}
                         onChangeText={onChange}
                         onBlur={onBlur}
-                        autoCapitalize="characters"
+                        secureTextEntry={!isPasswordVisible}
                         returnKeyType="done"
                       />
+                      <TouchableOpacity
+                        className="absolute right-4 top-0 bottom-0 justify-center"
+                        onPress={() => setIsPasswordVisible(!isPasswordVisible)}
+                      >
+                        <Ionicons
+                          name={
+                            isPasswordVisible
+                              ? "eye-off-outline"
+                              : "eye-outline"
+                          }
+                          size={20}
+                          color="#9CA3AF"
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                />
+
+                {!isLogin && form.watch("password") && (
+                  <PasswordStrength
+                    password={form.watch("password")}
+                    showHIBPCheck={true}
+                  />
+                )}
+
+                {form.formState.errors.password && (
+                  <Text className="text-red-500 text-xs ml-1">
+                    {form.formState.errors.password.message}
+                  </Text>
+                )}
+              </View>
+
+              {!isLogin && (
+                <View className="space-y-2">
+                  <Text className="text-sm font-medium text-ui-text-primary ml-1">
+                    確認密碼
+                  </Text>
+                  <Controller
+                    control={form.control}
+                    name="confirmPassword"
+                    render={({ field: { onChange, onBlur, value } }) => (
+                      <View className="relative">
+                        <TextInput
+                          className={`bg-white border rounded-xl px-4 py-3.5 text-base text-ui-text-primary pr-12 ${
+                            form.formState.errors.confirmPassword
+                              ? "border-ui-error"
+                              : "border-ui-border focus:border-brand-secondary"
+                          }`}
+                          placeholder="請再次輸入密碼"
+                          placeholderTextColor="#9CA3AF"
+                          value={value}
+                          onChangeText={onChange}
+                          onBlur={onBlur}
+                          secureTextEntry={!isConfirmPasswordVisible}
+                          returnKeyType="done"
+                        />
+                        <TouchableOpacity
+                          className="absolute right-4 top-0 bottom-0 justify-center"
+                          onPress={() =>
+                            setIsConfirmPasswordVisible(
+                              !isConfirmPasswordVisible
+                            )
+                          }
+                        >
+                          <Ionicons
+                            name={
+                              isConfirmPasswordVisible
+                                ? "eye-off-outline"
+                                : "eye-outline"
+                            }
+                            size={20}
+                            color="#9CA3AF"
+                          />
+                        </TouchableOpacity>
+                      </View>
                     )}
                   />
-                  {form.formState.errors.business_license && (
-                    <Text className="text-red-500 text-sm ml-1">
-                      {form.formState.errors.business_license.message}
+                  {form.formState.errors.confirmPassword && (
+                    <Text className="text-red-500 text-xs ml-1">
+                      {form.formState.errors.confirmPassword.message}
                     </Text>
                   )}
                 </View>
-              </>
-            )}
-
-            {/* 提交按钮 */}
-            <TouchableOpacity
-              className={`bg-indigo-500 rounded-xl py-4 items-center mt-2 ${
-                isLoading ? "bg-gray-400" : ""
-              }`}
-              onPress={() => {
-                console.log("🔘 提交按钮被点击");
-                console.log("📝 表单状态:", {
-                  isValid: form.formState.isValid,
-                  errors: form.formState.errors,
-                  isDirty: form.formState.isDirty,
-                });
-
-                // 然后执行表单提交
-                form.handleSubmit(onSubmit)();
-              }}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <ActivityIndicator color="white" />
-              ) : (
-                <Text className="text-white text-lg font-semibold">
-                  {isLogin ? "登入" : "註冊"}
-                </Text>
               )}
-            </TouchableOpacity>
 
-            {/* 分割线 */}
-            <View className="flex-row items-center my-6">
-              <View className="flex-1 h-px bg-gray-300" />
-              <Text className="mx-4 text-gray-500 text-sm">或</Text>
-              <View className="flex-1 h-px bg-gray-300" />
+              {/* 商家註冊額外欄位 */}
+              {!isLogin && type === "vendor" && (
+                <>
+                  <View className="space-y-2">
+                    <Text className="text-sm font-medium text-ui-text-primary ml-1">
+                      店名
+                    </Text>
+                    <Controller
+                      control={form.control}
+                      name="store_name"
+                      render={({ field: { onChange, onBlur, value } }) => (
+                        <TextInput
+                          className={`bg-white border rounded-xl px-4 py-3.5 text-base text-ui-text-primary ${
+                            form.formState.errors.store_name
+                              ? "border-ui-error"
+                              : "border-ui-border focus:border-brand-secondary"
+                          }`}
+                          placeholder="請輸入您的店名"
+                          placeholderTextColor="#9CA3AF"
+                          value={value}
+                          onChangeText={onChange}
+                          onBlur={onBlur}
+                          autoCapitalize="words"
+                          returnKeyType="next"
+                        />
+                      )}
+                    />
+                    {form.formState.errors.store_name && (
+                      <Text className="text-red-500 text-xs ml-1">
+                        {form.formState.errors.store_name.message}
+                      </Text>
+                    )}
+                  </View>
+
+                  <View className="space-y-2">
+                    <Text className="text-sm font-medium text-ui-text-primary ml-1">
+                      營業執照號碼
+                    </Text>
+                    <Controller
+                      control={form.control}
+                      name="business_license"
+                      render={({ field: { onChange, onBlur, value } }) => (
+                        <TextInput
+                          className={`bg-white border rounded-xl px-4 py-3.5 text-base text-ui-text-primary ${
+                            form.formState.errors.business_license
+                              ? "border-ui-error"
+                              : "border-ui-border focus:border-brand-secondary"
+                          }`}
+                          placeholder="請輸入營業執照號碼"
+                          placeholderTextColor="#9CA3AF"
+                          value={value}
+                          onChangeText={onChange}
+                          onBlur={onBlur}
+                          autoCapitalize="characters"
+                          returnKeyType="done"
+                        />
+                      )}
+                    />
+                    {form.formState.errors.business_license && (
+                      <Text className="text-red-500 text-xs ml-1">
+                        {form.formState.errors.business_license.message}
+                      </Text>
+                    )}
+                  </View>
+                </>
+              )}
+
+              {/* 提交按钮 */}
+              <TouchableOpacity
+                className={`rounded-xl py-4 items-center mt-4 shadow-sm ${
+                  isLoading
+                    ? "bg-gray-300"
+                    : "bg-brand-primary active:bg-gray-600"
+                }`}
+                onPress={form.handleSubmit(onSubmit)}
+                disabled={isLoading}
+                activeOpacity={0.9}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Text className="text-lg font-bold tracking-wide">
+                    {isLogin ? "登入" : "註冊"}
+                  </Text>
+                )}
+              </TouchableOpacity>
             </View>
-
-            {/* Google登录按钮 */}
-            <TouchableOpacity
-              className="bg-white border border-gray-300 rounded-xl py-4 items-center relative"
-              onPress={() => googleLogin(type as "vendor" | "consumer")}
-              disabled={isLoading}
-            >
-              <View className="absolute left-4 top-1/2">
-                <FontAwesome name="google" size={24} color="black" />
-              </View>
-              <Text className="text-gray-700 text-base font-medium">
-                使用 Google 帳戶繼續
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </View>
   );
 }

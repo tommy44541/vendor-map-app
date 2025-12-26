@@ -1,5 +1,5 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
+import { useRootNavigationState, useRouter } from "expo-router";
 import React, { useEffect } from "react";
 import { Image, Text, TouchableOpacity, View } from "react-native";
 import LoadingScreen from "../components/LoadingScreen";
@@ -8,8 +8,11 @@ import { useAuth } from "../contexts/AuthContext";
 export default function IndexScreen() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const router = useRouter();
+  const rootNavState = useRootNavigationState();
 
   useEffect(() => {
+    // 避免在 navigation 尚未初始化時就呼叫 router.replace（會噴 navigation 未初始化）
+    if (!rootNavState?.key) return;
     if (!isLoading && isAuthenticated && user) {
       if (user.userType === "vendor") {
         router.replace("/vendor/(tabs)/home");
@@ -17,7 +20,7 @@ export default function IndexScreen() {
         router.replace("/consumer/home");
       }
     }
-  }, [isAuthenticated, isLoading, user, router]);
+  }, [isAuthenticated, isLoading, user, router, rootNavState?.key]);
 
   const handleLogin = (type: "vendor" | "consumer") =>
     router.push(`/auth/register?type=${type}`);

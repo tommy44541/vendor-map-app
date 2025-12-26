@@ -1,7 +1,7 @@
 import { request, ServerSuccessResponse } from './util';
 
 // 用户位置数据类型
-export interface UserLocation {
+export interface MerchantLocation {
   ID: string;
   OwnerID: string;
   OwnerType: string;
@@ -15,16 +15,15 @@ export interface UserLocation {
   UpdatedAt: string;
 }
 
-export interface UpdateUserLocation {
+export interface UpdateMerchantLocation {
   ID: string;
   Label: string;
   IsActive: boolean;
-  IsPrimary: boolean;
   UpdatedAt: string;
 }
 
 // 後端回傳 snake_case（原始結構）
-interface RawUserLocation {
+interface RawMerchantLocation {
   id: string;
   owner_id: string;
   owner_type: string;
@@ -38,15 +37,14 @@ interface RawUserLocation {
   updated_at: string;
 }
 
-interface RawUpdateUserLocation {
+interface RawUpdateMerchantLocation {
   id: string;
   label: string;
   is_active: boolean;
-  is_primary: boolean;
   updated_at: string;
 }
 
-const toUserLocation = (raw: RawUserLocation): UserLocation => ({
+const toMerchantLocation = (raw: RawMerchantLocation): MerchantLocation => ({
   ID: raw.id,
   OwnerID: raw.owner_id,
   OwnerType: raw.owner_type,
@@ -60,16 +58,17 @@ const toUserLocation = (raw: RawUserLocation): UserLocation => ({
   UpdatedAt: raw.updated_at,
 });
 
-const toUpdateUserLocation = (raw: RawUpdateUserLocation): UpdateUserLocation => ({
+const toUpdateMerchantLocation = (
+  raw: RawUpdateMerchantLocation
+): UpdateMerchantLocation => ({
   ID: raw.id,
   Label: raw.label,
   IsActive: raw.is_active,
-  IsPrimary: raw.is_primary,
   UpdatedAt: raw.updated_at,
 });
 
 // 创建用户位置请求数据类型
-export interface CreateUserLocationRequest {
+export interface CreateMerchantLocationRequest {
   label: string;
   full_address: string;
   latitude: number;
@@ -78,40 +77,38 @@ export interface CreateUserLocationRequest {
   is_active: boolean;
 }
 
-// 列表回傳已由 UserLocation[] 表示，不需再額外定義單筆結構
-export interface UpdateUserLocationRequest {
- label: string;
- is_active: boolean;
- is_primary: boolean;
+export interface UpdateMerchantLocationRequest {
+  label: string;
+  is_active: boolean;
 }
 
 
 // 响应类型定义
-export type CreateUserLocationResponse = ServerSuccessResponse<UserLocation>;
-export type GetUserLocationsResponse = ServerSuccessResponse<UserLocation[]>;
-export type UpdateUserLocationResponse = ServerSuccessResponse<UpdateUserLocation>;
-export type DeleteUserLocationResponse = ServerSuccessResponse<null>;
+export type CreateMerchantLocationResponse = ServerSuccessResponse<MerchantLocation>;
+export type GetMerchantLocationsResponse = ServerSuccessResponse<MerchantLocation[]>;
+export type UpdateMerchantLocationResponse = ServerSuccessResponse<UpdateMerchantLocation>;
+export type DeleteMerchantLocationResponse = ServerSuccessResponse<null>;
 
-export const consumerApi = {
+export const merchantApi = {
   // 创建用户位置
-  createUserLocation: async (locationData: CreateUserLocationRequest) => {
-    const res = await request<ServerSuccessResponse<RawUserLocation>>(
-      '/api/v1/locations/user',
+  createMerchantLocation: async (locationData: CreateMerchantLocationRequest) => {
+    const res = await request<ServerSuccessResponse<RawMerchantLocation>>(
+      '/api/v1/locations/merchant',
       {
         body: locationData,
         requireAuth: true,
       }
     );
     if (res?.success) {
-      return { ...res, data: toUserLocation(res.data) } as CreateUserLocationResponse;
+      return { ...res, data: toMerchantLocation(res.data) } as CreateMerchantLocationResponse;
     }
-    return res as unknown as CreateUserLocationResponse;
+    return res as unknown as CreateMerchantLocationResponse;
   },
 
   //取得用戶位置列表
-  getUserLocations: async () => {
-    const res = await request<ServerSuccessResponse<RawUserLocation[]>>(
-      '/api/v1/locations/user',
+  getMerchantLocations: async () => {
+    const res = await request<ServerSuccessResponse<RawMerchantLocation[]>>(
+      '/api/v1/locations/merchant',
       {
         requireAuth: true,
         method: 'GET',
@@ -125,7 +122,7 @@ export const consumerApi = {
 
       const data = Array.isArray(res.data)
         ? res.data
-            .map(toUserLocation)
+            .map(toMerchantLocation)
             .sort((a, b) => {
               // IsPrimary 永遠排最前
               if (a.IsPrimary !== b.IsPrimary) return a.IsPrimary ? -1 : 1;
@@ -136,14 +133,17 @@ export const consumerApi = {
               return (a.ID ?? '').localeCompare(b.ID ?? '');
             })
         : [];
-      return { ...res, data } as GetUserLocationsResponse;
+      return { ...res, data } as GetMerchantLocationsResponse;
     }
-    return res as unknown as GetUserLocationsResponse;
+    return res as unknown as GetMerchantLocationsResponse;
   },
   //更新用戶位置
-  updateUserLocation: async (locationId: string, locationData: UpdateUserLocationRequest) => {
-    const res = await request<ServerSuccessResponse<RawUpdateUserLocation>>(
-      `/api/v1/locations/user/${locationId}`,
+  updateMerchantLocation: async (
+    locationId: string,
+    locationData: UpdateMerchantLocationRequest
+  ) => {
+    const res = await request<ServerSuccessResponse<RawUpdateMerchantLocation>>(
+      `/api/v1/locations/merchant/${locationId}`,
       {
         body: locationData,
         requireAuth: true,
@@ -151,13 +151,13 @@ export const consumerApi = {
       }
     );
     if (res?.success) {
-      return { ...res, data: toUpdateUserLocation(res.data) } as UpdateUserLocationResponse;
+      return { ...res, data: toUpdateMerchantLocation(res.data) } as UpdateMerchantLocationResponse;
     }
-    return res as unknown as UpdateUserLocationResponse;
+    return res as unknown as UpdateMerchantLocationResponse;
   },
   //刪除用戶位置
-  deleteUserLocation: (locationId: string) =>
-    request<DeleteUserLocationResponse>(`/api/v1/locations/user/${locationId}`, {
+  deleteMerchantLocation: (locationId: string) =>
+    request<DeleteMerchantLocationResponse>(`/api/v1/locations/merchant/${locationId}`, {
       requireAuth: true,
       method: 'DELETE',
     }),
