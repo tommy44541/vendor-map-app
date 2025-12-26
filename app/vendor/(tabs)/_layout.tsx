@@ -1,7 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import Octicons from "@expo/vector-icons/Octicons";
 import { Tabs } from "expo-router";
-import { TouchableOpacity, View } from "react-native";
+import VendorBroadcastTabButton from "../../../components/VendorBroadcastTabButton";
 
 const VendorLayout = () => {
   return (
@@ -49,16 +48,7 @@ const VendorLayout = () => {
           tabBarLabelStyle: {
             display: "none",
           },
-          tabBarButton: () => (
-            <TouchableOpacity
-              onPress={() => alert("發送營業通知?")}
-              className="bottom-4"
-            >
-              <View className="w-20 h-20 rounded-full bg-[#FF6B6B] flex items-center justify-center p-0">
-                <Octicons name="broadcast" size={40} color="white" />
-              </View>
-            </TouchableOpacity>
-          ),
+          tabBarButton: () => <VendorBroadcastTabButton />,
         }}
       />
       <Tabs.Screen

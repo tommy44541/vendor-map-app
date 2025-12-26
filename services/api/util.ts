@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { emitAccessTokenRefreshed } from './authEvents';
 
 // API設定
 export interface API_SETTINGS {
@@ -100,6 +101,7 @@ const refreshAuthToken = async (): Promise<string | null> => {
         await AsyncStorage.setItem('refreshToken', result.data.refresh_token);
       }
       console.log('✅ Token刷新成功');
+      emitAccessTokenRefreshed(result.data.access_token);
       return result.data.access_token;
     }
 
@@ -130,6 +132,7 @@ export const request = async <T>(
   // 如果需要認證，自動添加 Authorization header
   if (requireAuth) {
     const token = await getAuthToken();
+    console.log('token', token);
     console.log(`🔑 Token 狀態: ${token ? '已找到' : '未找到'}`);
     if (token) {
       requestHeaders.Authorization = `Bearer ${token}`;
@@ -140,7 +143,7 @@ export const request = async <T>(
     }
   }
 
-  const url = `${process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8081'}${endpoint}`;
+  const url = `${process.env.EXPO_PUBLIC_API_BASE_URL}${endpoint}`;
 
   // 構建 fetch 配置
   const fetchConfig: RequestInit = {

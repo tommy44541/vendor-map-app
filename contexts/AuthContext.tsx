@@ -1,16 +1,17 @@
+//import { IOS_CLIENT_ID, WEB_CLIENT_ID } from "@/utils/constants";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import {
-  GoogleSignin,
-  isSuccessResponse,
-} from "@react-native-google-signin/google-signin";
+// import {
+//   GoogleSignin,
+//   isSuccessResponse,
+// } from "@react-native-google-signin/google-signin";
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { authApi } from "../services/api/auth";
-import { IOS_CLIENT_ID, WEB_CLIENT_ID } from "../utils/constants";
+import { onAccessTokenRefreshed } from "../services/api/authEvents";
 
-GoogleSignin.configure({
-  webClientId: WEB_CLIENT_ID,
-  iosClientId: IOS_CLIENT_ID,
-});
+// GoogleSignin.configure({
+//   webClientId: WEB_CLIENT_ID,
+//   iosClientId: IOS_CLIENT_ID,
+// });
 
 const USER_INFO_KEY = "userInfo";
 
@@ -117,8 +118,8 @@ interface AuthContextType extends AuthState {
     store_name?: string;
     business_license?: string;
   }) => Promise<void>;
-  googleLogin: (userType: UserType) => Promise<void>;
-  googleLogout: () => Promise<void>;
+  //googleLogin: (userType: UserType) => Promise<void>;
+  //googleLogout: () => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (userData: Partial<User>) => void;
 }
@@ -138,6 +139,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     initializeAuth();
   }, []);
+
+  // 依規格：Token refresh success 也視同已驗證（觸發 push 註冊流程）
+  useEffect(() => {
+    const off = onAccessTokenRefreshed((newToken) => {
+      setAuthState((prev) => ({
+        ...prev,
+        token: newToken,
+        isAuthenticated: !!prev.user,
+      }));
+    });
+    return off;
+  }, []);
+
+  // 依規格：Session restore success / Login success 後觸發
+  useEffect(() => {
+    if (!authState.isAuthenticated || !authState.token) return;
+    // 不 await：避免卡住 UI；失敗也不應阻塞
+    (async () => {
+      try {
+        const mod = await import("../utils/push");
+        const fn = mod?.onUserAuthenticated;
+        if (typeof fn !== "function") {
+          console.warn("push module not ready: onUserAuthenticated is missing");
+          return;
+        }
+        await fn();
+      } catch (e) {
+        console.warn("push device registration failed:", e);
+      }
+    })();
+  }, [authState.isAuthenticated, authState.token]);
 
   const initializeAuth = async () => {
     try {
@@ -210,6 +242,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         isLoading: false,
         isAuthenticated: true,
       });
+
+      // 依規格：Login success 觸發
+      (async () => {
+        try {
+          const mod = await import("../utils/push");
+          const fn = mod?.onUserAuthenticated;
+          if (typeof fn !== "function") return;
+          await fn();
+        } catch (e) {
+          console.warn("push device registration failed:", e);
+        }
+      })();
     } catch (error) {
       console.error("login error:", error);
       setAuthState((prev) => ({ ...prev, isLoading: false }));
@@ -270,89 +314,100 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  // Google登入
-  const googleLogin = async (userType: UserType) => {
-    try {
-      setAuthState((prev) => ({ ...prev, isLoading: true }));
-      await GoogleSignin.hasPlayServices();
-      const response = await GoogleSignin.signIn();
-      if (isSuccessResponse(response)) {
-        if (response.data.idToken) {
-          console.log("🔄 Google sign in idToken:", response.data.idToken);
-          const callbackResponse = await authApi.googleLoginCallback(
-            response.data.idToken
-          );
-          console.log("🔄 Google sign in callback response:", callbackResponse);
+  //Google登入
+  // const googleLogin = async (userType: UserType) => {
+  //   try {
+  //     setAuthState((prev) => ({ ...prev, isLoading: true }));
+  //     await GoogleSignin.hasPlayServices();
+  //     const response = await GoogleSignin.signIn();
+  //     if (isSuccessResponse(response)) {
+  //       if (response.data.idToken) {
+  //         console.log("🔄 Google sign in idToken:", response.data.idToken);
+  //         const callbackResponse = await authApi.googleLoginCallback(
+  //           response.data.idToken
+  //         );
+  //         console.log("🔄 Google sign in callback response:", callbackResponse);
 
-          // 检查回调响应是否成功
-          if (callbackResponse.success && callbackResponse.data) {
-            const { access_token, refresh_token, user } = callbackResponse.data;
+  //         // 检查回调响应是否成功
+  //         if (callbackResponse.success && callbackResponse.data) {
+  //           const { access_token, refresh_token, user } = callbackResponse.data;
 
-            // 保存tokens
-            await setAuthToken(access_token);
-            if (refresh_token) {
-              await setRefreshToken(refresh_token);
-            }
+  //           // 保存tokens
+  //           await setAuthToken(access_token);
+  //           if (refresh_token) {
+  //             await setRefreshToken(refresh_token);
+  //           }
 
-            //TODO: 目前為前端判斷，未來考慮後端回傳結構判斷
-            let actualUserType: UserType = "consumer"; // 默认为消费者
+  //           //TODO: 目前為前端判斷，未來考慮後端回傳結構判斷
+  //           let actualUserType: UserType = "consumer"; // 默认为消费者
 
-            if (userType) {
-              actualUserType = userType;
-            }
+  //           if (userType) {
+  //             actualUserType = userType;
+  //           }
 
-            // 转换用户数据格式
-            const userData: User = {
-              id: user.id,
-              email: user.email,
-              name: user.name,
-              userType: actualUserType,
-              createdAt: user.created_at,
-            };
+  //           // 转换用户数据格式
+  //           const userData: User = {
+  //             id: user.id,
+  //             email: user.email,
+  //             name: user.name,
+  //             userType: actualUserType,
+  //             createdAt: user.created_at,
+  //           };
 
-            // 保存用户信息到本地存储
-            await saveUserInfo(userData);
+  //           // 保存用户信息到本地存储
+  //           await saveUserInfo(userData);
 
-            // 更新认证状态
-            setAuthState({
-              user: userData,
-              token: access_token,
-              isLoading: false,
-              isAuthenticated: true,
-            });
+  //           // 更新认证状态
+  //           setAuthState({
+  //             user: userData,
+  //             token: access_token,
+  //             isLoading: false,
+  //             isAuthenticated: true,
+  //           });
 
-            console.log(`✅ Google OAuth登录成功，用户类型: ${actualUserType}`);
-          } else {
-            throw new Error("Google OAuth回调失败");
-          }
-        } else {
-          console.error("Google sign in failed - 没有idToken");
-          throw new Error("Google登录失败");
-        }
-      } else {
-        console.error("Google sign cancelled");
-        setAuthState((prev) => ({ ...prev, isLoading: false }));
-      }
-    } catch (error) {
-      console.error("Google登录错误:", error);
-      setAuthState((prev) => ({ ...prev, isLoading: false }));
-      throw error;
-    }
-  };
+  //           console.log(`✅ Google OAuth登录成功，用户类型: ${actualUserType}`);
+  //         } else {
+  //           throw new Error("Google OAuth回调失败");
+  //         }
+  //       } else {
+  //         console.error("Google sign in failed - 没有idToken");
+  //         throw new Error("Google登录失败");
+  //       }
+  //     } else {
+  //       console.error("Google sign cancelled");
+  //       setAuthState((prev) => ({ ...prev, isLoading: false }));
+  //     }
+  //   } catch (error) {
+  //     console.error("Google登录错误:", error);
+  //     setAuthState((prev) => ({ ...prev, isLoading: false }));
+  //     throw error;
+  //   }
+  // };
 
-  const googleLogout = async () => {
-    try {
-      await GoogleSignin.signOut();
-      setAuthState((prev) => ({ ...prev, isLoading: false }));
-    } catch (error) {
-      setAuthState((prev) => ({ ...prev, isLoading: false }));
-      throw error;
-    }
-  };
+  // const googleLogout = async () => {
+  //   try {
+  //     await GoogleSignin.signOut();
+  //     setAuthState((prev) => ({ ...prev, isLoading: false }));
+  //   } catch (error) {
+  //     setAuthState((prev) => ({ ...prev, isLoading: false }));
+  //     throw error;
+  //   }
+  // };
 
   // 登出
   const logout = async () => {
     try {
+      // 依規格：登出時停用當前裝置，避免繼續收推播
+      try {
+        const mod = await import("../utils/push");
+        const fn = mod?.deactivateCurrentDeviceOnLogout;
+        if (typeof fn === "function") {
+          await fn();
+        }
+      } catch (e) {
+        console.warn("logout deactivate device skipped:", e);
+      }
+
       // 获取refresh token用于后端登出
       const refreshToken = await getRefreshToken();
 
@@ -402,8 +457,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     ...authState,
     login,
     register,
-    googleLogin,
-    googleLogout,
+    // googleLogin,
+    // googleLogout,
     logout,
     updateUser,
   };
