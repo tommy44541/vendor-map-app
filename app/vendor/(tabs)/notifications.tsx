@@ -1,11 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Location from "expo-location";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -26,6 +25,11 @@ import {
   notificationApi,
   PublishLocationNotificationData,
 } from "../../../services/api/notification";
+import { ApiError } from "../../../services/api/util";
+import {
+  getRecentPublishedResults,
+  saveRecentPublishedResult,
+} from "@/utils/vendor/recentPublish";
 
 type PublishMode = "saved" | "temp";
 
@@ -43,12 +47,14 @@ const Notifications = () => {
   const [hintMessage, setHintMessage] = useState("");
   const [lastPublished, setLastPublished] =
     useState<PublishLocationNotificationData | null>(null);
+  const [isRefreshingLast, setIsRefreshingLast] = useState(false);
 
   const [tempLocationName, setTempLocationName] = useState("");
   const [tempFullAddress, setTempFullAddress] = useState("");
   const [tempLatitude, setTempLatitude] = useState("");
   const [tempLongitude, setTempLongitude] = useState("");
   const [isGettingTempLocation, setIsGettingTempLocation] = useState(false);
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
     StatusBar.setBarStyle("light-content");
@@ -56,6 +62,9 @@ const Notifications = () => {
       StatusBar.setBackgroundColor("transparent");
       StatusBar.setTranslucent(true);
     }
+    return () => {
+      isMountedRef.current = false;
+    };
   }, []);
 
   const selectedLocation = useMemo(() => {
@@ -78,10 +87,6 @@ const Notifications = () => {
     try {
       setIsLoadingLocations(true);
       const res = await merchantApi.getMerchantLocations();
-      if (!res.success) {
-        Alert.alert("錯誤", res.message || "獲取位置列表失敗");
-        return;
-      }
       const list = Array.isArray(res.data) ? res.data : [];
       setLocations(list);
       if (
@@ -92,7 +97,7 @@ const Notifications = () => {
       }
     } catch (error: any) {
       console.error("獲取位置列表失敗:", error);
-      if (error.message?.includes("Token已過期且無法刷新")) {
+      if (error instanceof ApiError && error.code === "TOKEN_EXPIRED") {
         handleAuthExpired();
       } else {
         Alert.alert("錯誤", "獲取位置列表失敗，請重試");
@@ -105,6 +110,13 @@ const Notifications = () => {
   useEffect(() => {
     loadLocations();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      const cached = await getRecentPublishedResults();
+      setLastPublished(cached[0] ?? null);
+    })();
   }, []);
 
   const fillTempWithCurrentLocation = async () => {
@@ -197,12 +209,12 @@ const Notifications = () => {
               hint_message: msg,
             });
 
-      if (!res.success) {
-        Alert.alert("錯誤", res.message || "發布通知失敗");
-        return;
-      }
-
       setLastPublished(res.data);
+      await saveRecentPublishedResult(res.data);
+      // 送出後背景自動刷新統計（應對後端 async worker 稍晚回填）
+      autoRefreshPublishedStats(res.data).catch((e) => {
+        console.warn("auto refresh published stats failed:", e);
+      });
       setHintMessage("");
       if (mode === "temp") {
         setTempLocationName("");
@@ -210,10 +222,10 @@ const Notifications = () => {
         setTempLatitude("");
         setTempLongitude("");
       }
-      Alert.alert("成功", res.message || "已發布位置通知");
+      Alert.alert("成功", "已發布位置通知");
     } catch (error: any) {
       console.error("發布通知失敗:", error);
-      if (error.message?.includes("Token已過期且無法刷新")) {
+      if (error instanceof ApiError && error.code === "TOKEN_EXPIRED") {
         handleAuthExpired();
       } else {
         Alert.alert("錯誤", "發布通知失敗，請重試");
@@ -223,7 +235,69 @@ const Notifications = () => {
     }
   };
 
-  const renderLocationItem = ({ item }: { item: MerchantLocation }) => {
+  const refreshLastPublished = async () => {
+    if (!lastPublished?.ID) return;
+    try {
+      setIsRefreshingLast(true);
+      const found = await findPublishedById(lastPublished.ID);
+      if (found) {
+        setLastPublished(found);
+        await saveRecentPublishedResult(found);
+      }
+    } catch (e) {
+      console.warn("refresh notification history failed:", e);
+    } finally {
+      setIsRefreshingLast(false);
+    }
+  };
+
+  const findPublishedById = async (
+    publishId: string
+  ): Promise<PublishLocationNotificationData | null> => {
+    const res = await notificationApi.getMerchantNotificationHistory({
+      limit: 20,
+      offset: 0,
+    });
+    return Array.isArray(res.data)
+      ? res.data.find((n) => n.ID === publishId) || null
+      : null;
+  };
+
+  const sleep = (ms: number) =>
+    new Promise<void>((resolve) => {
+      setTimeout(resolve, ms);
+    });
+
+  const autoRefreshPublishedStats = async (
+    initial: PublishLocationNotificationData
+  ) => {
+    let latest = initial;
+    const retryDelays = [1500, 3000, 5000];
+
+    for (const delayMs of retryDelays) {
+      await sleep(delayMs);
+      if (!isMountedRef.current) return;
+
+      try {
+        const found = await findPublishedById(initial.ID);
+        if (!found) continue;
+
+        const changed =
+          found.TotalSent !== latest.TotalSent ||
+          found.TotalFailed !== latest.TotalFailed;
+
+        if (changed) {
+          latest = found;
+          setLastPublished(found);
+          await saveRecentPublishedResult(found);
+        }
+      } catch (error) {
+        console.warn("auto refresh retry failed:", error);
+      }
+    }
+  };
+
+  const renderLocationItem = (item: MerchantLocation) => {
     const isSelected = item.ID === selectedLocationId;
     return (
       <Pressable
@@ -422,14 +496,10 @@ const Notifications = () => {
                 </Text>
               </View>
             ) : (
-              <View className="mt-4" style={{ maxHeight: 300 }}>
-                <FlatList
-                  data={locations}
-                  keyExtractor={(item) => item.ID}
-                  renderItem={renderLocationItem}
-                  showsVerticalScrollIndicator={false}
-                  nestedScrollEnabled
-                />
+              <View className="mt-4">
+                {locations.map((item) => (
+                  <View key={item.ID}>{renderLocationItem(item)}</View>
+                ))}
               </View>
             )}
 
@@ -627,11 +697,17 @@ const Notifications = () => {
                     最近一次發布結果
                   </Text>
                 </View>
-                <View className="px-3 py-1 rounded-full bg-gray-100">
+                <Pressable
+                  onPress={refreshLastPublished}
+                  disabled={isRefreshingLast}
+                  className={`px-3 py-1 rounded-full ${
+                    isRefreshingLast ? "bg-gray-300" : "bg-gray-100"
+                  }`}
+                >
                   <Text className="text-xs font-semibold text-gray-700">
-                    {lastPublished.Status}
+                    {isRefreshingLast ? "刷新中..." : "刷新統計"}
                   </Text>
-                </View>
+                </Pressable>
               </View>
 
               <View className="flex-row gap-3 mt-4">
@@ -656,7 +732,7 @@ const Notifications = () => {
               <View className="mt-3 flex-row items-center gap-2">
                 <Ionicons name="time" size={14} color="#6b7280" />
                 <Text className="text-xs text-gray-500">
-                  UpdatedAt：{lastPublished.UpdatedAt}
+                  PublishedAt：{lastPublished.PublishedAt}
                 </Text>
               </View>
             </View>

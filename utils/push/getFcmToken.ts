@@ -1,4 +1,12 @@
 import { Platform } from "react-native";
+
+async function getDeviceModule(): Promise<any | null> {
+  try {
+    return await import("expo-device");
+  } catch {
+    return null;
+  }
+}
 async function getNotificationsModule(): Promise<any | null> {
   try {
     return await import("expo-notifications");
@@ -17,6 +25,18 @@ async function getNotificationsModule(): Promise<any | null> {
  */
 export async function getFcmTokenOrNull(): Promise<string | null> {
   try {
+    // iOS 模擬器通常無法取得 APNs token（也無法接收真正遠端推播）
+    if (Platform.OS === "ios") {
+      const Device = await getDeviceModule();
+      const isDevice = Device?.isDevice;
+      if (isDevice === false) {
+        console.warn(
+          "iOS 模擬器不支援取得 APNs token；請改用 iPhone 實機測試遠端推播。"
+        );
+        return null;
+      }
+    }
+
     const Notifications = await getNotificationsModule();
     if (!Notifications) return null;
 

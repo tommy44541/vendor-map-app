@@ -94,6 +94,11 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0.0"
+        manifestPlaceholders = [
+            GOOGLE_MAPS_API_KEY: (findProperty('GOOGLE_MAPS_API_KEY')
+                ?: System.getenv('GOOGLE_MAPS_API_KEY')
+                ?: "")
+        ]
     }
     signingConfigs {
         debug {
@@ -174,4 +179,11 @@ dependencies {
     } else {
         implementation jscFlavor
     }
+}
+
+// Enable Firebase/FCM only when google-services.json is present
+if (file("google-services.json").exists()) {
+    apply plugin: "com.google.gms.google-services"
+} else {
+    println("⚠️ google-services.json not found in android/app; skipping Google Services plugin (FCM token will be unavailable).")
 }

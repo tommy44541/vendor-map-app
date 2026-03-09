@@ -1,4 +1,4 @@
-import { request, ServerSuccessResponse } from './util';
+import { ApiSuccessResponse, request } from './util';
 
 // 用戶資料類型
 export interface UserData {
@@ -60,13 +60,14 @@ export interface TokenData {
 
 
 // 響應類型定義
-export type UserRegisterResponse = ServerSuccessResponse<UserData>;
-export type MerchantRegisterResponse = ServerSuccessResponse<MerchantData>;
-export type LoginResponse = ServerSuccessResponse<LoginData>;
-export type GetUserInfoResponse = ServerSuccessResponse<UserData>;
-export type RefreshTokenResponse = ServerSuccessResponse<TokenData>;
+export type UserRegisterResponse = ApiSuccessResponse<UserData>;
+export type MerchantRegisterResponse = ApiSuccessResponse<MerchantData>;
+export type LoginResponse = ApiSuccessResponse<LoginData>;
+export type GetUserInfoResponse = ApiSuccessResponse<UserData>;
+export type RefreshTokenResponse = ApiSuccessResponse<TokenData>;
+export type GoogleLoginResponse = ApiSuccessResponse<LoginData>;
 
-export type LogoutResponse = ServerSuccessResponse<null>;
+export type LogoutResponse = ApiSuccessResponse<{ message: string }>;
 
 // 認證相關API
 export const authApi = {
@@ -78,7 +79,7 @@ export const authApi = {
     name: string;
     email: string;
     password: string;
-  }) => request<UserRegisterResponse>('/auth/register/user', { 
+  }) => request<UserData>('/auth/register/user', { 
     body: userData 
   }),
   
@@ -89,27 +90,36 @@ export const authApi = {
     password: string;
     store_name: string;
     business_license: string;
-  }) => request<MerchantRegisterResponse>('/auth/register/merchant', { 
+  }) => request<MerchantData>('/auth/register/merchant', { 
     body: merchantData 
   }),
   
   // 用戶登入
   login: (credentials: { email: string; password: string }) =>
-    request<LoginResponse>('/auth/login', { 
+    request<LoginData>('/auth/login', { 
       body: credentials,
+    }),
+
+  // Google 第三方登入（ID Token 驗證）
+  googleLoginCallback: (idToken: string, state?: string) =>
+    request<LoginData>('/oauth/google/callback', {
+      body: {
+        id_token: idToken,
+        ...(state ? { state } : {}),
+      },
     }),
   
 
   
   // 刷新token
   refreshToken: (refreshToken: string) => 
-    request<RefreshTokenResponse>('/auth/refresh', { 
+    request<TokenData>('/auth/refresh', { 
       body: { refresh_token: refreshToken } 
     }),
 
   // 登出
   logout: (refreshToken: string) => 
-    request<LogoutResponse>('/auth/logout', { 
+    request<{ message: string }>('/auth/logout', { 
       body: { refresh_token: refreshToken } 
     }),
 

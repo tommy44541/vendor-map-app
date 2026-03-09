@@ -16,9 +16,6 @@ export async function deactivateCurrentDeviceOnLogout(): Promise<{
 
   try {
     const res = await deviceApi.deleteDevice(serverId);
-    if (!res.success) {
-      return { didDeactivate: false };
-    }
     await setRegistrationCache({
       device_registered: false,
       server_device_id: null,

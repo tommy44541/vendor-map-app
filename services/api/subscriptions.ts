@@ -1,93 +1,69 @@
-import { request, ServerSuccessResponse } from './util';
+import { ApiSuccessResponse, request } from './util';
 
-interface SubscribeMerchantRequest {
+export interface DeviceInfo {
+  fcm_token: string;
+  device_id: string;
+  platform: string;
+}
+
+export interface SubscribeMerchantRequest {
   merchant_id: string;
-  device_info: {
-    fcm_token: string;
-    device_id: string;
-    platform: string;
-  }
+  device_info?: DeviceInfo;
 }
 
-interface GenerateSubscriptionQRCodeRequest {
-  qr_data: {
-    merchant_id: string;
-  },
-  device_info: {
-    fcm_token: string;
-    device_id: string;
-    platform: string;
-  }
+export interface ProcessQRSubscriptionRequest {
+  qr_data: string;
+  device_info?: DeviceInfo;
 }
 
-interface SubscribeMerchantData {
-  ID: string;
-  UserID: string;
-  MerchantID: string;
-  NotificationRadius: number;
-  Status: string;
-  CreatedAt: string;
-  UpdatedAt: string;
+export interface UserMerchantSubscription {
+  id: string;
+  user_id: string;
+  merchant_id: string;
+  is_active: boolean;
+  notification_radius: number; // meters
+  subscribed_at: string;
+  updated_at: string;
 }
 
-interface UnsubscribeMerchantData {
+export interface UnsubscribeMerchantData {
   message: string;
 }
 
-interface GetSubscriptionsData {
-  ID: string;
-  UserID: string;
-  MerchantID: string;
-  NotificationRadius: number;
-  Status: string;
-  CreatedAt: string;
-  UpdatedAt: string;
-}
-
-interface GenerateSubscriptionQRCodeData {
-  ID: string;
-  UserID: string;
-  MerchantID: string;
-  NotificationRadius: number;
-  Status: string;
-  CreatedAt: string;
-  UpdatedAt: string;
-}
-
-export type SubscribeMerchantResponse = ServerSuccessResponse<SubscribeMerchantData>;
-export type UnsubscribeMerchantResponse = ServerSuccessResponse<UnsubscribeMerchantData>;
-export type GetSubscriptionsResponse = ServerSuccessResponse<GetSubscriptionsData>;
-export type GenerateSubscriptionQRCodeResponse = ServerSuccessResponse<GenerateSubscriptionQRCodeData>;
+export type SubscribeMerchantResponse = ApiSuccessResponse<UserMerchantSubscription>;
+export type UnsubscribeMerchantResponse = ApiSuccessResponse<UnsubscribeMerchantData>;
+export type GetSubscriptionsResponse = ApiSuccessResponse<UserMerchantSubscription[]>;
+export type ProcessQRSubscriptionResponse = ApiSuccessResponse<UserMerchantSubscription>;
 
 export const subscriptionsApi = {
-  // 訂閱商戶
+  // 訂閱攤商（POST /api/v1/subscriptions）
   subscribeMerchant: (body: SubscribeMerchantRequest) => {
-    request<SubscribeMerchantResponse>('/api/v1/subscriptions/merchant', {
+    return request<UserMerchantSubscription>('/api/v1/subscriptions', {
       requireAuth: true,
       method: 'POST',
       body,
-    })
+    }) as Promise<SubscribeMerchantResponse>;
   },
-  //取消訂閱商戶
+  // 取消訂閱（DELETE /api/v1/subscriptions/:merchantId）
   unsubscribeMerchant: (merchantId: string) => {
-    request<UnsubscribeMerchantResponse>(`/api/v1/subscriptions/merchant/${merchantId}`, {
+    return request<UnsubscribeMerchantData>(`/api/v1/subscriptions/${merchantId}`, {
       requireAuth: true,
       method: 'DELETE',
-    })
+    }) as Promise<UnsubscribeMerchantResponse>;
   },
-  //取得訂閱列表
+  // 取得訂閱列表（GET /api/v1/subscriptions）
   getSubscriptions: () => {
-    request<GetSubscriptionsResponse>(`/api/v1/subscriptions/merchant`, {
+    return request<UserMerchantSubscription[]>(`/api/v1/subscriptions`, {
       requireAuth: true,
       method: 'GET',
-    })
+    }) as Promise<GetSubscriptionsResponse>;
   },
-  //生成訂閱 QR Code（需要商戶角色）
-  generateSubscriptionQRCode: (body: GenerateSubscriptionQRCodeRequest) => {
-    request<GenerateSubscriptionQRCodeResponse>('/api/v1/subscriptions/qr', {
+  // 掃碼訂閱（POST /api/v1/subscriptions/qr）
+  processQRSubscription: (body: ProcessQRSubscriptionRequest) => {
+    return request<UserMerchantSubscription>('/api/v1/subscriptions/qr', {
       requireAuth: true,
       method: 'POST',
       body,
-    })
+    }) as Promise<ProcessQRSubscriptionResponse>;
   },
 };

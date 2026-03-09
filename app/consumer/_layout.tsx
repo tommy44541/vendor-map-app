@@ -8,7 +8,7 @@ const _layout = () => {
       }}
     >
       <Stack.Screen name="(tabs)" />
-      <Stack.Screen name="vendor/:id" />
+      <Stack.Screen name="vendor/[id]" />
     </Stack>
   );
 };

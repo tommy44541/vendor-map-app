@@ -16,9 +16,10 @@ const VendorLayout = () => {
         },
         tabBarStyle: {
           backgroundColor: "#ffffff",
-          height: 70,
+          height: 74,
           position: "absolute",
           elevation: 0,
+          overflow: "visible",
         },
         tabBarActiveTintColor: "#FF6B6B",
         tabBarInactiveTintColor: "#9ca3af",
@@ -48,7 +49,7 @@ const VendorLayout = () => {
           tabBarLabelStyle: {
             display: "none",
           },
-          tabBarButton: () => <VendorBroadcastTabButton />,
+          tabBarButton: (props) => <VendorBroadcastTabButton {...props} />,
         }}
       />
       <Tabs.Screen

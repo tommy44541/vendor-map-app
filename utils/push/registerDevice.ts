@@ -26,15 +26,10 @@ export async function registerDeviceIfNeeded(input: RegisterDeviceInput) {
   }
 
   const res = await deviceApi.registerDevice({
+    fcm_token: fcmToken,
     device_id: deviceId,
-    device_type: Platform.OS,
-    device_token: fcmToken,
+    platform: Platform.OS === "ios" ? "ios" : "android",
   });
-
-  if (!res.success) {
-    // 讓上層決定是否重試/吞錯
-    throw new Error(res.message || "Device register failed");
-  }
 
   await setRegistrationCache({
     device_registered: true,
@@ -46,5 +41,4 @@ export async function registerDeviceIfNeeded(input: RegisterDeviceInput) {
 
   return { didRegister: true, reason: "registered" as const, data: res.data };
 }
-
 

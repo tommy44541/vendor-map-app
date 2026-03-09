@@ -1,3 +1,4 @@
+import { debugLog } from '@/utils/logger';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { emitAccessTokenRefreshed } from './authEvents';
 
@@ -15,30 +16,67 @@ export interface RequestHeaders {
   [key: string]: string | undefined;
 }
 
-// 基礎響應接口
-export interface BaseResponse {
-  success: boolean;
-  code: number;
-  message: string;
+// 後端統一回應格式
+export interface MetaInfo {
+  request_id: string;
 }
 
-// 伺服器錯誤響應類型
-export interface ServerErrorResponse extends BaseResponse {
-  success: false;
-  error: {
-    code: string;
-    details: string;
-  };
-}
-
-// 伺服器成功響應類型
-export interface ServerSuccessResponse<T = any> extends BaseResponse {
-  success: true;
+export interface ApiSuccessResponse<T = any> {
   data: T;
+  meta?: MetaInfo;
 }
 
-// 通用API響應類型
-export type ApiResponse<T = any> = ServerSuccessResponse<T> | ServerErrorResponse;
+export interface ApiErrorInfo {
+  code: string;
+  message: string;
+  details?: any;
+}
+
+export interface ApiErrorResponse {
+  error: ApiErrorInfo;
+  meta?: MetaInfo;
+}
+
+export class ApiError extends Error {
+  status: number;
+  code?: string;
+  details?: any;
+  requestId?: string;
+  raw?: any;
+
+  constructor(
+    message: string,
+    opts: {
+      status: number;
+      code?: string;
+      details?: any;
+      requestId?: string;
+      raw?: any;
+    }
+  ) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = opts.status;
+    this.code = opts.code;
+    this.details = opts.details;
+    this.requestId = opts.requestId;
+    this.raw = opts.raw;
+  }
+}
+
+const getApiBaseUrl = (): string => {
+  const raw = process.env.EXPO_PUBLIC_API_BASE_URL?.trim();
+  if (!raw) {
+    throw new ApiError(
+      '缺少 API 設定：請在 .env.local 設定 EXPO_PUBLIC_API_BASE_URL',
+      {
+        status: 500,
+        code: 'CONFIG_MISSING_API_BASE_URL',
+      }
+    );
+  }
+  return raw.replace(/\/+$/, '');
+};
 
 // 請求配置類型
 export interface RequestConfig {
@@ -48,6 +86,49 @@ export interface RequestConfig {
   timeout?: number;
   requireAuth?: boolean;
 }
+
+const parseBody = async (res: Response): Promise<any> => {
+  const text = await res.text();
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+};
+
+// 成功回應：若後端已包 {data, meta} 就直接用；否則包成 {data}
+const normalizeSuccess = <T = any>(raw: any): ApiSuccessResponse<T> => {
+  if (raw && typeof raw === 'object' && 'data' in raw) {
+    return raw as ApiSuccessResponse<T>;
+  }
+  return { data: raw as T };
+};
+
+const extractError = (status: number, raw: any): ApiError => {
+  const requestId =
+    raw && typeof raw === 'object' ? (raw as any)?.meta?.request_id : undefined;
+
+  if (raw && typeof raw === 'object' && 'error' in raw) {
+    const info = (raw as any).error as ApiErrorInfo | undefined;
+    return new ApiError(info?.message || `HTTP error! status: ${status}`, {
+      status,
+      code: info?.code,
+      details: info?.details,
+      requestId,
+      raw,
+    });
+  }
+
+  const msg =
+    typeof raw === 'string'
+      ? raw
+      : raw?.message
+        ? String(raw.message)
+        : `HTTP error! status: ${status}`;
+
+  return new ApiError(msg, { status, requestId, raw });
+};
 
 // 獲取認證token
 const getAuthToken = async (): Promise<string | null> => {
@@ -78,7 +159,8 @@ const refreshAuthToken = async (): Promise<string | null> => {
       return null;
     }
 
-    const url = `${process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8081'}/auth/refresh`;
+    const baseUrl = getApiBaseUrl();
+    const url = `${baseUrl}/auth/refresh`;
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -93,16 +175,18 @@ const refreshAuthToken = async (): Promise<string | null> => {
       return null;
     }
 
-    const result = await response.json();
-    if (result.success && result.data.access_token) {
+    const result = await parseBody(response);
+    const accessToken = result?.data?.access_token;
+    if (accessToken) {
       // 保存新的access token
-      await AsyncStorage.setItem('authToken', result.data.access_token);
-      if (result.data.refresh_token) {
-        await AsyncStorage.setItem('refreshToken', result.data.refresh_token);
+      await AsyncStorage.setItem('authToken', accessToken);
+      const refresh = result?.data?.refresh_token;
+      if (refresh) {
+        await AsyncStorage.setItem('refreshToken', refresh);
       }
-      console.log('✅ Token刷新成功');
-      emitAccessTokenRefreshed(result.data.access_token);
-      return result.data.access_token;
+      debugLog('✅ Token刷新成功');
+      emitAccessTokenRefreshed(accessToken);
+      return accessToken;
     }
 
     return null;
@@ -116,11 +200,12 @@ const refreshAuthToken = async (): Promise<string | null> => {
 export const request = async <T>(
   endpoint: string,
   config: RequestConfig
-): Promise<T> => {
+): Promise<ApiSuccessResponse<T>> => {
   const { method = 'POST', headers, body, requireAuth = false } = config;
-  
-  console.log(`🌐 API 請求: ${method} ${endpoint}`);
-  console.log(`🔐 需要認證: ${requireAuth}`);
+  const baseUrl = getApiBaseUrl();
+
+  debugLog(`🌐 API 請求: ${method} ${endpoint}`);
+  debugLog(`🔐 需要認證: ${requireAuth}`);
   
   // 構建請求頭
   const requestHeaders: Record<string, string> = {
@@ -132,18 +217,17 @@ export const request = async <T>(
   // 如果需要認證，自動添加 Authorization header
   if (requireAuth) {
     const token = await getAuthToken();
-    console.log('token', token);
-    console.log(`🔑 Token 狀態: ${token ? '已找到' : '未找到'}`);
+    debugLog(`🔑 Token 狀態: ${token ? '已找到' : '未找到'}`);
     if (token) {
       requestHeaders.Authorization = `Bearer ${token}`;
-      console.log(`✅ 已添加 Authorization header`);
+      debugLog(`✅ 已添加 Authorization header`);
     } else {
       console.error('❌ 需要認證但未找到有效的 access_token');
       throw new Error('需要認證但未找到有效的 access_token');
     }
   }
 
-  const url = `${process.env.EXPO_PUBLIC_API_BASE_URL}${endpoint}`;
+  const url = `${baseUrl}${endpoint}`;
 
   // 構建 fetch 配置
   const fetchConfig: RequestInit = {
@@ -160,7 +244,7 @@ export const request = async <T>(
 
   // 如果是401錯誤且需要認證，嘗試刷新token
   if (response.status === 401 && requireAuth) {
-    console.log('🔄 Token已過期，嘗試刷新...');
+    debugLog('🔄 Token已過期，嘗試刷新...');
     const newToken = await refreshAuthToken();
     
     if (newToken) {
@@ -182,27 +266,30 @@ export const request = async <T>(
       const retryResponse = await fetch(url, newFetchConfig);
       
       if (!retryResponse.ok) {
-        const errorText = await retryResponse.text();
-        console.error(`❌ 重試請求後仍失敗: ${retryResponse.status}`, errorText);
-        throw new Error(`HTTP error! status: ${retryResponse.status}`, { cause: retryResponse });
+        const raw = await parseBody(retryResponse);
+        console.error(`❌ 重試請求後仍失敗: ${retryResponse.status}`, raw);
+        throw extractError(retryResponse.status, raw);
       }
       
-      const result = await retryResponse.json();
-      console.log(`✅ API 響應成功 (使用新token):`, result);
-      return result;
+      const result = await parseBody(retryResponse);
+      debugLog(`✅ API 響應成功 (使用新token):`, result);
+      return normalizeSuccess<T>(result);
     } else {
       console.error('❌ 無法刷新token，需要重新登入');
-      throw new Error('Token已過期且無法刷新，請重新登入');
+      throw new ApiError('登入已過期，請重新登入', {
+        status: 401,
+        code: 'TOKEN_EXPIRED',
+      });
     }
   }
 
   if (!response.ok) {
-    const errorText = await response.text();
-    console.error(`❌ HTTP 錯誤: ${response.status}`, errorText);
-    throw new Error(`HTTP error! status: ${response.status}`, { cause: response });
+    const raw = await parseBody(response);
+    console.error(`❌ HTTP 錯誤: ${response.status}`, raw);
+    throw extractError(response.status, raw);
   }
 
-  const result = await response.json();
-  console.log(`✅ API 響應成功:`, result);
-  return result;
+  const result = await parseBody(response);
+  debugLog(`✅ API 響應成功:`, result);
+  return normalizeSuccess<T>(result);
 };

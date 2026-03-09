@@ -1,20 +1,22 @@
-import Octicons from "@expo/vector-icons/Octicons";
+import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React from "react";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 import type { BottomTabBarButtonProps } from "@react-navigation/bottom-tabs";
 
-const VendorBroadcastTabButton = ({ accessibilityState }: BottomTabBarButtonProps) => {
+const ConsumerNotificationsTabButton = ({
+  accessibilityState,
+}: BottomTabBarButtonProps) => {
   const isFocused = !!accessibilityState?.selected;
   return (
     <TouchableOpacity
       accessibilityRole="button"
       activeOpacity={0.9}
-      onPress={() => router.push("/vendor/notifications")}
+      onPress={() => router.push("/consumer/notifications")}
       style={styles.hitArea}
     >
       <View style={[styles.fab, isFocused && styles.fabFocused]}>
-        <Octicons name="broadcast" size={30} color="white" />
+        <Ionicons name="notifications" size={32} color="white" />
       </View>
     </TouchableOpacity>
   );
@@ -48,4 +50,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default VendorBroadcastTabButton;
+export default ConsumerNotificationsTabButton;

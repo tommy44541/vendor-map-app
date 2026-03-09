@@ -17,6 +17,7 @@
           "fetch",
           "remote-notification"
         ],
+        "NSCameraUsageDescription": "需要相機權限以掃描攤商訂閱 QR Code。",
         "NSLocationWhenInUseUsageDescription": "This app requires access to your location when open.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "This app requires access to your location even when closed.",
         "NSLocationAlwaysUsageDescription":  "This app requires access to your location when open.",

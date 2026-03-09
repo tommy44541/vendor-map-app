@@ -1,3 +1,4 @@
+import ConsumerNotificationsTabButton from "@/components/ConsumerNotificationsTabButton";
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 
@@ -15,9 +16,10 @@ const ConsumerLayout = () => {
         },
         tabBarStyle: {
           backgroundColor: "#ffffff",
-          height: 70,
+          height: 74,
           position: "absolute",
           elevation: 0,
+          overflow: "visible",
         },
         tabBarActiveTintColor: "#667eea",
         tabBarInactiveTintColor: "#9ca3af",
@@ -33,39 +35,30 @@ const ConsumerLayout = () => {
         }}
       />
       <Tabs.Screen
-        name="menu"
-        options={{
-          title: "菜單",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="restaurant" size={24} color={color} />
-          ),
-        }}
-      />
-      {/* TODO: 主動掃描附近開啟攤車 */}
-      {/* <Tabs.Screen
-        name="notifications"
-        options={{
-          tabBarLabelStyle: {
-            display: "none",
-          },
-          tabBarButton: () => (
-            <TouchableOpacity
-              onPress={() => alert("發送營業通知?")}
-              className="bottom-4"
-            >
-              <View className="w-20 h-20 rounded-full bg-[#FF6B6B] flex items-center justify-center p-0">
-                <Octicons name="broadcast" size={40} color="white" />
-              </View>
-            </TouchableOpacity>
-          ),
-        }}
-      /> */}
-      <Tabs.Screen
         name="location"
         options={{
           title: "地點",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="location" size={24} color={color} />
+          ),
+        }}
+      />
+      {/* TODO: 主動掃描附近開啟攤車 */}
+      <Tabs.Screen
+        name="notifications"
+        options={{
+          tabBarLabelStyle: {
+            display: "none",
+          },
+          tabBarButton: (props) => <ConsumerNotificationsTabButton {...props} />,
+        }}
+      />
+      <Tabs.Screen
+        name="favorites"
+        options={{
+          title: "收藏",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="heart" size={24} color={color} />
           ),
         }}
       />
@@ -79,21 +72,15 @@ const ConsumerLayout = () => {
         }}
       />
       <Tabs.Screen
-        name="orders"
+        name="menu"
         options={{
-          title: "訂單",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="receipt" size={24} color={color} />
-          ),
+          href: null,
         }}
       />
       <Tabs.Screen
-        name="favorites"
+        name="orders"
         options={{
-          title: "收藏",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="heart" size={24} color={color} />
-          ),
+          href: null,
         }}
       />
       <Tabs.Screen

@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='utf-8' standalone='yes' ?>
+<map>
+    <int name="terms_accepted_kr" value="1" />
+    <string name="baseEventId">C_yXaei2GryhgLUNja-1pQY</string>
+    <string name="cy">US</string>
+    <int name="settings_version" value="18" />
+    <string name="previousClientEventId">C_yXaei2GryhgLUNja-1pQY:732831561</string>
+    <int name="sequenceId" value="732831562" />
+    <int name="activationId" value="1" />
+</map>

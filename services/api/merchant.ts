@@ -1,4 +1,4 @@
-import { request, ServerSuccessResponse } from './util';
+import { ApiSuccessResponse, request } from './util';
 
 // 用户位置数据类型
 export interface MerchantLocation {
@@ -19,6 +19,7 @@ export interface UpdateMerchantLocation {
   ID: string;
   Label: string;
   IsActive: boolean;
+  IsPrimary: boolean;
   UpdatedAt: string;
 }
 
@@ -41,6 +42,7 @@ interface RawUpdateMerchantLocation {
   id: string;
   label: string;
   is_active: boolean;
+  is_primary: boolean;
   updated_at: string;
 }
 
@@ -64,6 +66,7 @@ const toUpdateMerchantLocation = (
   ID: raw.id,
   Label: raw.label,
   IsActive: raw.is_active,
+  IsPrimary: raw.is_primary,
   UpdatedAt: raw.updated_at,
 });
 
@@ -80,69 +83,64 @@ export interface CreateMerchantLocationRequest {
 export interface UpdateMerchantLocationRequest {
   label: string;
   is_active: boolean;
+  is_primary: boolean;
 }
 
 
 // 响应类型定义
-export type CreateMerchantLocationResponse = ServerSuccessResponse<MerchantLocation>;
-export type GetMerchantLocationsResponse = ServerSuccessResponse<MerchantLocation[]>;
-export type UpdateMerchantLocationResponse = ServerSuccessResponse<UpdateMerchantLocation>;
-export type DeleteMerchantLocationResponse = ServerSuccessResponse<null>;
+export type CreateMerchantLocationResponse = ApiSuccessResponse<MerchantLocation>;
+export type GetMerchantLocationsResponse = ApiSuccessResponse<MerchantLocation[]>;
+export type UpdateMerchantLocationResponse = ApiSuccessResponse<UpdateMerchantLocation>;
+export type DeleteMerchantLocationResponse = ApiSuccessResponse<{ message: string }>;
 
 export const merchantApi = {
   // 创建用户位置
   createMerchantLocation: async (locationData: CreateMerchantLocationRequest) => {
-    const res = await request<ServerSuccessResponse<RawMerchantLocation>>(
+    const res = await request<RawMerchantLocation>(
       '/api/v1/locations/merchant',
       {
         body: locationData,
         requireAuth: true,
       }
     );
-    if (res?.success) {
-      return { ...res, data: toMerchantLocation(res.data) } as CreateMerchantLocationResponse;
-    }
-    return res as unknown as CreateMerchantLocationResponse;
+    return { ...res, data: toMerchantLocation(res.data) } as CreateMerchantLocationResponse;
   },
 
   //取得用戶位置列表
   getMerchantLocations: async () => {
-    const res = await request<ServerSuccessResponse<RawMerchantLocation[]>>(
+    const res = await request<RawMerchantLocation[]>(
       '/api/v1/locations/merchant',
       {
         requireAuth: true,
         method: 'GET',
       }
     );
-    if (res?.success) {
-      const toTime = (v?: string) => {
-        const t = Date.parse(v ?? '');
-        return Number.isFinite(t) ? t : 0;
-      };
+    const toTime = (v?: string) => {
+      const t = Date.parse(v ?? '');
+      return Number.isFinite(t) ? t : 0;
+    };
 
-      const data = Array.isArray(res.data)
-        ? res.data
-            .map(toMerchantLocation)
-            .sort((a, b) => {
-              // IsPrimary 永遠排最前
-              if (a.IsPrimary !== b.IsPrimary) return a.IsPrimary ? -1 : 1;
-              // UpdatedAt 越晚越前
-              const diff = toTime(b.UpdatedAt) - toTime(a.UpdatedAt);
-              if (diff !== 0) return diff;
-              // 同時間的穩定排序（避免不同 JS 引擎下順序抖動）
-              return (a.ID ?? '').localeCompare(b.ID ?? '');
-            })
-        : [];
-      return { ...res, data } as GetMerchantLocationsResponse;
-    }
-    return res as unknown as GetMerchantLocationsResponse;
+    const data = Array.isArray(res.data)
+      ? res.data
+          .map(toMerchantLocation)
+          .sort((a, b) => {
+            // IsPrimary 永遠排最前
+            if (a.IsPrimary !== b.IsPrimary) return a.IsPrimary ? -1 : 1;
+            // UpdatedAt 越晚越前
+            const diff = toTime(b.UpdatedAt) - toTime(a.UpdatedAt);
+            if (diff !== 0) return diff;
+            // 同時間的穩定排序（避免不同 JS 引擎下順序抖動）
+            return (a.ID ?? '').localeCompare(b.ID ?? '');
+          })
+      : [];
+    return { ...res, data } as GetMerchantLocationsResponse;
   },
   //更新用戶位置
   updateMerchantLocation: async (
     locationId: string,
     locationData: UpdateMerchantLocationRequest
   ) => {
-    const res = await request<ServerSuccessResponse<RawUpdateMerchantLocation>>(
+    const res = await request<RawUpdateMerchantLocation>(
       `/api/v1/locations/merchant/${locationId}`,
       {
         body: locationData,
@@ -150,15 +148,12 @@ export const merchantApi = {
         method: 'PUT',
       }
     );
-    if (res?.success) {
-      return { ...res, data: toUpdateMerchantLocation(res.data) } as UpdateMerchantLocationResponse;
-    }
-    return res as unknown as UpdateMerchantLocationResponse;
+    return { ...res, data: toUpdateMerchantLocation(res.data) } as UpdateMerchantLocationResponse;
   },
   //刪除用戶位置
   deleteMerchantLocation: (locationId: string) =>
-    request<DeleteMerchantLocationResponse>(`/api/v1/locations/merchant/${locationId}`, {
+    request<{ message: string }>(`/api/v1/locations/merchant/${locationId}`, {
       requireAuth: true,
       method: 'DELETE',
-    }),
+    }) as Promise<DeleteMerchantLocationResponse>,
 };

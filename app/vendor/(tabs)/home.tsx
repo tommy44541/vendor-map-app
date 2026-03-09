@@ -1,7 +1,9 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
+import React, { useCallback, useEffect, useState } from "react";
 import {
+  Alert,
   Modal,
   Platform,
   Pressable,
@@ -12,11 +14,19 @@ import {
   View,
 } from "react-native";
 import { useAuth } from "../../../contexts/AuthContext";
+import type { PublishLocationNotificationData } from "@/services/api/notification";
+import {
+  clearRecentPublishedResult,
+  getRecentPublishedResults,
+} from "@/utils/vendor/recentPublish";
 
 export default function VendorHomeScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [recentPublishes, setRecentPublishes] = useState<
+    PublishLocationNotificationData[]
+  >([]);
 
   // 设置状态栏样式
   useEffect(() => {
@@ -34,6 +44,37 @@ export default function VendorHomeScreen() {
     } catch (error) {
       console.error("登出失败:", error);
     }
+  };
+
+  const formatPublishTime = (iso: string) => {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
+    return d.toLocaleString();
+  };
+
+  const loadRecentPublish = useCallback(async () => {
+    const cached = await getRecentPublishedResults();
+    setRecentPublishes(cached);
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadRecentPublish();
+    }, [loadRecentPublish])
+  );
+
+  const handleClearRecentPublish = () => {
+    Alert.alert("清除送出紀錄", "要清除此區塊顯示的本地紀錄（最多5筆）嗎？", [
+      { text: "取消", style: "cancel" },
+      {
+        text: "清除",
+        style: "destructive",
+        onPress: async () => {
+          await clearRecentPublishedResult();
+          setRecentPublishes([]);
+        },
+      },
+    ]);
   };
 
   const menuItems = [
@@ -102,15 +143,15 @@ export default function VendorHomeScreen() {
           </Text>
           <View className="flex-row justify-around">
             <View className="items-center">
-              <Text className="text-xl font-bold text-white mb-1">12</Text>
+              <Text className="text-xl font-bold text-white mb-1">-</Text>
               <Text className="text-xs text-white/80">訂單</Text>
             </View>
             <View className="items-center">
-              <Text className="text-xl font-bold text-white mb-1">300</Text>
+              <Text className="text-xl font-bold text-white mb-1">-</Text>
               <Text className="text-xs text-white/80">追蹤人數</Text>
             </View>
             <View className="items-center">
-              <Text className="text-xl font-bold text-white mb-1">4.8</Text>
+              <Text className="text-xl font-bold text-white mb-1">-</Text>
               <Text className="text-xs text-white/80">評分</Text>
             </View>
           </View>
@@ -151,41 +192,57 @@ export default function VendorHomeScreen() {
 
         {/* 最近活动 */}
         <View className="mb-8">
-          <Text className="text-xl font-bold text-gray-800 mb-5">最近活動</Text>
-          <View className="bg-white rounded-2xl p-5 space-y-4 gap-4">
-            <View className="flex-row items-center">
-              <View className="w-10 h-10 rounded-full bg-gray-100 justify-center items-center mr-4">
-                <Text className="text-lg">🆕</Text>
+          <View className="flex-row items-center justify-between mb-5">
+            <Text className="text-xl font-bold text-gray-800">最近活動</Text>
+            <TouchableOpacity
+              onPress={handleClearRecentPublish}
+              disabled={recentPublishes.length === 0}
+              className={`px-3 py-1.5 rounded-full ${
+                recentPublishes.length > 0 ? "bg-gray-200" : "bg-gray-100"
+              }`}
+            >
+              <Text
+                className={`text-xs font-semibold ${
+                  recentPublishes.length > 0 ? "text-gray-800" : "text-gray-400"
+                }`}
+              >
+                清除
+              </Text>
+            </TouchableOpacity>
+          </View>
+          <View className="bg-white rounded-2xl p-5">
+            {recentPublishes.length === 0 ? (
+              <Text className="text-sm text-gray-500">
+                尚無最近發布結果。請前往「發布通知」頁發布一則通知。
+              </Text>
+            ) : (
+              <View className="gap-3">
+                {recentPublishes.map((item, index) => (
+                  <View
+                    key={item.ID}
+                    className="border-b border-gray-100 pb-3"
+                  >
+                    <View className="flex-row items-center justify-between">
+                      <Text className="text-sm font-semibold text-gray-900">
+                        發布紀錄 #{index + 1}
+                      </Text>
+                      <Text className="text-xs text-gray-500">
+                        {formatPublishTime(item.PublishedAt)}
+                      </Text>
+                    </View>
+                    <Text className="text-xs text-gray-600 mt-2">
+                      地點：{item.LocationName}
+                    </Text>
+                    <Text className="text-xs text-gray-600 mt-1">
+                      提示：{item.HintMessage}
+                    </Text>
+                    <Text className="text-xs text-gray-700 mt-1 font-medium">
+                      成功 {item.TotalSent} / 失敗 {item.TotalFailed}
+                    </Text>
+                  </View>
+                ))}
               </View>
-              <View className="flex-1">
-                <Text className="text-base font-medium text-gray-800 mb-1">
-                  新訂單 #1234
-                </Text>
-                <Text className="text-xs text-gray-500">2 分鐘前</Text>
-              </View>
-            </View>
-            <View className="flex-row items-center">
-              <View className="w-10 h-10 rounded-full bg-gray-100 justify-center items-center mr-4">
-                <Text className="text-lg">⭐</Text>
-              </View>
-              <View className="flex-1">
-                <Text className="text-base font-medium text-gray-800 mb-1">
-                  收到 5 星評價
-                </Text>
-                <Text className="text-xs text-gray-500">15 分鐘前</Text>
-              </View>
-            </View>
-            <View className="flex-row items-center">
-              <View className="w-10 h-10 rounded-full bg-gray-100 justify-center items-center mr-4">
-                <Text className="text-lg">💰</Text>
-              </View>
-              <View className="flex-1">
-                <Text className="text-base font-medium text-gray-800 mb-1">
-                  完成訂單 #1230
-                </Text>
-                <Text className="text-xs text-gray-500">1 小時前</Text>
-              </View>
-            </View>
+            )}
           </View>
         </View>
         {/* <TouchableOpacity

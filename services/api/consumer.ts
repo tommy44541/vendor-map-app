@@ -1,4 +1,4 @@
-import { request, ServerSuccessResponse } from './util';
+import { ApiSuccessResponse, request } from './util';
 
 // 用户位置数据类型
 export interface UserLocation {
@@ -87,62 +87,56 @@ export interface UpdateUserLocationRequest {
 
 
 // 响应类型定义
-export type CreateUserLocationResponse = ServerSuccessResponse<UserLocation>;
-export type GetUserLocationsResponse = ServerSuccessResponse<UserLocation[]>;
-export type UpdateUserLocationResponse = ServerSuccessResponse<UpdateUserLocation>;
-export type DeleteUserLocationResponse = ServerSuccessResponse<null>;
+export type CreateUserLocationResponse = ApiSuccessResponse<UserLocation>;
+export type GetUserLocationsResponse = ApiSuccessResponse<UserLocation[]>;
+export type UpdateUserLocationResponse = ApiSuccessResponse<UpdateUserLocation>;
+export type DeleteUserLocationResponse = ApiSuccessResponse<{ message: string }>;
 
 export const consumerApi = {
   // 创建用户位置
   createUserLocation: async (locationData: CreateUserLocationRequest) => {
-    const res = await request<ServerSuccessResponse<RawUserLocation>>(
+    const res = await request<RawUserLocation>(
       '/api/v1/locations/user',
       {
         body: locationData,
         requireAuth: true,
       }
     );
-    if (res?.success) {
-      return { ...res, data: toUserLocation(res.data) } as CreateUserLocationResponse;
-    }
-    return res as unknown as CreateUserLocationResponse;
+    return { ...res, data: toUserLocation(res.data) } as CreateUserLocationResponse;
   },
 
   //取得用戶位置列表
   getUserLocations: async () => {
-    const res = await request<ServerSuccessResponse<RawUserLocation[]>>(
+    const res = await request<RawUserLocation[]>(
       '/api/v1/locations/user',
       {
         requireAuth: true,
         method: 'GET',
       }
     );
-    if (res?.success) {
-      const toTime = (v?: string) => {
-        const t = Date.parse(v ?? '');
-        return Number.isFinite(t) ? t : 0;
-      };
+    const toTime = (v?: string) => {
+      const t = Date.parse(v ?? '');
+      return Number.isFinite(t) ? t : 0;
+    };
 
-      const data = Array.isArray(res.data)
-        ? res.data
-            .map(toUserLocation)
-            .sort((a, b) => {
-              // IsPrimary 永遠排最前
-              if (a.IsPrimary !== b.IsPrimary) return a.IsPrimary ? -1 : 1;
-              // UpdatedAt 越晚越前
-              const diff = toTime(b.UpdatedAt) - toTime(a.UpdatedAt);
-              if (diff !== 0) return diff;
-              // 同時間的穩定排序（避免不同 JS 引擎下順序抖動）
-              return (a.ID ?? '').localeCompare(b.ID ?? '');
-            })
-        : [];
-      return { ...res, data } as GetUserLocationsResponse;
-    }
-    return res as unknown as GetUserLocationsResponse;
+    const data = Array.isArray(res.data)
+      ? res.data
+          .map(toUserLocation)
+          .sort((a, b) => {
+            // IsPrimary 永遠排最前
+            if (a.IsPrimary !== b.IsPrimary) return a.IsPrimary ? -1 : 1;
+            // UpdatedAt 越晚越前
+            const diff = toTime(b.UpdatedAt) - toTime(a.UpdatedAt);
+            if (diff !== 0) return diff;
+            // 同時間的穩定排序（避免不同 JS 引擎下順序抖動）
+            return (a.ID ?? '').localeCompare(b.ID ?? '');
+          })
+      : [];
+    return { ...res, data } as GetUserLocationsResponse;
   },
   //更新用戶位置
   updateUserLocation: async (locationId: string, locationData: UpdateUserLocationRequest) => {
-    const res = await request<ServerSuccessResponse<RawUpdateUserLocation>>(
+    const res = await request<RawUpdateUserLocation>(
       `/api/v1/locations/user/${locationId}`,
       {
         body: locationData,
@@ -150,15 +144,12 @@ export const consumerApi = {
         method: 'PUT',
       }
     );
-    if (res?.success) {
-      return { ...res, data: toUpdateUserLocation(res.data) } as UpdateUserLocationResponse;
-    }
-    return res as unknown as UpdateUserLocationResponse;
+    return { ...res, data: toUpdateUserLocation(res.data) } as UpdateUserLocationResponse;
   },
   //刪除用戶位置
   deleteUserLocation: (locationId: string) =>
-    request<DeleteUserLocationResponse>(`/api/v1/locations/user/${locationId}`, {
+    request<{ message: string }>(`/api/v1/locations/user/${locationId}`, {
       requireAuth: true,
       method: 'DELETE',
-    }),
+    }) as Promise<DeleteUserLocationResponse>,
 };

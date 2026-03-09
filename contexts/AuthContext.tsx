@@ -1,19 +1,23 @@
-//import { IOS_CLIENT_ID, WEB_CLIENT_ID } from "@/utils/constants";
+import {
+  ANDROID_CLIENT_ID,
+  IOS_CLIENT_ID,
+  WEB_CLIENT_ID,
+} from "@/utils/constants";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-// import {
-//   GoogleSignin,
-//   isSuccessResponse,
-// } from "@react-native-google-signin/google-signin";
-import React, { createContext, useContext, useEffect, useState } from "react";
-import { authApi } from "../services/api/auth";
+import {
+  GoogleSignin,
+  isErrorWithCode,
+  isSuccessResponse,
+  statusCodes,
+} from "@react-native-google-signin/google-signin";
+import React, { createContext, useContext, useEffect, useRef, useState } from "react";
+import { Platform } from "react-native";
+import { authApi, type UserData } from "../services/api/auth";
 import { onAccessTokenRefreshed } from "../services/api/authEvents";
-
-// GoogleSignin.configure({
-//   webClientId: WEB_CLIENT_ID,
-//   iosClientId: IOS_CLIENT_ID,
-// });
+import { debugLog } from "@/utils/logger";
 
 const USER_INFO_KEY = "userInfo";
+const PUSH_REGISTER_MAX_RETRIES = 2;
 
 const setAuthToken = async (token: string): Promise<void> => {
   try {
@@ -118,11 +122,36 @@ interface AuthContextType extends AuthState {
     store_name?: string;
     business_license?: string;
   }) => Promise<void>;
-  //googleLogin: (userType: UserType) => Promise<void>;
-  //googleLogout: () => Promise<void>;
+  googleLogin: (userType: UserType) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (userData: Partial<User>) => void;
 }
+
+const resolveUserType = (
+  apiUser: { user_profile?: unknown; merchant_profile?: unknown },
+  preferredUserType: UserType
+): UserType => {
+  const hasConsumerRole = !!apiUser?.user_profile;
+  const hasVendorRole = !!apiUser?.merchant_profile;
+
+  if (preferredUserType === "vendor" && hasVendorRole) return "vendor";
+  if (preferredUserType === "consumer" && hasConsumerRole) return "consumer";
+  if (hasVendorRole && !hasConsumerRole) return "vendor";
+  if (hasConsumerRole) return "consumer";
+
+  return preferredUserType;
+};
+
+const mapApiUserToAuthUser = (
+  apiUser: UserData,
+  preferredUserType: UserType
+): User => ({
+  id: apiUser.id,
+  email: apiUser.email,
+  name: apiUser.name,
+  userType: resolveUserType(apiUser, preferredUserType),
+  createdAt: apiUser.created_at,
+});
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -135,9 +164,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     isLoading: true,
     isAuthenticated: false,
   });
+  const pushRegisterInFlightRef = useRef(false);
+  const pushRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     initializeAuth();
+  }, []);
+
+  useEffect(() => {
+    try {
+      const webClientId = WEB_CLIENT_ID || ANDROID_CLIENT_ID;
+      if (!webClientId) {
+        console.warn("Google Sign-In 未設定 web client id，googleLogin 將不可用");
+        return;
+      }
+      GoogleSignin.configure({
+        webClientId,
+        iosClientId: IOS_CLIENT_ID || undefined,
+        offlineAccess: false,
+      });
+    } catch (e) {
+      console.warn("Google Sign-In configure 失敗:", e);
+    }
   }, []);
 
   // 依規格：Token refresh success 也視同已驗證（觸發 push 註冊流程）
@@ -152,11 +200,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     return off;
   }, []);
 
-  // 依規格：Session restore success / Login success 後觸發
+  // 依規格：Session restore success / Login success / Token refresh success 後觸發
   useEffect(() => {
-    if (!authState.isAuthenticated || !authState.token) return;
-    // 不 await：避免卡住 UI；失敗也不應阻塞
-    (async () => {
+    if (pushRetryTimerRef.current) {
+      clearTimeout(pushRetryTimerRef.current);
+      pushRetryTimerRef.current = null;
+    }
+
+    if (!authState.isAuthenticated || !authState.token || !authState.user?.id) {
+      pushRegisterInFlightRef.current = false;
+      return;
+    }
+
+    let cancelled = false;
+    const run = async (attempt: number) => {
+      if (cancelled || pushRegisterInFlightRef.current) return;
+      pushRegisterInFlightRef.current = true;
+
       try {
         const mod = await import("../utils/push");
         const fn = mod?.onUserAuthenticated;
@@ -164,12 +224,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           console.warn("push module not ready: onUserAuthenticated is missing");
           return;
         }
-        await fn();
+
+        const res = await fn({
+          requestPermissionIfNeeded: attempt === 0,
+        });
+
+        // 權限拒絕不重試；token/device 等暫時性問題可有限重試
+        const shouldRetry =
+          !res.ok &&
+          res.step !== "permission" &&
+          attempt < PUSH_REGISTER_MAX_RETRIES;
+
+        if (shouldRetry) {
+          const delayMs = (attempt + 1) * 1500;
+          pushRetryTimerRef.current = setTimeout(() => {
+            run(attempt + 1);
+          }, delayMs);
+        }
       } catch (e) {
-        console.warn("push device registration failed:", e);
+        const shouldRetry = attempt < PUSH_REGISTER_MAX_RETRIES;
+        if (shouldRetry) {
+          const delayMs = (attempt + 1) * 1500;
+          pushRetryTimerRef.current = setTimeout(() => {
+            run(attempt + 1);
+          }, delayMs);
+        } else {
+          console.warn("push device registration failed:", e);
+        }
+      } finally {
+        pushRegisterInFlightRef.current = false;
       }
-    })();
-  }, [authState.isAuthenticated, authState.token]);
+    };
+
+    run(0);
+
+    return () => {
+      cancelled = true;
+      if (pushRetryTimerRef.current) {
+        clearTimeout(pushRetryTimerRef.current);
+        pushRetryTimerRef.current = null;
+      }
+    };
+  }, [authState.isAuthenticated, authState.token, authState.user?.id]);
 
   const initializeAuth = async () => {
     try {
@@ -211,10 +307,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
       const response = await authApi.login({ email, password });
 
-      console.log("🔐 登入API返回數據:", JSON.stringify(response, null, 2));
-      console.log("🔑 AccessToken值:", response.data.access_token);
-      console.log("🔄 RefreshToken值:", response.data.refresh_token);
-      console.log("👤 用戶數據:", response.data.user);
+      debugLog("🔐 登入API返回摘要:", {
+        hasAccessToken: !!response.data.access_token,
+        hasRefreshToken: !!response.data.refresh_token,
+        userId: response.data.user?.id,
+        userEmail: response.data.user?.email,
+      });
 
       if (!response.data.access_token) {
         throw new Error("登入響應中缺少access_token欄位");
@@ -226,13 +324,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         await setRefreshToken(response.data.refresh_token);
       }
 
-      const user: User = {
-        id: response.data.user.id,
-        email: response.data.user.email,
-        name: response.data.user.name,
-        userType: userType,
-        createdAt: response.data.user.created_at,
-      };
+      const user = mapApiUserToAuthUser(response.data.user, userType);
 
       await saveUserInfo(user);
 
@@ -242,18 +334,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         isLoading: false,
         isAuthenticated: true,
       });
-
-      // 依規格：Login success 觸發
-      (async () => {
-        try {
-          const mod = await import("../utils/push");
-          const fn = mod?.onUserAuthenticated;
-          if (typeof fn !== "function") return;
-          await fn();
-        } catch (e) {
-          console.warn("push device registration failed:", e);
-        }
-      })();
     } catch (error) {
       console.error("login error:", error);
       setAuthState((prev) => ({ ...prev, isLoading: false }));
@@ -270,14 +350,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     business_license?: string;
   }) => {
     try {
-      console.log("📝 注册数据:", JSON.stringify(userData, null, 2));
+      debugLog("📝 注册資料摘要:", {
+        userType: userData.userType,
+        email: userData.email,
+        hasStoreName: !!userData.store_name,
+        hasBusinessLicense: !!userData.business_license,
+      });
 
       setAuthState((prev) => ({ ...prev, isLoading: true }));
 
       let response: any;
 
       if (userData.userType === "vendor") {
-        console.log("🏪 注册商家账户");
+        debugLog("🏪 註冊商家帳戶");
         // 商家註冊
         response = await authApi.registerMerchant({
           name: userData.name,
@@ -286,22 +371,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           store_name: userData.store_name!,
           business_license: userData.business_license!,
         });
-        console.log("✅ 商家注册API调用成功:", response);
+        debugLog("✅ 商家註冊 API 呼叫成功");
       } else {
-        console.log("👤 注册消费者账户");
+        debugLog("👤 註冊消費者帳戶");
         // 消費者註冊
         response = await authApi.registerUser({
           name: userData.name,
           email: userData.email,
           password: userData.password,
         });
-        console.log("✅ 消费者注册API调用成功:", response);
+        debugLog("✅ 消費者註冊 API 呼叫成功");
       }
 
-      console.log("🔄 注册成功，准备自动登录");
+      debugLog("🔄 註冊成功，準備自動登入");
       // 註冊成功後自動登錄
       await login(userData.email, userData.password, userData.userType);
-      console.log("✅ 注册并自动登录完成");
+      debugLog("✅ 註冊並自動登入完成");
     } catch (error) {
       console.error("❌ AuthContext: 注册失败:", error);
       console.error("🔍 错误详情:", {
@@ -314,85 +399,69 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  //Google登入
-  // const googleLogin = async (userType: UserType) => {
-  //   try {
-  //     setAuthState((prev) => ({ ...prev, isLoading: true }));
-  //     await GoogleSignin.hasPlayServices();
-  //     const response = await GoogleSignin.signIn();
-  //     if (isSuccessResponse(response)) {
-  //       if (response.data.idToken) {
-  //         console.log("🔄 Google sign in idToken:", response.data.idToken);
-  //         const callbackResponse = await authApi.googleLoginCallback(
-  //           response.data.idToken
-  //         );
-  //         console.log("🔄 Google sign in callback response:", callbackResponse);
+  const googleLogin = async (userType: UserType) => {
+    try {
+      setAuthState((prev) => ({ ...prev, isLoading: true }));
 
-  //         // 检查回调响应是否成功
-  //         if (callbackResponse.success && callbackResponse.data) {
-  //           const { access_token, refresh_token, user } = callbackResponse.data;
+      if (Platform.OS === "android") {
+        await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      }
 
-  //           // 保存tokens
-  //           await setAuthToken(access_token);
-  //           if (refresh_token) {
-  //             await setRefreshToken(refresh_token);
-  //           }
+      const signInResponse = await GoogleSignin.signIn();
+      if (!isSuccessResponse(signInResponse)) {
+        setAuthState((prev) => ({ ...prev, isLoading: false }));
+        return;
+      }
 
-  //           //TODO: 目前為前端判斷，未來考慮後端回傳結構判斷
-  //           let actualUserType: UserType = "consumer"; // 默认为消费者
+      let idToken = signInResponse.data.idToken;
+      if (!idToken) {
+        const tokenResponse = await GoogleSignin.getTokens();
+        idToken = tokenResponse.idToken;
+      }
 
-  //           if (userType) {
-  //             actualUserType = userType;
-  //           }
+      if (!idToken) {
+        throw new Error("無法取得 Google ID token，請稍後再試");
+      }
 
-  //           // 转换用户数据格式
-  //           const userData: User = {
-  //             id: user.id,
-  //             email: user.email,
-  //             name: user.name,
-  //             userType: actualUserType,
-  //             createdAt: user.created_at,
-  //           };
+      const callbackResponse = await authApi.googleLoginCallback(idToken);
+      if (!callbackResponse.data.access_token) {
+        throw new Error("Google 登入響應中缺少 access_token");
+      }
 
-  //           // 保存用户信息到本地存储
-  //           await saveUserInfo(userData);
+      await setAuthToken(callbackResponse.data.access_token);
+      if (callbackResponse.data.refresh_token) {
+        await setRefreshToken(callbackResponse.data.refresh_token);
+      }
 
-  //           // 更新认证状态
-  //           setAuthState({
-  //             user: userData,
-  //             token: access_token,
-  //             isLoading: false,
-  //             isAuthenticated: true,
-  //           });
+      const user = mapApiUserToAuthUser(callbackResponse.data.user, userType);
+      await saveUserInfo(user);
 
-  //           console.log(`✅ Google OAuth登录成功，用户类型: ${actualUserType}`);
-  //         } else {
-  //           throw new Error("Google OAuth回调失败");
-  //         }
-  //       } else {
-  //         console.error("Google sign in failed - 没有idToken");
-  //         throw new Error("Google登录失败");
-  //       }
-  //     } else {
-  //       console.error("Google sign cancelled");
-  //       setAuthState((prev) => ({ ...prev, isLoading: false }));
-  //     }
-  //   } catch (error) {
-  //     console.error("Google登录错误:", error);
-  //     setAuthState((prev) => ({ ...prev, isLoading: false }));
-  //     throw error;
-  //   }
-  // };
+      setAuthState({
+        user,
+        token: callbackResponse.data.access_token,
+        isLoading: false,
+        isAuthenticated: true,
+      });
+    } catch (error) {
+      if (isErrorWithCode(error)) {
+        if (
+          error.code === statusCodes.SIGN_IN_CANCELLED ||
+          error.code === statusCodes.IN_PROGRESS
+        ) {
+          setAuthState((prev) => ({ ...prev, isLoading: false }));
+          return;
+        }
+        if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+          setAuthState((prev) => ({ ...prev, isLoading: false }));
+          throw new Error("Google Play 服務不可用，請檢查裝置設定後再試");
+        }
+      }
 
-  // const googleLogout = async () => {
-  //   try {
-  //     await GoogleSignin.signOut();
-  //     setAuthState((prev) => ({ ...prev, isLoading: false }));
-  //   } catch (error) {
-  //     setAuthState((prev) => ({ ...prev, isLoading: false }));
-  //     throw error;
-  //   }
-  // };
+      console.error("google login error:", error);
+      setAuthState((prev) => ({ ...prev, isLoading: false }));
+      throw error;
+    }
+  };
 
   // 登出
   const logout = async () => {
@@ -457,8 +526,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     ...authState,
     login,
     register,
-    // googleLogin,
-    // googleLogout,
+    googleLogin,
     logout,
     updateUser,
   };

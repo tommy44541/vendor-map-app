@@ -1,4 +1,5 @@
 import { Alert } from 'react-native';
+import { ApiError } from '../services/api/util';
 
 // 錯誤代碼枚舉
 export enum ErrorCode {
@@ -16,17 +17,6 @@ export enum ErrorCode {
   BAD_GATEWAY = 502,
   SERVICE_UNAVAILABLE = 503,
   GATEWAY_TIMEOUT = 504,
-}
-
-// 伺服器錯誤響應類型
-export interface ServerErrorResponse {
-  success: false;
-  code: number;
-  message: string;
-  error: {
-    code: string;
-    details: string;
-  };
 }
 
 // HTTP状态码对应的用户友好消息
@@ -47,11 +37,30 @@ const HTTP_STATUS_MESSAGES: Record<number, string> = {
  * 显示错误提示
  */
 export const showErrorAlert = (
-  error: any, 
+  error: any,
   title: string = '錯誤',
   onDismiss?: () => void
 ) => {
-  const message = HTTP_STATUS_MESSAGES[error.cause.status] || "錯誤"
+  let message = '錯誤';
+
+  // 直接傳字串：當作訊息顯示
+  if (typeof error === 'string') {
+    message = error;
+  } else if (typeof error === 'number') {
+    message = HTTP_STATUS_MESSAGES[error] || `錯誤（${error}）`;
+  } else if (error instanceof ApiError) {
+    message = HTTP_STATUS_MESSAGES[error.status] || error.message || '錯誤';
+    if (error.requestId) {
+      message = `${message}\n\nrequest_id: ${error.requestId}`;
+    }
+  } else {
+    const status = (error as any)?.status ?? (error as any)?.cause?.status;
+    if (typeof status === 'number') {
+      message = HTTP_STATUS_MESSAGES[status] || `錯誤（${status}）`;
+    } else if ((error as any)?.message) {
+      message = String((error as any).message);
+    }
+  }
   
   Alert.alert(
     title,
@@ -69,5 +78,5 @@ export const showErrorAlert = (
  * 检查是否为特定类型的错误
  */
 export const isErrorType = (error: any, errorCode: ErrorCode): boolean => {
-  return error.code === errorCode;
+  return error instanceof ApiError && error.status === errorCode;
 };

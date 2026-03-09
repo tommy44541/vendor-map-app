@@ -1,3 +1,5 @@
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -5,13 +7,19 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  StatusBar,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { deviceApi, GetDevicesData } from "../../../services/api/device";
+import { ApiError } from "../../../services/api/util";
+import * as Device from "expo-device";
 import {
   getRegistrationCache,
+  getFcmTokenOrNull,
+  getPushPermissionStatus,
   getStableDeviceId,
   onUserAuthenticated,
 } from "../../../utils/push";
@@ -22,12 +30,52 @@ const normalizePlatform = () => {
   return Platform.OS;
 };
 
+const shortText = (v: string, head = 14, tail = 10) => {
+  const s = String(v || "");
+  if (s.length <= head + tail + 3) return s;
+  return `${s.slice(0, head)}...${s.slice(-tail)}`;
+};
+
+function Badge({
+  label,
+  tone = "neutral",
+}: {
+  label: string;
+  tone?: "neutral" | "success" | "danger" | "warning";
+}) {
+  const cls =
+    tone === "success"
+      ? "bg-green-100"
+      : tone === "danger"
+        ? "bg-rose-100"
+        : tone === "warning"
+          ? "bg-amber-100"
+          : "bg-gray-100";
+  const textCls =
+    tone === "success"
+      ? "text-green-700"
+      : tone === "danger"
+        ? "text-rose-700"
+        : tone === "warning"
+          ? "text-amber-700"
+          : "text-gray-700";
+  return (
+    <View className={`${cls} px-2.5 py-1 rounded-full`}>
+      <Text className={`text-xs font-semibold ${textCls}`}>{label}</Text>
+    </View>
+  );
+}
+
 const Profile = () => {
+  const insets = useSafeAreaInsets();
+  const [permission, setPermission] = useState<string>("unknown");
   const [localDeviceId, setLocalDeviceId] = useState<string>("");
   const [fcmToken, setFcmToken] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [devices, setDevices] = useState<GetDevicesData[]>([]);
   const [cacheSummary, setCacheSummary] = useState<string>("");
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showFullToken, setShowFullToken] = useState(false);
 
   const platform = useMemo(() => normalizePlatform(), []);
 
@@ -40,14 +88,10 @@ const Profile = () => {
     try {
       setIsLoading(true);
       const res = await deviceApi.getDevices();
-      if (!res.success) {
-        Alert.alert("錯誤", res.message || "取得裝置列表失敗");
-        return;
-      }
       setDevices(Array.isArray(res.data) ? res.data : []);
     } catch (error: any) {
       console.error("取得裝置列表失敗:", error);
-      if (error.message?.includes("Token已過期且無法刷新")) {
+      if (error instanceof ApiError && error.code === "TOKEN_EXPIRED") {
         Alert.alert("登入已過期", "請重新登入後再試");
       } else {
         Alert.alert("錯誤", "取得裝置列表失敗，請稍後重試");
@@ -58,9 +102,20 @@ const Profile = () => {
   }, []);
 
   useEffect(() => {
+    StatusBar.setBarStyle("light-content");
+    if (Platform.OS === "android") {
+      StatusBar.setBackgroundColor("transparent");
+      StatusBar.setTranslucent(true);
+    }
+  }, []);
+
+  useEffect(() => {
     (async () => {
-      const id = await getStableDeviceId();
+      const p = await getPushPermissionStatus();
+      setPermission(p);
+      const [id, t] = await Promise.all([getStableDeviceId(), getFcmTokenOrNull()]);
       setLocalDeviceId(id || "");
+      setFcmToken(t || "");
       await refreshCache();
       await loadDevices();
     })();
@@ -78,18 +133,12 @@ const Profile = () => {
 
     try {
       setIsLoading(true);
-      const res = await deviceApi.registerDevice({
+      await deviceApi.registerDevice({
+        fcm_token: fcmToken.trim(),
         device_id: localDeviceId,
-        device_type: platform,
-        device_token: fcmToken.trim(),
+        platform: platform === "ios" ? "ios" : "android",
       });
-
-      if (!res.success) {
-        Alert.alert("註冊失敗", res.message || "Device 註冊失敗");
-        return;
-      }
-
-      Alert.alert("成功", res.message || "Device registered successfully");
+      Alert.alert("成功", "Device registered successfully");
       await loadDevices();
       await refreshCache();
     } catch (error: any) {
@@ -108,14 +157,10 @@ const Profile = () => {
       }
       try {
         setIsLoading(true);
-        const res = await deviceApi.updateDevice(deviceServerId, {
+        await deviceApi.updateDevice(deviceServerId, {
           fcm_token: fcmToken.trim(),
         });
-        if (!res.success) {
-          Alert.alert("更新失敗", res.message || "更新 FCM token 失敗");
-          return;
-        }
-        Alert.alert("成功", res.message || "FCM token updated successfully");
+        Alert.alert("成功", "FCM token updated successfully");
         await loadDevices();
         await refreshCache();
       } catch (error: any) {
@@ -138,14 +183,10 @@ const Profile = () => {
           onPress: async () => {
             try {
               setIsLoading(true);
-              const res = await deviceApi.deleteDevice(deviceServerId);
-              if (!res.success) {
-                Alert.alert("停用失敗", res.message || "停用裝置失敗");
-                return;
-              }
+              await deviceApi.deleteDevice(deviceServerId);
               Alert.alert(
                 "成功",
-                res.message || "Device deactivated successfully"
+                "Device deactivated successfully"
               );
               await loadDevices();
               await refreshCache();
@@ -162,259 +203,309 @@ const Profile = () => {
     [loadDevices, refreshCache]
   );
 
+  const permissionMeta = useMemo(() => {
+    const p = String(permission || "unknown");
+    if (p === "granted") return { label: "已允許", tone: "success" as const };
+    if (p === "denied") return { label: "已拒絕", tone: "danger" as const };
+    if (p === "undetermined") return { label: "未決定", tone: "warning" as const };
+    return { label: "未知", tone: "neutral" as const };
+  }, [permission]);
+
   return (
-    <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
-      <Text style={{ fontSize: 18, fontWeight: "700" }}>Profile</Text>
-
-      <View
+    <SafeAreaView className="flex-1 bg-gray-50" edges={["left", "right", "bottom"]}>
+      <LinearGradient
+        colors={["#667eea", "#764ba2"]}
         style={{
-          padding: 12,
-          borderWidth: 1,
-          borderColor: "#E5E7EB",
-          borderRadius: 12,
-          gap: 10,
+          paddingTop: insets.top + 12,
+          paddingBottom: 18,
+          paddingHorizontal: 16,
         }}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
       >
-        <Text style={{ fontSize: 16, fontWeight: "600" }}>
-          裝置管理（Device）
-        </Text>
-
-        <View style={{ gap: 6 }}>
-          <Text style={{ color: "#374151" }}>本機 device_id</Text>
-          <Text
-            selectable
-            style={{
-              fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-              color: "#111827",
-            }}
-          >
-            {localDeviceId || "載入中..."}
-          </Text>
-          <Text style={{ color: "#6B7280" }}>platform: {platform}</Text>
-        </View>
-
-        <View style={{ gap: 6 }}>
-          <Text style={{ color: "#374151" }}>
-            FCM Token（或你後端期待的推播 token）
-          </Text>
-          <TextInput
-            value={fcmToken}
-            onChangeText={setFcmToken}
-            placeholder="貼上 token..."
-            autoCapitalize="none"
-            autoCorrect={false}
-            style={{
-              borderWidth: 1,
-              borderColor: "#E5E7EB",
-              borderRadius: 10,
-              paddingHorizontal: 12,
-              paddingVertical: 10,
-              color: "#111827",
-            }}
-          />
-        </View>
-
-        <View style={{ flexDirection: "row", gap: 10 }}>
-          <Pressable
-            onPress={handleRegister}
-            disabled={isLoading}
-            style={{
-              backgroundColor: "#111827",
-              paddingVertical: 10,
-              paddingHorizontal: 12,
-              borderRadius: 10,
-              opacity: isLoading ? 0.6 : 1,
-              flex: 1,
-              alignItems: "center",
-            }}
-          >
-            <Text style={{ color: "white", fontWeight: "600" }}>
-              註冊本機裝置
+        <View className="flex-row items-start justify-between">
+          <View className="flex-1 pr-3">
+            <Text className="text-2xl font-extrabold text-white">個人</Text>
+            <Text className="text-sm text-white/85 mt-1">
+              推播狀態與進階資訊（除錯/設定）
             </Text>
-          </Pressable>
-
-          <Pressable
-            onPress={loadDevices}
-            disabled={isLoading}
-            style={{
-              backgroundColor: "#F3F4F6",
-              paddingVertical: 10,
-              paddingHorizontal: 12,
-              borderRadius: 10,
-              opacity: isLoading ? 0.6 : 1,
-              flex: 1,
-              alignItems: "center",
-            }}
-          >
-            <Text style={{ color: "#111827", fontWeight: "600" }}>
-              刷新列表
-            </Text>
-          </Pressable>
-        </View>
-
-        <View style={{ flexDirection: "row", gap: 10 }}>
+          </View>
           <Pressable
             onPress={async () => {
               try {
                 setIsLoading(true);
-                const res = await onUserAuthenticated();
-                if (!res.ok) {
-                  Alert.alert("未完成註冊", `停在步驟：${res.step}`);
-                } else {
-                  Alert.alert(
-                    "完成",
-                    "已觸發自動註冊流程（請查看 cache 與列表）"
-                  );
-                }
-                await refreshCache();
-                await loadDevices();
-              } catch (e: any) {
-                console.error(e);
-                Alert.alert("錯誤", e?.message || "觸發自動註冊流程失敗");
+                await Promise.all([refreshCache(), loadDevices()]);
               } finally {
                 setIsLoading(false);
               }
             }}
             disabled={isLoading}
-            style={{
-              backgroundColor: "#10B981",
-              paddingVertical: 10,
-              paddingHorizontal: 12,
-              borderRadius: 10,
-              opacity: isLoading ? 0.6 : 1,
-              flex: 1,
-              alignItems: "center",
-            }}
+            className="w-10 h-10 rounded-2xl items-center justify-center bg-white/25"
           >
-            <Text style={{ color: "white", fontWeight: "600" }}>
-              依規格自動註冊（Debug）
-            </Text>
-          </Pressable>
-
-          <Pressable
-            onPress={refreshCache}
-            disabled={isLoading}
-            style={{
-              backgroundColor: "#F3F4F6",
-              paddingVertical: 10,
-              paddingHorizontal: 12,
-              borderRadius: 10,
-              opacity: isLoading ? 0.6 : 1,
-              flex: 1,
-              alignItems: "center",
-            }}
-          >
-            <Text style={{ color: "#111827", fontWeight: "600" }}>
-              刷新 Cache
-            </Text>
+            {isLoading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Ionicons name="refresh" size={18} color="#fff" />
+            )}
           </Pressable>
         </View>
+      </LinearGradient>
 
-        {isLoading ? (
-          <View style={{ paddingVertical: 6 }}>
-            <ActivityIndicator />
+      <ScrollView
+        className="flex-1 px-5"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingTop: 16, paddingBottom: 120, gap: 14 }}
+      >
+        <View className="bg-white border border-gray-200 rounded-3xl p-4">
+          <View className="flex-row items-center justify-between">
+            <View className="flex-row items-center gap-2">
+              <View className="w-9 h-9 rounded-xl bg-gray-100 items-center justify-center">
+                <Ionicons name="notifications" size={18} color="#6b7280" />
+              </View>
+              <View>
+                <Text className="text-base font-bold text-gray-900">推播狀態</Text>
+                <Text className="text-xs text-gray-500 mt-0.5">
+                  首次登入會自動完成推播註冊
+                </Text>
+              </View>
+            </View>
+            <Badge label={permissionMeta.label} tone={permissionMeta.tone} />
           </View>
-        ) : null}
-      </View>
 
-      <View
-        style={{
-          padding: 12,
-          borderWidth: 1,
-          borderColor: "#E5E7EB",
-          borderRadius: 12,
-          gap: 10,
-        }}
-      >
-        <Text style={{ fontSize: 16, fontWeight: "600" }}>
-          本地註冊狀態快取（Debug）
-        </Text>
-        <Text
-          selectable
-          style={{
-            fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-            color: "#111827",
-          }}
-        >
-          {cacheSummary || "（尚無）"}
-        </Text>
-      </View>
+          <View className="mt-4 bg-gray-50 border border-gray-200 rounded-2xl p-4">
+            <View className="flex-row items-center justify-between">
+              <Text className="text-xs text-gray-500">platform</Text>
+              <Text className="text-xs text-gray-900 font-semibold">{platform}</Text>
+            </View>
 
-      <View
-        style={{
-          padding: 12,
-          borderWidth: 1,
-          borderColor: "#E5E7EB",
-          borderRadius: 12,
-          gap: 10,
-        }}
-      >
-        <Text style={{ fontSize: 16, fontWeight: "600" }}>我的裝置列表</Text>
-
-        {devices.length === 0 ? (
-          <Text style={{ color: "#6B7280" }}>目前沒有裝置紀錄</Text>
-        ) : (
-          devices.map((d) => (
-            <View
-              key={d.ID}
-              style={{
-                borderWidth: 1,
-                borderColor: "#E5E7EB",
-                borderRadius: 12,
-                padding: 12,
-                gap: 8,
-              }}
-            >
-              <Text style={{ fontWeight: "700" }}>ID: {d.ID}</Text>
-              <Text style={{ color: "#374151" }}>DeviceID: {d.DeviceID}</Text>
-              <Text style={{ color: "#374151" }}>Platform: {d.Platform}</Text>
-              <Text style={{ color: "#374151" }}>
-                Active: {String(d.IsActive)}
+            <View className="mt-3">
+              <Text className="text-xs text-gray-500">device_id</Text>
+              <Text
+                selectable
+                className="text-xs text-gray-900 mt-2"
+                style={{ fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace" }}
+                numberOfLines={2}
+              >
+                {localDeviceId || "(空)"}
               </Text>
-              <Text style={{ color: "#6B7280" }}>UpdatedAt: {d.UpdatedAt}</Text>
+            </View>
 
-              <View style={{ flexDirection: "row", gap: 10 }}>
+            <View className="mt-3">
+              <View className="flex-row items-center justify-between">
+                <Text className="text-xs text-gray-500">token</Text>
                 <Pressable
-                  onPress={() => handleUpdateToken(d.ID)}
-                  disabled={isLoading}
-                  style={{
-                    backgroundColor: "#2563EB",
-                    paddingVertical: 10,
-                    paddingHorizontal: 12,
-                    borderRadius: 10,
-                    opacity: isLoading ? 0.6 : 1,
-                    flex: 1,
-                    alignItems: "center",
-                  }}
+                  onPress={() => setShowFullToken((v) => !v)}
+                  disabled={!fcmToken}
+                  className={`px-2 py-1 rounded-full ${
+                    fcmToken ? "bg-gray-200" : "bg-gray-100"
+                  }`}
                 >
-                  <Text style={{ color: "white", fontWeight: "600" }}>
-                    更新 Token
-                  </Text>
-                </Pressable>
-
-                <Pressable
-                  onPress={() => handleDeactivate(d.ID)}
-                  disabled={isLoading}
-                  style={{
-                    backgroundColor: "#DC2626",
-                    paddingVertical: 10,
-                    paddingHorizontal: 12,
-                    borderRadius: 10,
-                    opacity: isLoading ? 0.6 : 1,
-                    flex: 1,
-                    alignItems: "center",
-                  }}
-                >
-                  <Text style={{ color: "white", fontWeight: "600" }}>
-                    停用
+                  <Text className="text-[11px] text-gray-700 font-semibold">
+                    {showFullToken ? "收起" : "展開"}
                   </Text>
                 </Pressable>
               </View>
+              <Text
+                selectable
+                className="text-xs text-gray-900 mt-2"
+                style={{ fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace" }}
+                numberOfLines={showFullToken ? undefined : 2}
+              >
+                {fcmToken ? (showFullToken ? fcmToken : shortText(fcmToken)) : "(空)"}
+              </Text>
             </View>
-          ))
-        )}
-      </View>
-    </ScrollView>
+          </View>
+
+          <View className="flex-row gap-3 mt-4">
+            <Pressable
+              onPress={async () => {
+                try {
+                  setIsLoading(true);
+                  const res = await onUserAuthenticated({
+                    requestPermissionIfNeeded: true,
+                  });
+                  const [p, id, t] = await Promise.all([
+                    getPushPermissionStatus(),
+                    getStableDeviceId(),
+                    getFcmTokenOrNull(),
+                  ]);
+                  setPermission(p);
+                  setLocalDeviceId(id || "");
+                  setFcmToken(t || "");
+                  await Promise.all([refreshCache(), loadDevices()]);
+                  Alert.alert("完成", res.ok ? "推播設定完成" : `未完成：${res.step}`);
+                } catch (e: any) {
+                  Alert.alert("錯誤", e?.message || "推播註冊失敗");
+                } finally {
+                  setIsLoading(false);
+                }
+              }}
+              disabled={isLoading}
+              className={`flex-1 rounded-2xl py-3 items-center ${
+                isLoading ? "bg-gray-300" : "bg-blue-600"
+              }`}
+            >
+              {isLoading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text className="text-white font-semibold">重新嘗試自動註冊</Text>
+              )}
+            </Pressable>
+
+            <Pressable
+              onPress={async () => {
+                try {
+                  setIsLoading(true);
+                  const t = await getFcmTokenOrNull();
+                  if (!t) {
+                    const msg =
+                      Platform.OS === "ios" && Device.isDevice === false
+                        ? "iOS 模擬器無法取得 APNs token，也無法測真正遠端推播。請改用 iPhone 實機測試。"
+                        : Platform.OS === "android"
+                          ? "目前取不到 FCM token。請確認你用的是含 Google Play 的模擬器，且原生端已正確配置 FCM。"
+                          : "目前取不到推播 token，請確認原生端推播設定是否正確。";
+                    Alert.alert("找不到 Token", msg);
+                    return;
+                  }
+                  setFcmToken(t);
+                } catch (e: any) {
+                  Alert.alert("錯誤", e?.message || "取得 token 失敗");
+                } finally {
+                  setIsLoading(false);
+                }
+              }}
+              disabled={isLoading}
+              className={`rounded-2xl py-3 px-4 items-center ${
+                isLoading ? "bg-gray-200" : "bg-gray-100"
+              }`}
+            >
+              <Ionicons name="key" size={18} color="#111827" />
+            </Pressable>
+          </View>
+        </View>
+
+        <View className="bg-white border border-gray-200 rounded-3xl p-4">
+          <Pressable
+            onPress={() => setShowAdvanced((v) => !v)}
+            className="flex-row items-center justify-between"
+          >
+            <View className="flex-row items-center gap-2">
+              <View className="w-9 h-9 rounded-xl bg-gray-100 items-center justify-center">
+                <Ionicons name="code-slash" size={18} color="#6b7280" />
+              </View>
+              <View>
+                <Text className="text-base font-bold text-gray-900">進階資訊</Text>
+                <Text className="text-xs text-gray-500 mt-0.5">
+                  快取、裝置列表、除錯工具
+                </Text>
+              </View>
+            </View>
+            <Ionicons
+              name={showAdvanced ? "chevron-up" : "chevron-down"}
+              size={18}
+              color="#6b7280"
+            />
+          </Pressable>
+
+          {showAdvanced ? (
+            <View className="mt-4 gap-3">
+              <View className="bg-gray-50 border border-gray-200 rounded-2xl p-4">
+                <Text className="text-xs font-semibold text-gray-700 mb-2">
+                  註冊快取
+                </Text>
+                <Text
+                  selectable
+                  className="text-xs text-gray-700"
+                  style={{ fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace" }}
+                >
+                  {cacheSummary || "(空)"}
+                </Text>
+              </View>
+
+              <View className="bg-gray-50 border border-gray-200 rounded-2xl p-4">
+                <Text className="text-xs font-semibold text-gray-700 mb-2">
+                  手動註冊（Debug）
+                </Text>
+                <TextInput
+                  value={fcmToken}
+                  onChangeText={setFcmToken}
+                  placeholder="貼上 token..."
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  editable={!isLoading}
+                  className="border border-gray-200 rounded-2xl px-4 py-3 text-gray-900 bg-white"
+                />
+                <Pressable
+                  onPress={handleRegister}
+                  disabled={isLoading}
+                  className={`mt-3 rounded-2xl py-3 items-center ${
+                    isLoading ? "bg-gray-300" : "bg-gray-900"
+                  }`}
+                >
+                  <Text className="text-white font-semibold">註冊本機裝置</Text>
+                </Pressable>
+              </View>
+
+              <View className="bg-gray-50 border border-gray-200 rounded-2xl p-4">
+                <Text className="text-xs font-semibold text-gray-700 mb-2">
+                  我的裝置列表
+                </Text>
+
+                {devices.length === 0 ? (
+                  <Text className="text-xs text-gray-600">（目前沒有）</Text>
+                ) : (
+                  <View className="gap-3">
+                    {devices.map((d) => (
+                      <View
+                        key={d.ID}
+                        className="bg-white border border-gray-200 rounded-2xl p-4"
+                      >
+                        <Text className="text-xs font-semibold text-gray-900">
+                          ID: {d.ID}
+                        </Text>
+                        <Text className="text-xs text-gray-600 mt-2">
+                          DeviceID: {d.DeviceID}
+                        </Text>
+                        <Text className="text-xs text-gray-600 mt-1">
+                          Platform: {d.Platform}
+                        </Text>
+                        <Text className="text-xs text-gray-600 mt-1">
+                          Active: {String(d.IsActive)}
+                        </Text>
+                        <Text className="text-[11px] text-gray-500 mt-2">
+                          UpdatedAt: {d.UpdatedAt}
+                        </Text>
+
+                        <View className="flex-row gap-3 mt-3">
+                          <Pressable
+                            onPress={() => handleUpdateToken(d.ID)}
+                            disabled={isLoading}
+                            className={`flex-1 rounded-2xl py-2 items-center ${
+                              isLoading ? "bg-gray-200" : "bg-blue-600"
+                            }`}
+                          >
+                            <Text className="text-white font-semibold">更新 Token</Text>
+                          </Pressable>
+                          <Pressable
+                            onPress={() => handleDeactivate(d.ID)}
+                            disabled={isLoading}
+                            className={`flex-1 rounded-2xl py-2 items-center ${
+                              isLoading ? "bg-gray-200" : "bg-rose-600"
+                            }`}
+                          >
+                            <Text className="text-white font-semibold">停用</Text>
+                          </Pressable>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            </View>
+          ) : null}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
