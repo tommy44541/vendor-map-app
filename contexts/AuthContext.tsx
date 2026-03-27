@@ -12,7 +12,11 @@ import {
 } from "@react-native-google-signin/google-signin";
 import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import { Platform } from "react-native";
-import { authApi, type UserData } from "../services/api/auth";
+import {
+  authApi,
+  type AuthResultData,
+  type UserData,
+} from "../services/api/auth";
 import { onAccessTokenRefreshed } from "../services/api/authEvents";
 import { debugLog } from "@/utils/logger";
 
@@ -105,6 +109,15 @@ export interface User {
   createdAt: string;
 }
 
+export type AuthActionResult =
+  | { status: "authenticated"; user: User }
+  | {
+      status: "onboarding_required";
+      onboardingToken: string;
+      requestedRole: "vendor" | "consumer";
+      requiredFields: string[];
+    };
+
 interface AuthState {
   user: User | null;
   token: string | null;
@@ -122,7 +135,19 @@ interface AuthContextType extends AuthState {
     store_name?: string;
     business_license?: string;
   }) => Promise<void>;
-  googleLogin: (userType: UserType) => Promise<void>;
+  googleLogin: (
+    userType: UserType,
+    options?: {
+      forceAccountSelection?: boolean;
+      storeName?: string;
+      businessLicense?: string;
+    }
+  ) => Promise<AuthActionResult | void>;
+  completeMerchantOnboarding: (input: {
+    onboardingToken: string;
+    storeName: string;
+    businessLicense: string;
+  }) => Promise<AuthActionResult>;
   logout: () => Promise<void>;
   updateUser: (userData: Partial<User>) => void;
 }
@@ -152,6 +177,12 @@ const mapApiUserToAuthUser = (
   userType: resolveUserType(apiUser, preferredUserType),
   createdAt: apiUser.created_at,
 });
+
+const roleToUserType = (role: string | undefined, fallback: UserType): UserType => {
+  if (role === "merchant") return "vendor";
+  if (role === "user") return "consumer";
+  return fallback;
+};
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -301,6 +332,56 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
+  const finalizeAuthenticatedResult = async (
+    result: AuthResultData,
+    preferredUserType: UserType
+  ): Promise<AuthActionResult> => {
+    if (!result.access_token || !result.user) {
+      throw new Error("認證響應中缺少 access_token 或 user");
+    }
+
+    await setAuthToken(result.access_token);
+    if (result.refresh_token) {
+      await setRefreshToken(result.refresh_token);
+    }
+
+    const user = mapApiUserToAuthUser(result.user, preferredUserType);
+    await saveUserInfo(user);
+
+    setAuthState({
+      user,
+      token: result.access_token,
+      isLoading: false,
+      isAuthenticated: true,
+    });
+
+    return { status: "authenticated", user };
+  };
+
+  const handleAuthResult = async (
+    result: AuthResultData,
+    preferredUserType: UserType
+  ): Promise<AuthActionResult> => {
+    if (result.status === "onboarding_required") {
+      const onboardingToken = result.onboarding_token?.trim();
+      if (!onboardingToken) {
+        throw new Error("商戶補件流程缺少 onboarding token");
+      }
+
+      setAuthState((prev) => ({ ...prev, isLoading: false }));
+      return {
+        status: "onboarding_required",
+        onboardingToken,
+        requestedRole: roleToUserType(result.requested_role, preferredUserType),
+        requiredFields: Array.isArray(result.required_fields)
+          ? result.required_fields
+          : [],
+      };
+    }
+
+    return finalizeAuthenticatedResult(result, preferredUserType);
+  };
+
   const login = async (email: string, password: string, userType: UserType) => {
     try {
       setAuthState((prev) => ({ ...prev, isLoading: true }));
@@ -308,32 +389,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const response = await authApi.login({ email, password });
 
       debugLog("🔐 登入API返回摘要:", {
+        status: response.data.status,
         hasAccessToken: !!response.data.access_token,
         hasRefreshToken: !!response.data.refresh_token,
         userId: response.data.user?.id,
         userEmail: response.data.user?.email,
       });
 
-      if (!response.data.access_token) {
-        throw new Error("登入響應中缺少access_token欄位");
+      const result = await handleAuthResult(response.data, userType);
+      if (result.status === "onboarding_required") {
+        throw new Error("此登入流程尚未完成必要資料設定");
       }
-
-      await setAuthToken(response.data.access_token);
-
-      if (response.data.refresh_token) {
-        await setRefreshToken(response.data.refresh_token);
-      }
-
-      const user = mapApiUserToAuthUser(response.data.user, userType);
-
-      await saveUserInfo(user);
-
-      setAuthState({
-        user,
-        token: response.data.access_token,
-        isLoading: false,
-        isAuthenticated: true,
-      });
     } catch (error) {
       console.error("login error:", error);
       setAuthState((prev) => ({ ...prev, isLoading: false }));
@@ -384,8 +450,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       }
 
       debugLog("🔄 註冊成功，準備自動登入");
-      // 註冊成功後自動登錄
-      await login(userData.email, userData.password, userData.userType);
+      const result = await handleAuthResult(response.data, userData.userType);
+      if (result.status === "onboarding_required") {
+        throw new Error("此註冊流程尚未完成必要資料設定");
+      }
       debugLog("✅ 註冊並自動登入完成");
     } catch (error) {
       console.error("❌ AuthContext: 注册失败:", error);
@@ -399,12 +467,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  const googleLogin = async (userType: UserType) => {
+  const googleLogin = async (
+    userType: UserType,
+    options: {
+      forceAccountSelection?: boolean;
+      storeName?: string;
+      businessLicense?: string;
+    } = {}
+  ) => {
     try {
       setAuthState((prev) => ({ ...prev, isLoading: true }));
 
       if (Platform.OS === "android") {
         await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      }
+
+      if (options.forceAccountSelection) {
+        try {
+          await GoogleSignin.revokeAccess();
+        } catch {}
+        try {
+          await GoogleSignin.signOut();
+        } catch {}
       }
 
       const signInResponse = await GoogleSignin.signIn();
@@ -423,25 +507,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         throw new Error("無法取得 Google ID token，請稍後再試");
       }
 
-      const callbackResponse = await authApi.googleLoginCallback(idToken);
-      if (!callbackResponse.data.access_token) {
-        throw new Error("Google 登入響應中缺少 access_token");
-      }
-
-      await setAuthToken(callbackResponse.data.access_token);
-      if (callbackResponse.data.refresh_token) {
-        await setRefreshToken(callbackResponse.data.refresh_token);
-      }
-
-      const user = mapApiUserToAuthUser(callbackResponse.data.user, userType);
-      await saveUserInfo(user);
-
-      setAuthState({
-        user,
-        token: callbackResponse.data.access_token,
-        isLoading: false,
-        isAuthenticated: true,
+      const callbackResponse = await authApi.googleLoginCallback({
+        idToken,
+        requestedRole: userType === "vendor" ? "merchant" : "user",
+        state: userType === "vendor" ? "merchant" : "user",
+        storeName: options.storeName?.trim() || undefined,
+        businessLicense: options.businessLicense?.trim() || undefined,
       });
+
+      return await handleAuthResult(callbackResponse.data, userType);
     } catch (error) {
       if (isErrorWithCode(error)) {
         if (
@@ -458,6 +532,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       }
 
       console.error("google login error:", error);
+      setAuthState((prev) => ({ ...prev, isLoading: false }));
+      throw error;
+    }
+  };
+
+  const completeMerchantOnboarding = async (input: {
+    onboardingToken: string;
+    storeName: string;
+    businessLicense: string;
+  }): Promise<AuthActionResult> => {
+    try {
+      setAuthState((prev) => ({ ...prev, isLoading: true }));
+
+      const response = await authApi.completeMerchantOnboarding({
+        onboarding_token: input.onboardingToken,
+        store_name: input.storeName,
+        business_license: input.businessLicense,
+      });
+
+      return await handleAuthResult(response.data, "vendor");
+    } catch (error) {
       setAuthState((prev) => ({ ...prev, isLoading: false }));
       throw error;
     }
@@ -527,6 +622,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     login,
     register,
     googleLogin,
+    completeMerchantOnboarding,
     logout,
     updateUser,
   };

@@ -24,7 +24,16 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
+import { getMerchantDisplayName } from "@/utils/merchant/getMerchantDisplayName";
 import { useAuth } from "../../../contexts/AuthContext";
+
+type SubscriptionVendor = {
+  id: string;
+  name: string;
+  cuisine: string;
+  meta: string;
+  statusLabel: string;
+};
 
 export default function ConsumerHomeScreen() {
   const router = useRouter();
@@ -33,11 +42,15 @@ export default function ConsumerHomeScreen() {
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   const [subLoading, setSubLoading] = useState(false);
+  const [subscriptionsLoading, setSubscriptionsLoading] = useState(false);
   const [manualMode, setManualMode] = useState(false);
   const [merchantId, setMerchantId] = useState("");
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scanned, setScanned] = useState(false);
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+  const [subscribedVendors, setSubscribedVendors] = useState<SubscriptionVendor[]>(
+    []
+  );
 
   // 設置狀態欄樣式
   useEffect(() => {
@@ -109,6 +122,7 @@ export default function ConsumerHomeScreen() {
     try {
       setSubLoading(true);
       await subscribeWithQrData(rawQr);
+      await loadSubscribedVendors();
       Alert.alert("成功", "已完成訂閱");
     } catch (e: any) {
       if (e instanceof ApiError && e.code === "TOKEN_EXPIRED") {
@@ -131,44 +145,36 @@ export default function ConsumerHomeScreen() {
     setMerchantId("");
   };
 
-  const categories = [
-    { id: "all", name: "全部", icon: "🍽" },
-    { id: "breakfast", name: "早餐", icon: "🌅" },
-    { id: "lunch", name: "午餐", icon: "☀️" },
-    { id: "dinner", name: "晚餐", icon: "🌙" },
-    { id: "snack", name: "小吃", icon: "🍡" },
-    { id: "drink", name: "飲品", icon: "🥤" },
-  ];
+  const loadSubscribedVendors = async () => {
+    try {
+      setSubscriptionsLoading(true);
+      const res = await subscriptionsApi.getSubscriptions();
+      const list = Array.isArray(res.data) ? res.data : [];
+      const activeList = list.filter((item) => item?.is_active);
 
-  const featuredVendors = [
-    {
-      id: "1",
-      name: "阿婆臭豆腐",
-      rating: 4.8,
-      distance: "0.3km",
-      cuisine: "台灣小吃",
-      image: "",
-      isOpen: true,
-    },
-    {
-      id: "2",
-      name: "老王牛肉麵",
-      rating: 4.6,
-      distance: "0.5km",
-      cuisine: "麵食",
-      image: "",
-      isOpen: true,
-    },
-    {
-      id: "3",
-      name: "小美珍珠奶茶",
-      rating: 4.4,
-      distance: "0.2km",
-      cuisine: "飲品",
-      image: "",
-      isOpen: false,
-    },
-  ];
+      setSubscribedVendors(
+        activeList.map((item) => ({
+          id: String(item.merchant_id || ""),
+          name: getMerchantDisplayName(item) || "已訂閱攤商",
+          cuisine: "已訂閱通知中",
+          meta:
+            typeof item.notification_radius === "number"
+              ? `通知半徑 ${item.notification_radius}m`
+              : "已啟用通知",
+          statusLabel: "通知中",
+        }))
+      );
+    } catch (e) {
+      console.warn("load subscribed vendors failed:", e);
+      setSubscribedVendors([]);
+    } finally {
+      setSubscriptionsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadSubscribedVendors();
+  }, []);
 
   return (
     <View className="flex-1 bg-gray-50">
@@ -284,88 +290,80 @@ export default function ConsumerHomeScreen() {
           </View>
         </View>
 
-        {/* 分類選擇 */}
-        <View className="mb-8">
-          <Text className="text-xl font-bold text-gray-800 mb-5">美食分類</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingRight: 24 }}
-          >
-            {categories.map((category) => (
-              <TouchableOpacity
-                key={category.id}
-                className="items-center mr-6 min-w-20"
-                activeOpacity={0.8}
-              >
-                <View className="w-15 h-15 rounded-full bg-white justify-center items-center mb-2 shadow-sm">
-                  <Text className="text-2xl">{category.icon}</Text>
-                </View>
-                <Text className="text-xs text-gray-500 text-center">
-                  {category.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* 推薦攤車 */}
+        {/* 已訂閱攤車 */}
         <View className="mb-8">
           <View className="flex-row justify-between items-center mb-5">
-            <Text className="text-xl font-bold text-gray-800">推薦攤車</Text>
+            <Text className="text-xl font-bold text-gray-800">已訂閱攤車</Text>
             <TouchableOpacity
-              onPress={() => router.push("/consumer/recommendations")}
+              onPress={() => router.push("/consumer/favorites")}
             >
               <Text className="text-sm text-teal-500 font-medium">
-                查看全部
+                前往收藏
               </Text>
             </TouchableOpacity>
           </View>
-          <View className="space-y-4">
-            {featuredVendors.map((vendor) => (
+
+          {subscriptionsLoading ? (
+            <View className="bg-white rounded-2xl border border-gray-200 p-5 items-center">
+              <ActivityIndicator color="#0f766e" />
+              <Text className="text-sm text-gray-500 mt-3">載入已訂閱攤商中</Text>
+            </View>
+          ) : subscribedVendors.length === 0 ? (
+            <View className="bg-white rounded-2xl border border-gray-200 p-5">
+              <Text className="text-base font-semibold text-gray-900">
+                目前還沒有已訂閱的攤車
+              </Text>
+              <Text className="text-sm text-gray-500 mt-2 leading-6">
+                你可以先用上方掃碼功能訂閱攤商，之後這裡會直接顯示你關注的餐車。
+              </Text>
+            </View>
+          ) : (
+            <View className="space-y-4">
+              {subscribedVendors.map((vendor) => (
               <TouchableOpacity
                 key={vendor.id}
                 className="bg-white rounded-2xl overflow-hidden shadow-sm"
-                onPress={() => router.push(`/consumer/vendor/${vendor.id}`)}
+                onPress={() =>
+                  router.push({
+                    pathname: "/consumer/vendor/[id]",
+                    params: {
+                      id: vendor.id,
+                      name: vendor.name,
+                      cuisine: vendor.cuisine,
+                      is_open: "true",
+                    },
+                  })
+                }
                 activeOpacity={0.8}
               >
-                {/* <Image source={vendor.image} className="w-full h-30" /> */}
                 <View className="p-4">
                   <View className="flex-row justify-between items-start mb-2">
                     <Text className="text-lg font-bold text-gray-800 flex-1 mr-3">
                       {vendor.name}
                     </Text>
                     <View
-                      className={`px-2 py-1 rounded-full ${
-                        vendor.isOpen ? "bg-green-500" : "bg-red-500"
-                      }`}
+                      className="px-2 py-1 rounded-full bg-teal-500"
                     >
                       <Text className="text-white text-xs font-medium">
-                        {vendor.isOpen ? "營業中" : "已關閉"}
+                        {vendor.statusLabel}
                       </Text>
                     </View>
                   </View>
                   <Text className="text-sm text-gray-500 mb-3">
                     {vendor.cuisine}
                   </Text>
-                  <View className="flex-row gap-4">
-                    <View className="flex-row items-center">
-                      <Text className="text-sm mr-1">⭐</Text>
-                      <Text className="text-sm text-gray-500">
-                        {vendor.rating}
-                      </Text>
-                    </View>
-                    <View className="flex-row items-center">
-                      <Text className="text-sm mr-1">📍</Text>
-                      <Text className="text-sm text-gray-500">
-                        {vendor.distance}
+                  <View className="flex-row items-center gap-2">
+                    <View className="px-2.5 py-1 rounded-full bg-teal-50">
+                      <Text className="text-xs font-semibold text-teal-700">
+                        {vendor.meta}
                       </Text>
                     </View>
                   </View>
                 </View>
               </TouchableOpacity>
-            ))}
-          </View>
+              ))}
+            </View>
+          )}
         </View>
 
         {/* 附近攤車地圖入口 */}
@@ -405,17 +403,6 @@ export default function ConsumerHomeScreen() {
           className="flex-1 bg-black"
           edges={["left", "right", "top", "bottom"]}
         >
-          <View className="px-4 py-3 flex-row items-center justify-between">
-            <Pressable
-              onPress={() => setScannerOpen(false)}
-              className="w-10 h-10 rounded-2xl bg-white/15 items-center justify-center"
-            >
-              <Ionicons name="close" size={20} color="#fff" />
-            </Pressable>
-            <Text className="text-white font-bold text-base">掃描訂閱 QR</Text>
-            <View className="w-10 h-10" />
-          </View>
-
           {cameraPermission?.granted ? (
             <View className="flex-1">
               <CameraView
@@ -430,7 +417,28 @@ export default function ConsumerHomeScreen() {
                   await onScanSubscribe(String(data));
                 }}
               />
-              <View className="absolute left-0 right-0 bottom-0 px-6 pb-10">
+              <View
+                className="absolute left-0 right-0 z-20 px-4"
+                pointerEvents="box-none"
+                style={{ top: insets.top + 12 }}
+              >
+                <View className="flex-row items-center justify-between">
+                  <Pressable
+                    onPress={() => setScannerOpen(false)}
+                    hitSlop={12}
+                    className="w-11 h-11 rounded-2xl bg-black/40 border border-white/15 items-center justify-center"
+                  >
+                    <Ionicons name="close" size={22} color="#fff" />
+                  </Pressable>
+                  <View className="px-4 py-2 rounded-full bg-black/35 border border-white/10">
+                    <Text className="text-white font-semibold text-sm">
+                      掃描訂閱 QR
+                    </Text>
+                  </View>
+                  <View className="w-11 h-11" />
+                </View>
+              </View>
+              <View className="absolute left-0 right-0 bottom-0 z-20 px-6 pb-10">
                 <View className="bg-black/55 border border-white/10 rounded-2xl p-4">
                   <Text className="text-white font-semibold">
                     對準攤商提供的 QR Code

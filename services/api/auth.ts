@@ -44,11 +44,16 @@ export interface MerchantData {
   updated_at: string;
 }
 
-// 登入資料類型
-export interface LoginData {
-  access_token: string;
-  refresh_token: string;
-  user: UserData;
+export type AuthStatus = "authenticated" | "onboarding_required";
+
+export interface AuthResultData {
+  status: AuthStatus;
+  access_token?: string;
+  refresh_token?: string;
+  onboarding_token?: string;
+  requested_role?: string;
+  required_fields?: string[];
+  user?: UserData;
 }
 
 // Token 資料類型
@@ -60,12 +65,13 @@ export interface TokenData {
 
 
 // 響應類型定義
-export type UserRegisterResponse = ApiSuccessResponse<UserData>;
-export type MerchantRegisterResponse = ApiSuccessResponse<MerchantData>;
-export type LoginResponse = ApiSuccessResponse<LoginData>;
+export type UserRegisterResponse = ApiSuccessResponse<AuthResultData>;
+export type MerchantRegisterResponse = ApiSuccessResponse<AuthResultData>;
+export type LoginResponse = ApiSuccessResponse<AuthResultData>;
 export type GetUserInfoResponse = ApiSuccessResponse<UserData>;
 export type RefreshTokenResponse = ApiSuccessResponse<TokenData>;
-export type GoogleLoginResponse = ApiSuccessResponse<LoginData>;
+export type GoogleLoginResponse = ApiSuccessResponse<AuthResultData>;
+export type CompleteMerchantOnboardingResponse = ApiSuccessResponse<AuthResultData>;
 
 export type LogoutResponse = ApiSuccessResponse<{ message: string }>;
 
@@ -79,7 +85,7 @@ export const authApi = {
     name: string;
     email: string;
     password: string;
-  }) => request<UserData>('/auth/register/user', { 
+  }) => request<AuthResultData>('/auth/register/user', {
     body: userData 
   }),
   
@@ -90,23 +96,41 @@ export const authApi = {
     password: string;
     store_name: string;
     business_license: string;
-  }) => request<MerchantData>('/auth/register/merchant', { 
+  }) => request<AuthResultData>('/auth/register/merchant', {
     body: merchantData 
   }),
   
   // 用戶登入
   login: (credentials: { email: string; password: string }) =>
-    request<LoginData>('/auth/login', { 
+    request<AuthResultData>('/auth/login', {
       body: credentials,
     }),
 
   // Google 第三方登入（ID Token 驗證）
-  googleLoginCallback: (idToken: string, state?: string) =>
-    request<LoginData>('/oauth/google/callback', {
+  googleLoginCallback: (input: {
+    idToken: string;
+    requestedRole?: "user" | "merchant";
+    state?: "user" | "merchant";
+    storeName?: string;
+    businessLicense?: string;
+  }) =>
+    request<AuthResultData>('/oauth/google/callback', {
       body: {
-        id_token: idToken,
-        ...(state ? { state } : {}),
+        id_token: input.idToken,
+        ...(input.requestedRole ? { requested_role: input.requestedRole } : {}),
+        ...(input.state ? { state: input.state } : {}),
+        ...(input.storeName ? { store_name: input.storeName } : {}),
+        ...(input.businessLicense ? { business_license: input.businessLicense } : {}),
       },
+    }),
+
+  completeMerchantOnboarding: (input: {
+    onboarding_token: string;
+    store_name: string;
+    business_license: string;
+  }) =>
+    request<AuthResultData>('/auth/onboarding/merchant', {
+      body: input,
     }),
   
 

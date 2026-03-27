@@ -1,3 +1,4 @@
+import { ApiError } from "../../services/api/util";
 import { deviceApi } from "../../services/api/device";
 import { getRegistrationCache, setRegistrationCache } from "./cache";
 
@@ -15,7 +16,7 @@ export async function deactivateCurrentDeviceOnLogout(): Promise<{
   if (!serverId) return { didDeactivate: false };
 
   try {
-    const res = await deviceApi.deleteDevice(serverId);
+    await deviceApi.deleteDevice(serverId);
     await setRegistrationCache({
       device_registered: false,
       server_device_id: null,
@@ -23,10 +24,21 @@ export async function deactivateCurrentDeviceOnLogout(): Promise<{
     });
     return { didDeactivate: true };
   } catch (e) {
+    if (
+      e instanceof ApiError &&
+      (e.code === "DEVICE_NOT_FOUND" || e.status === 404)
+    ) {
+      await setRegistrationCache({
+        device_registered: false,
+        server_device_id: null,
+        last_registered_at: new Date().toISOString(),
+      });
+      return { didDeactivate: false };
+    }
+
     // 登出不應被卡住；讓流程繼續
     console.warn("登出停用裝置失敗:", e);
     return { didDeactivate: false };
   }
 }
-
 

@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { LinearGradient } from "expo-linear-gradient";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRootNavigationState, useRouter } from "expo-router";
 import React, {
   useCallback,
   useEffect,
@@ -37,6 +37,7 @@ import {
   checkPasswordRequirements,
   validatePassword,
 } from "../../utils/passwordValidation";
+import { getPostAuthRoute } from "../../utils/onboarding";
 
 const createValidationSchema = (isLogin: boolean) => {
   if (isLogin) {
@@ -104,11 +105,25 @@ const createValidationSchema = (isLogin: boolean) => {
 // 从schema推断类型
 type RegisterFormData = z.infer<ReturnType<typeof createValidationSchema>>;
 
+type MerchantOnboardingState = {
+  onboardingToken: string;
+  requiredFields: string[];
+} | null;
+
 export default function RegisterScreen() {
   const router = useRouter();
+  const rootNavState = useRootNavigationState();
   const params = useLocalSearchParams<{ type: string }>();
   const type = params?.type;
-  const { register, login, googleLogin, isLoading } = useAuth();
+  const {
+    register,
+    login,
+    googleLogin,
+    completeMerchantOnboarding,
+    isLoading,
+    isAuthenticated,
+    user,
+  } = useAuth();
 
   const [isLogin, setIsLogin] = useState(false);
   const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] =
@@ -116,6 +131,12 @@ export default function RegisterScreen() {
 
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [toggleContainerWidth, setToggleContainerWidth] = useState(0);
+  const [merchantOnboarding, setMerchantOnboarding] =
+    useState<MerchantOnboardingState>(null);
+  const [merchantOnboardingValues, setMerchantOnboardingValues] = useState({
+    store_name: "",
+    business_license: "",
+  });
 
   const validationSchema = useMemo(
     () => createValidationSchema(isLogin),
@@ -147,6 +168,18 @@ export default function RegisterScreen() {
     });
   }, [isLogin, form]);
 
+  useEffect(() => {
+    if (type !== "vendor") {
+      setMerchantOnboarding(null);
+      return;
+    }
+
+    setMerchantOnboardingValues({
+      store_name: String(form.getValues("store_name") || ""),
+      business_license: String(form.getValues("business_license") || ""),
+    });
+  }, [form, type]);
+
   const slideAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -156,6 +189,18 @@ export default function RegisterScreen() {
       useNativeDriver: false,
     }).start();
   }, [isLogin, slideAnim]);
+
+  useEffect(() => {
+    if (!rootNavState?.key) return;
+    if (!isAuthenticated || !user) return;
+
+    const run = async () => {
+      const nextRoute = await getPostAuthRoute(user);
+      router.replace(nextRoute);
+    };
+
+    run();
+  }, [isAuthenticated, rootNavState?.key, router, user]);
 
   const onSubmit = useCallback(
     async (data: RegisterFormData) => {
@@ -236,7 +281,17 @@ export default function RegisterScreen() {
     try {
       const userType: "vendor" | "consumer" =
         type === "vendor" ? "vendor" : "consumer";
-      await googleLogin(userType);
+      const result = await googleLogin(userType);
+      if (result?.status === "onboarding_required" && userType === "vendor") {
+        setMerchantOnboarding({
+          onboardingToken: result.onboardingToken,
+          requiredFields: result.requiredFields,
+        });
+        setMerchantOnboardingValues({
+          store_name: String(form.getValues("store_name") || ""),
+          business_license: String(form.getValues("business_license") || ""),
+        });
+      }
     } catch (error: any) {
       if (error instanceof ApiError && isErrorType(error, ErrorCode.UNAUTHORIZED)) {
         showErrorAlert(ErrorCode.UNAUTHORIZED);
@@ -244,16 +299,30 @@ export default function RegisterScreen() {
         showErrorAlert(error, "Google 登入失敗");
       }
     }
-  }, [googleLogin, type]);
+  }, [form, googleLogin, type]);
 
   const handleGoogleRegister = useCallback(async () => {
-    if (type === "vendor") {
-      showErrorAlert("目前 Google 註冊僅支援消費者帳號", "尚未支援");
-      return;
-    }
-
     try {
-      await googleLogin("consumer");
+      const userType: "vendor" | "consumer" =
+        type === "vendor" ? "vendor" : "consumer";
+      const storeName = String(form.getValues("store_name") || "").trim();
+      const businessLicense = String(form.getValues("business_license") || "").trim();
+      const result = await googleLogin(userType, {
+        forceAccountSelection: true,
+        storeName: storeName || undefined,
+        businessLicense: businessLicense || undefined,
+      });
+      if (result?.status === "onboarding_required" && userType === "vendor") {
+        setMerchantOnboarding({
+          onboardingToken: result.onboardingToken,
+          requiredFields: result.requiredFields,
+        });
+        setMerchantOnboardingValues({
+          store_name: String(form.getValues("store_name") || ""),
+          business_license: String(form.getValues("business_license") || ""),
+        });
+        setIsLogin(false);
+      }
     } catch (error: any) {
       if (error instanceof ApiError && isErrorType(error, ErrorCode.UNAUTHORIZED)) {
         showErrorAlert(ErrorCode.UNAUTHORIZED);
@@ -261,7 +330,37 @@ export default function RegisterScreen() {
         showErrorAlert(error, "Google 註冊失敗");
       }
     }
-  }, [googleLogin, type]);
+  }, [form, googleLogin, type]);
+
+  const handleCompleteMerchantOnboarding = useCallback(async () => {
+    const storeName = merchantOnboardingValues.store_name.trim();
+    const businessLicense = merchantOnboardingValues.business_license.trim();
+
+    if (!merchantOnboarding?.onboardingToken) {
+      showErrorAlert("缺少商戶補件憑證，請重新進行 Google 驗證", "流程已失效");
+      return;
+    }
+
+    if (!storeName || !businessLicense) {
+      showErrorAlert("請先填寫店名與營業執照號碼", "資料不足");
+      return;
+    }
+
+    try {
+      await completeMerchantOnboarding({
+        onboardingToken: merchantOnboarding.onboardingToken,
+        storeName,
+        businessLicense,
+      });
+      setMerchantOnboarding(null);
+    } catch (error: any) {
+      if (error instanceof ApiError && isErrorType(error, ErrorCode.UNAUTHORIZED)) {
+        showErrorAlert(ErrorCode.UNAUTHORIZED);
+      } else {
+        showErrorAlert(error, "完成商戶資料失敗");
+      }
+    }
+  }, [completeMerchantOnboarding, merchantOnboarding, merchantOnboardingValues]);
 
   // Toggle 容器是 p-1（4px），滑塊要在內邊距內移動，避免右側「貼邊」或不置中
   const TOGGLE_PADDING = 4;
@@ -281,6 +380,8 @@ export default function RegisterScreen() {
       }),
     [slideAnim, toggleThumbWidth]
   );
+
+  const showStandardAuthForm = !(merchantOnboarding && type === "vendor");
 
   return (
     <LinearGradient colors={theme.background} style={{ flex: 1 }}>
@@ -377,53 +478,143 @@ export default function RegisterScreen() {
             </View>
 
             <View className="rounded-[30px] bg-white p-5 shadow-2xl -mt-3">
-              <View
-                className="bg-slate-200/70 rounded-2xl p-1 mb-7 h-14 relative justify-center border border-slate-300"
-                onLayout={(e) =>
-                  setToggleContainerWidth(e.nativeEvent.layout.width)
-                }
-              >
-                <Animated.View
-                  className="absolute top-1 bottom-1 rounded-xl"
-                  style={{
-                    left: slideLeft,
-                    width: toggleThumbWidth,
-                    backgroundColor: "#0F172A",
-                    shadowColor: "#0F172A",
-                    shadowOpacity: 0.18,
-                    shadowRadius: 6,
-                    elevation: 2,
-                  }}
-                />
-                <View className="flex-row h-full">
-                  <TouchableOpacity
-                    className="flex-1 items-center justify-center z-10"
-                    onPress={() => setIsLogin(false)}
-                    activeOpacity={1}
-                  >
-                    <Text
-                      className="text-base font-semibold"
-                      style={{ color: !isLogin ? "#FFFFFF" : "#475569" }}
-                    >
-                      註冊
+              {merchantOnboarding && type === "vendor" ? (
+                <View className="mb-6 rounded-3xl border border-orange-200 bg-orange-50 p-4">
+                  <View className="mb-3 self-start rounded-full bg-emerald-100 px-3 py-1">
+                    <Text className="text-xs font-semibold tracking-[0.4px] text-emerald-700">
+                      Google 驗證已完成
                     </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    className="flex-1 items-center justify-center z-10"
-                    onPress={() => setIsLogin(true)}
-                    activeOpacity={1}
-                  >
-                    <Text
-                      className="text-base font-semibold"
-                      style={{ color: isLogin ? "#FFFFFF" : "#475569" }}
-                    >
-                      登入
+                  </View>
+
+                  <View className="flex-row items-start">
+                    <View className="mt-0.5 h-10 w-10 items-center justify-center rounded-2xl bg-orange-100">
+                      <Ionicons name="storefront-outline" size={18} color="#C2410C" />
+                    </View>
+                    <View className="ml-3 flex-1">
+                      <Text className="text-base font-bold text-slate-900">
+                        再完成一步，就能開始使用攤商端
+                      </Text>
+                      <Text className="mt-1 text-sm leading-6 text-slate-600">
+                        你的 Google 帳號已驗證成功。現在只需要補上店名與攤商編號，我們就會為你建立攤商身分。
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View className="mt-4 rounded-2xl border border-orange-100 bg-white/80 px-4 py-3">
+                    <Text className="text-xs font-medium tracking-[0.3px] text-orange-700">
+                      最後一步
                     </Text>
+                    <Text className="mt-1 text-sm leading-6 text-slate-600">
+                      這裡只需要填寫下面兩個欄位，不需要再重新填完整註冊表單。
+                    </Text>
+                  </View>
+
+                  <View className="mt-4">
+                    <Text className="ml-1 text-sm font-medium text-slate-700">店名</Text>
+                    <TextInput
+                      className="mt-2 rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-base text-slate-800"
+                      placeholder="請輸入您的店名"
+                      placeholderTextColor="#94A3B8"
+                      value={merchantOnboardingValues.store_name}
+                      onChangeText={(value) =>
+                        setMerchantOnboardingValues((prev) => ({
+                          ...prev,
+                          store_name: value,
+                        }))
+                      }
+                    />
+                  </View>
+
+                  <View className="mt-4">
+                    <Text className="ml-1 text-sm font-medium text-slate-700">
+                      營業執照號碼
+                    </Text>
+                    <TextInput
+                      className="mt-2 rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-base text-slate-800"
+                      placeholder="請輸入營業執照號碼"
+                      placeholderTextColor="#94A3B8"
+                      value={merchantOnboardingValues.business_license}
+                      autoCapitalize="characters"
+                      onChangeText={(value) =>
+                        setMerchantOnboardingValues((prev) => ({
+                          ...prev,
+                          business_license: value,
+                        }))
+                      }
+                    />
+                  </View>
+
+                  <TouchableOpacity
+                    className="mt-5 rounded-2xl overflow-hidden"
+                    onPress={handleCompleteMerchantOnboarding}
+                    disabled={isLoading}
+                    activeOpacity={0.92}
+                  >
+                    <LinearGradient
+                      colors={isLoading ? ["#CBD5E1", "#CBD5E1"] : theme.cta}
+                      style={{ paddingVertical: 15, alignItems: "center" }}
+                    >
+                      {isLoading ? (
+                        <ActivityIndicator color="#FFFFFF" />
+                      ) : (
+                        <Text className="text-base font-bold tracking-[1px] text-white">
+                          完成商戶設定
+                        </Text>
+                      )}
+                    </LinearGradient>
                   </TouchableOpacity>
                 </View>
-              </View>
+              ) : null}
 
-              <View className="space-y-5">
+              {showStandardAuthForm ? (
+                <>
+                  <View
+                    className="bg-slate-200/70 rounded-2xl p-1 mb-7 h-14 relative justify-center border border-slate-300"
+                    onLayout={(e) =>
+                      setToggleContainerWidth(e.nativeEvent.layout.width)
+                    }
+                  >
+                    <Animated.View
+                      className="absolute top-1 bottom-1 rounded-xl"
+                      style={{
+                        left: slideLeft,
+                        width: toggleThumbWidth,
+                        backgroundColor: "#0F172A",
+                        shadowColor: "#0F172A",
+                        shadowOpacity: 0.18,
+                        shadowRadius: 6,
+                        elevation: 2,
+                      }}
+                    />
+                    <View className="flex-row h-full">
+                      <TouchableOpacity
+                        className="flex-1 items-center justify-center z-10"
+                        onPress={() => setIsLogin(false)}
+                        activeOpacity={1}
+                      >
+                        <Text
+                          className="text-base font-semibold"
+                          style={{ color: !isLogin ? "#FFFFFF" : "#475569" }}
+                        >
+                          註冊
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        className="flex-1 items-center justify-center z-10"
+                        onPress={() => setIsLogin(true)}
+                        activeOpacity={1}
+                      >
+                        <Text
+                          className="text-base font-semibold"
+                          style={{ color: isLogin ? "#FFFFFF" : "#475569" }}
+                        >
+                          登入
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  <View className="space-y-5">
                 {!isLogin && (
                   <View className="space-y-2">
                     <Text className="text-sm font-medium text-slate-700 ml-1">
@@ -730,7 +921,7 @@ export default function RegisterScreen() {
 
                     <TouchableOpacity
                       className={`rounded-2xl py-3.5 px-4 border items-center flex-row justify-center ${
-                        isLoading || type === "vendor"
+                        isLoading
                           ? "bg-gray-100 border-gray-200"
                           : "bg-white border-slate-300"
                       }`}
@@ -749,12 +940,16 @@ export default function RegisterScreen() {
                         </>
                       )}
                     </TouchableOpacity>
-                    <Text className="text-xs text-slate-500 mt-2 ml-1">
-                      目前 Google 註冊僅支援消費者帳號。
-                    </Text>
+                    {type === "vendor" ? (
+                      <Text className="text-xs text-slate-500 mt-2 ml-1">
+                        Google 驗證後若是新攤商，還需要補齊店名與營業執照資料。
+                      </Text>
+                    ) : null}
                   </>
                 )}
-              </View>
+                  </View>
+                </>
+              ) : null}
             </View>
           </ScrollView>
         </KeyboardAvoidingView>

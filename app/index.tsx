@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import LoadingScreen from "../components/LoadingScreen";
 import { useAuth } from "../contexts/AuthContext";
+import { getPostAuthRoute } from "../utils/onboarding";
 
 function RoleCard({
   title,
@@ -86,11 +87,11 @@ export default function IndexScreen() {
     // 避免在 navigation 尚未初始化時就呼叫 router.replace（會噴 navigation 未初始化）
     if (!rootNavState?.key) return;
     if (!isLoading && isAuthenticated && user) {
-      if (user.userType === "vendor") {
-        router.replace("/vendor/(tabs)/home");
-      } else {
-        router.replace("/consumer/home");
-      }
+      const run = async () => {
+        const nextRoute = await getPostAuthRoute(user);
+        router.replace(nextRoute);
+      };
+      run();
     }
   }, [isAuthenticated, isLoading, user, router, rootNavState?.key]);
 

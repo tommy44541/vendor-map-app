@@ -24,6 +24,17 @@ export interface UserMerchantSubscription {
   notification_radius: number; // meters
   subscribed_at: string;
   updated_at: string;
+  merchant_name?: string;
+  store_name?: string;
+  merchant?: {
+    name?: string;
+    store_name?: string;
+    merchant_name?: string;
+  };
+  merchant_profile?: {
+    name?: string;
+    store_name?: string;
+  };
 }
 
 export interface UnsubscribeMerchantData {

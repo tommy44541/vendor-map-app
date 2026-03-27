@@ -8,8 +8,7 @@ const _layout = () => {
       }}
     >
       <Stack.Screen name="(tabs)" />
-      <Stack.Screen name="analytics" />
-      <Stack.Screen name="order" />
+      <Stack.Screen name="onboarding" />
     </Stack>
   );
 };

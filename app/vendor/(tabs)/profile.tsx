@@ -1,12 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import React, { useEffect } from "react";
 import { Platform, Pressable, StatusBar, Text, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/contexts/AuthContext";
 
 const Profile = () => {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
 
@@ -63,9 +64,40 @@ const Profile = () => {
         </View>
 
         <View className="mt-4 bg-white border border-gray-200 rounded-3xl p-4">
-          <Text className="text-sm text-gray-700">
-            其他個人功能後續補上（例：店家資料、營業時間、通知偏好）。
-          </Text>
+          <Text className="text-base font-bold text-gray-900">帳號資訊</Text>
+          <View className="mt-3 gap-3">
+            <View className="bg-gray-50 rounded-2xl px-4 py-3">
+              <Text className="text-[11px] font-semibold text-gray-500">
+                顯示名稱
+              </Text>
+              <Text className="text-sm text-gray-900 mt-1">
+                {user?.name || "未設定"}
+              </Text>
+            </View>
+            <View className="bg-gray-50 rounded-2xl px-4 py-3">
+              <Text className="text-[11px] font-semibold text-gray-500">
+                登入帳號
+              </Text>
+              <Text className="text-sm text-gray-900 mt-1">
+                {user?.email || "未取得"}
+              </Text>
+            </View>
+          </View>
+
+          <View className="mt-4 flex-row gap-3">
+            <Pressable
+              onPress={() => router.push("/vendor/menu")}
+              className="flex-1 rounded-2xl bg-gray-900 py-3 items-center"
+            >
+              <Text className="text-white font-semibold">菜單管理</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push("/vendor/location")}
+              className="flex-1 rounded-2xl bg-white border border-gray-200 py-3 items-center"
+            >
+              <Text className="text-gray-900 font-semibold">位置設定</Text>
+            </Pressable>
+          </View>
         </View>
       </View>
     </SafeAreaView>

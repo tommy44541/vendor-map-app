@@ -211,6 +211,47 @@ const Profile = () => {
     return { label: "未知", tone: "neutral" as const };
   }, [permission]);
 
+  const currentDevice = useMemo(
+    () => devices.find((item) => item.DeviceID === localDeviceId),
+    [devices, localDeviceId]
+  );
+
+  const registrationMeta = useMemo(() => {
+    if (currentDevice?.IsActive && fcmToken) {
+      return {
+        label: "已完成",
+        tone: "success" as const,
+        description: "這台裝置可以接收攤車通知。",
+        actionLabel: "重新檢查通知設定",
+      };
+    }
+
+    if (permission === "denied") {
+      return {
+        label: "未啟用",
+        tone: "danger" as const,
+        description: "你已拒絕通知權限，可能收不到攤車提醒。",
+        actionLabel: "重新設定通知",
+      };
+    }
+
+    if (permission === "granted") {
+      return {
+        label: "處理中",
+        tone: "warning" as const,
+        description: "通知權限已開啟，但這台裝置尚未完成綁定。",
+        actionLabel: "完成通知設定",
+      };
+    }
+
+    return {
+      label: "未設定",
+      tone: "neutral" as const,
+      description: "完成通知設定後，才會在攤車出攤時收到提醒。",
+      actionLabel: "開啟通知",
+    };
+  }, [currentDevice?.IsActive, fcmToken, permission]);
+
   return (
     <SafeAreaView className="flex-1 bg-gray-50" edges={["left", "right", "bottom"]}>
       <LinearGradient
@@ -227,7 +268,7 @@ const Profile = () => {
           <View className="flex-1 pr-3">
             <Text className="text-2xl font-extrabold text-white">個人</Text>
             <Text className="text-sm text-white/85 mt-1">
-              推播狀態與進階資訊（除錯/設定）
+              通知設定與帳號資訊
             </Text>
           </View>
           <Pressable
@@ -263,57 +304,29 @@ const Profile = () => {
                 <Ionicons name="notifications" size={18} color="#6b7280" />
               </View>
               <View>
-                <Text className="text-base font-bold text-gray-900">推播狀態</Text>
+                <Text className="text-base font-bold text-gray-900">通知設定</Text>
                 <Text className="text-xs text-gray-500 mt-0.5">
-                  首次登入會自動完成推播註冊
+                  開啟後可收到已追蹤攤車的營業提醒
                 </Text>
               </View>
             </View>
-            <Badge label={permissionMeta.label} tone={permissionMeta.tone} />
+            <Badge label={registrationMeta.label} tone={registrationMeta.tone} />
           </View>
 
           <View className="mt-4 bg-gray-50 border border-gray-200 rounded-2xl p-4">
             <View className="flex-row items-center justify-between">
-              <Text className="text-xs text-gray-500">platform</Text>
-              <Text className="text-xs text-gray-900 font-semibold">{platform}</Text>
+              <Text className="text-sm text-gray-600">通知權限</Text>
+              <Badge label={permissionMeta.label} tone={permissionMeta.tone} />
             </View>
 
-            <View className="mt-3">
-              <Text className="text-xs text-gray-500">device_id</Text>
-              <Text
-                selectable
-                className="text-xs text-gray-900 mt-2"
-                style={{ fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace" }}
-                numberOfLines={2}
-              >
-                {localDeviceId || "(空)"}
-              </Text>
+            <View className="mt-3 flex-row items-center justify-between">
+              <Text className="text-sm text-gray-600">裝置綁定</Text>
+              <Badge label={registrationMeta.label} tone={registrationMeta.tone} />
             </View>
 
-            <View className="mt-3">
-              <View className="flex-row items-center justify-between">
-                <Text className="text-xs text-gray-500">token</Text>
-                <Pressable
-                  onPress={() => setShowFullToken((v) => !v)}
-                  disabled={!fcmToken}
-                  className={`px-2 py-1 rounded-full ${
-                    fcmToken ? "bg-gray-200" : "bg-gray-100"
-                  }`}
-                >
-                  <Text className="text-[11px] text-gray-700 font-semibold">
-                    {showFullToken ? "收起" : "展開"}
-                  </Text>
-                </Pressable>
-              </View>
-              <Text
-                selectable
-                className="text-xs text-gray-900 mt-2"
-                style={{ fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace" }}
-                numberOfLines={showFullToken ? undefined : 2}
-              >
-                {fcmToken ? (showFullToken ? fcmToken : shortText(fcmToken)) : "(空)"}
-              </Text>
-            </View>
+            <Text className="mt-4 text-sm leading-6 text-gray-700">
+              {registrationMeta.description}
+            </Text>
           </View>
 
           <View className="flex-row gap-3 mt-4">
@@ -348,38 +361,23 @@ const Profile = () => {
               {isLoading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text className="text-white font-semibold">重新嘗試自動註冊</Text>
+                <Text className="text-white font-semibold">
+                  {registrationMeta.actionLabel}
+                </Text>
               )}
             </Pressable>
 
             <Pressable
-              onPress={async () => {
-                try {
-                  setIsLoading(true);
-                  const t = await getFcmTokenOrNull();
-                  if (!t) {
-                    const msg =
-                      Platform.OS === "ios" && Device.isDevice === false
-                        ? "iOS 模擬器無法取得 APNs token，也無法測真正遠端推播。請改用 iPhone 實機測試。"
-                        : Platform.OS === "android"
-                          ? "目前取不到 FCM token。請確認你用的是含 Google Play 的模擬器，且原生端已正確配置 FCM。"
-                          : "目前取不到推播 token，請確認原生端推播設定是否正確。";
-                    Alert.alert("找不到 Token", msg);
-                    return;
-                  }
-                  setFcmToken(t);
-                } catch (e: any) {
-                  Alert.alert("錯誤", e?.message || "取得 token 失敗");
-                } finally {
-                  setIsLoading(false);
-                }
-              }}
-              disabled={isLoading}
+              onPress={() => setShowAdvanced((v) => !v)}
               className={`rounded-2xl py-3 px-4 items-center ${
-                isLoading ? "bg-gray-200" : "bg-gray-100"
+                showAdvanced ? "bg-gray-900" : "bg-gray-100"
               }`}
             >
-              <Ionicons name="key" size={18} color="#111827" />
+              <Ionicons
+                name={showAdvanced ? "close" : "construct-outline"}
+                size={18}
+                color={showAdvanced ? "#FFFFFF" : "#111827"}
+              />
             </Pressable>
           </View>
         </View>
@@ -394,9 +392,9 @@ const Profile = () => {
                 <Ionicons name="code-slash" size={18} color="#6b7280" />
               </View>
               <View>
-                <Text className="text-base font-bold text-gray-900">進階資訊</Text>
+                <Text className="text-base font-bold text-gray-900">診斷資訊</Text>
                 <Text className="text-xs text-gray-500 mt-0.5">
-                  快取、裝置列表、除錯工具
+                  裝置編號、token、快取與除錯工具
                 </Text>
               </View>
             </View>
@@ -409,6 +407,50 @@ const Profile = () => {
 
           {showAdvanced ? (
             <View className="mt-4 gap-3">
+              <View className="bg-gray-50 border border-gray-200 rounded-2xl p-4">
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-xs text-gray-500">platform</Text>
+                  <Text className="text-xs text-gray-900 font-semibold">{platform}</Text>
+                </View>
+
+                <View className="mt-3">
+                  <Text className="text-xs text-gray-500">device_id</Text>
+                  <Text
+                    selectable
+                    className="text-xs text-gray-900 mt-2"
+                    style={{ fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace" }}
+                    numberOfLines={2}
+                  >
+                    {localDeviceId || "(空)"}
+                  </Text>
+                </View>
+
+                <View className="mt-3">
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-xs text-gray-500">token</Text>
+                    <Pressable
+                      onPress={() => setShowFullToken((v) => !v)}
+                      disabled={!fcmToken}
+                      className={`px-2 py-1 rounded-full ${
+                        fcmToken ? "bg-gray-200" : "bg-gray-100"
+                      }`}
+                    >
+                      <Text className="text-[11px] text-gray-700 font-semibold">
+                        {showFullToken ? "收起" : "展開"}
+                      </Text>
+                    </Pressable>
+                  </View>
+                  <Text
+                    selectable
+                    className="text-xs text-gray-900 mt-2"
+                    style={{ fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace" }}
+                    numberOfLines={showFullToken ? undefined : 2}
+                  >
+                    {fcmToken ? (showFullToken ? fcmToken : shortText(fcmToken)) : "(空)"}
+                  </Text>
+                </View>
+              </View>
+
               <View className="bg-gray-50 border border-gray-200 rounded-2xl p-4">
                 <Text className="text-xs font-semibold text-gray-700 mb-2">
                   註冊快取
@@ -424,7 +466,7 @@ const Profile = () => {
 
               <View className="bg-gray-50 border border-gray-200 rounded-2xl p-4">
                 <Text className="text-xs font-semibold text-gray-700 mb-2">
-                  手動註冊（Debug）
+                  手動註冊（除錯）
                 </Text>
                 <TextInput
                   value={fcmToken}
@@ -442,7 +484,36 @@ const Profile = () => {
                     isLoading ? "bg-gray-300" : "bg-gray-900"
                   }`}
                 >
-                  <Text className="text-white font-semibold">註冊本機裝置</Text>
+                  <Text className="text-white font-semibold">手動註冊本機裝置</Text>
+                </Pressable>
+                <Pressable
+                  onPress={async () => {
+                    try {
+                      setIsLoading(true);
+                      const t = await getFcmTokenOrNull();
+                      if (!t) {
+                        const msg =
+                          Platform.OS === "ios" && Device.isDevice === false
+                            ? "iOS 模擬器無法取得 APNs token，也無法測真正遠端推播。請改用 iPhone 實機測試。"
+                            : Platform.OS === "android"
+                              ? "目前取不到 FCM token。請確認你用的是含 Google Play 的模擬器，且原生端已正確配置 FCM。"
+                              : "目前取不到推播 token，請確認原生端推播設定是否正確。";
+                        Alert.alert("找不到 Token", msg);
+                        return;
+                      }
+                      setFcmToken(t);
+                    } catch (e: any) {
+                      Alert.alert("錯誤", e?.message || "取得 token 失敗");
+                    } finally {
+                      setIsLoading(false);
+                    }
+                  }}
+                  disabled={isLoading}
+                  className={`mt-3 rounded-2xl py-3 items-center ${
+                    isLoading ? "bg-gray-200" : "bg-white border border-gray-200"
+                  }`}
+                >
+                  <Text className="text-gray-900 font-semibold">重新取得 Token</Text>
                 </Pressable>
               </View>
 

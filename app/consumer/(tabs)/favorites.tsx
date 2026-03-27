@@ -1,5 +1,12 @@
+import {
+  subscriptionsApi,
+  UserMerchantSubscription,
+} from "@/services/api/subscriptions";
+import { ApiError } from "@/services/api/util";
+import { getMerchantDisplayName } from "@/utils/merchant/getMerchantDisplayName";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -11,12 +18,10 @@ import {
   Text,
   View,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { ApiError } from "@/services/api/util";
 import {
-  subscriptionsApi,
-  UserMerchantSubscription,
-} from "@/services/api/subscriptions";
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
 const formatTime = (iso: string) => {
   try {
@@ -26,12 +31,6 @@ const formatTime = (iso: string) => {
   } catch {
     return iso;
   }
-};
-
-const shortId = (v: string, head = 10, tail = 6) => {
-  const s = String(v || "");
-  if (s.length <= head + tail + 3) return s;
-  return `${s.slice(0, head)}...${s.slice(-tail)}`;
 };
 
 function Badge({
@@ -61,6 +60,7 @@ function Badge({
 }
 
 export default function ConsumerFavoritesScreen() {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(false);
   const [subs, setSubs] = useState<UserMerchantSubscription[]>([]);
@@ -91,7 +91,7 @@ export default function ConsumerFavoritesScreen() {
 
   const activeCount = useMemo(
     () => subs.filter((s) => s.is_active).length,
-    [subs]
+    [subs],
   );
 
   const unsubscribe = useCallback(
@@ -122,11 +122,32 @@ export default function ConsumerFavoritesScreen() {
         },
       ]);
     },
-    [loadSubscriptions]
+    [loadSubscriptions],
+  );
+
+  const openVendorMenu = useCallback(
+    (merchantId: string, merchantName?: string) => {
+      const mId = String(merchantId || "").trim();
+      if (!mId) {
+        Alert.alert("錯誤", "缺少攤商 ID");
+        return;
+      }
+      router.push({
+        pathname: "/consumer/vendor/[id]",
+        params: {
+          id: mId,
+          ...(merchantName?.trim() ? { name: merchantName.trim() } : {}),
+        },
+      });
+    },
+    [router],
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50" edges={["left", "right", "bottom"]}>
+    <SafeAreaView
+      className="flex-1 bg-gray-50"
+      edges={["left", "right", "bottom"]}
+    >
       <LinearGradient
         colors={["#EC4899", "#F97316"]}
         style={{
@@ -169,7 +190,9 @@ export default function ConsumerFavoritesScreen() {
               <Ionicons name="heart" size={18} color="#6b7280" />
             </View>
             <View className="flex-1">
-              <Text className="text-base font-bold text-gray-900">我的訂閱</Text>
+              <Text className="text-base font-bold text-gray-900">
+                我的訂閱
+              </Text>
               <Text className="text-xs text-gray-500 mt-0.5">
                 你已訂閱的攤商會出現在這裡
               </Text>
@@ -189,28 +212,32 @@ export default function ConsumerFavoritesScreen() {
                   key={s.id}
                   className="border border-gray-200 rounded-2xl p-4 bg-white"
                 >
-                  <View className="flex-row items-center justify-between">
-                    <Text className="text-sm font-semibold text-gray-900">
-                      merchant：{shortId(s.merchant_id, 12, 8)}
-                    </Text>
-                    <Badge
-                      label={s.is_active ? "啟用" : "停用"}
-                      tone={s.is_active ? "success" : "neutral"}
-                    />
-                  </View>
+                  <Pressable
+                    onPress={() =>
+                      openVendorMenu(s.merchant_id, getMerchantDisplayName(s))
+                    }
+                    className="flex-row items-center justify-between"
+                  >
+                    <View className="flex-1 pr-2">
+                      <Text className="text-sm font-semibold text-gray-900">
+                        攤商：{getMerchantDisplayName(s) || "未命名攤商"}
+                      </Text>
+                    </View>
+                    <View className="flex-row items-center gap-2">
+                      <Badge
+                        label={s.is_active ? "啟用" : "停用"}
+                        tone={s.is_active ? "success" : "neutral"}
+                      />
+                      <Ionicons
+                        name="chevron-forward"
+                        size={16}
+                        color="#6B7280"
+                      />
+                    </View>
+                  </Pressable>
                   <Text className="text-xs text-gray-500 mt-2">
                     訂閱時間：{formatTime(s.subscribed_at)}
                   </Text>
-                  <View className="flex-row items-center gap-2 mt-2">
-                    <View className="bg-gray-100 px-2.5 py-1 rounded-full">
-                      <Text className="text-[11px] font-semibold text-gray-700">
-                        半徑 {s.notification_radius}m
-                      </Text>
-                    </View>
-                    <Text className="text-[11px] text-gray-500">
-                      更新：{formatTime(s.updated_at)}
-                    </Text>
-                  </View>
                   <Pressable
                     onPress={() => unsubscribe(s.merchant_id)}
                     disabled={loading}

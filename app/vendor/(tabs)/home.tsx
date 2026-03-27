@@ -28,7 +28,7 @@ export default function VendorHomeScreen() {
     PublishLocationNotificationData[]
   >([]);
 
-  // 设置状态栏样式
+  // 設定狀態列樣式
   useEffect(() => {
     StatusBar.setBarStyle("light-content");
     if (Platform.OS === "android") {
@@ -42,7 +42,7 @@ export default function VendorHomeScreen() {
       await logout();
       router.push("/");
     } catch (error) {
-      console.error("登出失败:", error);
+      console.error("登出失敗:", error);
     }
   };
 
@@ -106,7 +106,7 @@ export default function VendorHomeScreen() {
 
   return (
     <View className="flex-1 bg-gray-50">
-      {/* 顶部状态栏 */}
+      {/* 頂部狀態列 */}
       <LinearGradient
         colors={["#FF6B6B", "#FF8E53"]}
         style={{
@@ -158,7 +158,7 @@ export default function VendorHomeScreen() {
         </View>
       </LinearGradient>
 
-      {/* 主要内容区域 */}
+      {/* 主要內容區域 */}
       <ScrollView
         className="flex-1 px-6 pt-6"
         showsVerticalScrollIndicator={false}
@@ -190,7 +190,7 @@ export default function VendorHomeScreen() {
           </View>
         </View>
 
-        {/* 最近活动 */}
+        {/* 最近活動 */}
         <View className="mb-8">
           <View className="flex-row items-center justify-between mb-5">
             <Text className="text-xl font-bold text-gray-800">最近活動</Text>
@@ -253,7 +253,7 @@ export default function VendorHomeScreen() {
         </TouchableOpacity> */}
       </ScrollView>
 
-      {/* 用户菜单下拉框 */}
+      {/* 使用者選單 */}
       <Modal
         visible={showUserMenu}
         transparent={true}
@@ -266,7 +266,7 @@ export default function VendorHomeScreen() {
         >
           <View className="flex-1 justify-start pt-20">
             <View className="mx-6 bg-white rounded-2xl shadow-lg overflow-hidden">
-              {/* 用户信息 */}
+              {/* 使用者資訊 */}
               <View className="p-4 border-b border-gray-100">
                 <View className="flex-row items-center">
                   <View className="w-12 h-12 rounded-full bg-gray-200 justify-center items-center mr-4">
@@ -279,13 +279,13 @@ export default function VendorHomeScreen() {
                       {user?.name || "攤車商家"}
                     </Text>
                     <Text className="text-sm text-gray-500">
-                      {user?.email || "user@example.com"}
+                      {user?.email || "未取得"}
                     </Text>
                   </View>
                 </View>
               </View>
 
-              {/* 菜单选项 */}
+              {/* 選單項目 */}
               <View className="py-2">
                 <TouchableOpacity
                   className="flex-row items-center px-4 py-3 active:bg-gray-50"
@@ -296,17 +296,6 @@ export default function VendorHomeScreen() {
                 >
                   <Text className="text-lg mr-3">👤</Text>
                   <Text className="text-base text-gray-700">個人資料</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  className="flex-row items-center px-4 py-3 active:bg-gray-50"
-                  onPress={() => {
-                    setShowUserMenu(false);
-                    // 可以添加设置页面路由
-                  }}
-                >
-                  <Text className="text-lg mr-3">⚙️</Text>
-                  <Text className="text-base text-gray-700">設定</Text>
                 </TouchableOpacity>
 
                 <View className="border-t border-gray-100 my-2" />
