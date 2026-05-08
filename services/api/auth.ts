@@ -5,7 +5,7 @@ export interface UserData {
   id: string;
   email: string;
   name: string;
-  user_profile: {
+  user_profile?: {
     user_id: string;
     default_shipping_address: string;
     loyalty_points: number;
@@ -15,8 +15,10 @@ export interface UserData {
     user_id: string;
     addresses: any[];
     store_name: string;
-    store_description: string;
-    business_license: string;
+    store_description?: string;
+    business_license?: string;
+    verification_status?: "unverified" | "verified";
+    business_license_verified_at?: string | null;
     updated_at: string;
   };
   created_at: string;
@@ -72,6 +74,7 @@ export type GetUserInfoResponse = ApiSuccessResponse<UserData>;
 export type RefreshTokenResponse = ApiSuccessResponse<TokenData>;
 export type GoogleLoginResponse = ApiSuccessResponse<AuthResultData>;
 export type CompleteMerchantOnboardingResponse = ApiSuccessResponse<AuthResultData>;
+export type SubmitMerchantVerificationResponse = ApiSuccessResponse<{ status: string }>;
 
 export type LogoutResponse = ApiSuccessResponse<{ message: string }>;
 
@@ -132,6 +135,19 @@ export const authApi = {
     request<AuthResultData>('/auth/onboarding/merchant', {
       body: input,
     }),
+
+  getProfile: () =>
+    request<UserData>('/user/profile', {
+      method: 'GET',
+      requireAuth: true,
+    }) as Promise<GetUserInfoResponse>,
+
+  submitMerchantVerification: (input: { business_license: string }) =>
+    request<{ status: string }>('/api/v1/merchant/verification', {
+      method: 'POST',
+      requireAuth: true,
+      body: input,
+    }) as Promise<SubmitMerchantVerificationResponse>,
   
 
   

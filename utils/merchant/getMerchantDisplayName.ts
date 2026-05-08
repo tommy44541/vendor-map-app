@@ -1,4 +1,4 @@
-import { UserMerchantSubscription } from "@/services/api/subscriptions";
+import type { UserMerchantSubscription } from "@/services/api/subscriptions";
 
 export const getMerchantDisplayName = (sub?: Partial<UserMerchantSubscription>) => {
   const candidates = [

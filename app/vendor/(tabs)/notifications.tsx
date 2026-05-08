@@ -30,6 +30,7 @@ import {
   getRecentPublishedResults,
   saveRecentPublishedResult,
 } from "@/utils/vendor/recentPublish";
+import { getLocationDisplayLabel } from "@/utils/location/getLocationDisplayLabel";
 
 type PublishMode = "saved" | "temp";
 
@@ -299,6 +300,7 @@ const Notifications = () => {
 
   const renderLocationItem = (item: MerchantLocation) => {
     const isSelected = item.ID === selectedLocationId;
+    const displayLabel = getLocationDisplayLabel(item.Label);
     return (
       <Pressable
         onPress={() => setSelectedLocationId(item.ID)}
@@ -323,7 +325,7 @@ const Notifications = () => {
                 />
               </View>
               <Text className="text-base font-semibold text-gray-900 flex-1">
-                {item.Label}
+                {displayLabel}
               </Text>
               {item.IsPrimary && (
                 <View className="bg-purple-100 px-2.5 py-1 rounded-full">
@@ -513,7 +515,7 @@ const Notifications = () => {
                   <View className="flex-1">
                     {selectedLocation ? (
                       <Text className="text-sm font-semibold text-gray-900">
-                        {selectedLocation.Label}
+                        {getLocationDisplayLabel(selectedLocation.Label)}
                       </Text>
                     ) : (
                       <Text className="text-sm text-gray-500">尚未選擇</Text>

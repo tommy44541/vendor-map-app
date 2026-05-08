@@ -1,6 +1,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { UnifiedMap, UnifiedMapRef } from "@/components/maps/UnifiedMap";
 import { ApiError } from "@/services/api/util";
+import { getLocationDisplayLabel } from "@/utils/location/getLocationDisplayLabel";
 import * as Location from "expo-location";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -483,7 +484,7 @@ export default function LocationManagerScreen<T extends LocationRecord>({
     if (!editLocationId) return;
     const nextLabel = editLabel.trim();
     if (!nextLabel) {
-      Alert.alert("錯誤", "Label 不能為空");
+      Alert.alert("錯誤", "地點名稱不能為空");
       return;
     }
 
@@ -510,7 +511,7 @@ export default function LocationManagerScreen<T extends LocationRecord>({
   };
 
   const confirmDelete = (location: T) => {
-    Alert.alert("確認刪除", `確定要刪除「${location.Label}」嗎？`, [
+    Alert.alert("確認刪除", `確定要刪除「${getLocationDisplayLabel(location.Label)}」嗎？`, [
       { text: "取消", style: "cancel" },
       {
         text: "刪除",
@@ -540,6 +541,7 @@ export default function LocationManagerScreen<T extends LocationRecord>({
 
   const renderLocationItem = (item: T) => {
     const isSelected = item.ID === selectedLocationId;
+    const displayLabel = getLocationDisplayLabel(item.Label);
     return (
       <Pressable
         key={item.ID}
@@ -554,10 +556,12 @@ export default function LocationManagerScreen<T extends LocationRecord>({
         <View className="flex-row justify-between items-start gap-3">
           <View className="flex-1">
             <View className="flex-row items-center gap-2">
-              <Text className="text-base font-semibold text-gray-800">{item.Label}</Text>
+              <Text className="text-base font-semibold text-gray-800">
+                {displayLabel}
+              </Text>
               {item.IsPrimary && (
                 <View className="bg-purple-100 px-2 py-0.5 rounded-full">
-                  <Text className="text-xs text-purple-700">Primary</Text>
+                  <Text className="text-xs text-purple-700">主要</Text>
                 </View>
               )}
               <View
@@ -570,7 +574,7 @@ export default function LocationManagerScreen<T extends LocationRecord>({
                     item.IsActive ? "text-green-700" : "text-gray-700"
                   }`}
                 >
-                  {item.IsActive ? "Active" : "Inactive"}
+                  {item.IsActive ? "啟用" : "停用"}
                 </Text>
               </View>
             </View>
@@ -619,7 +623,7 @@ export default function LocationManagerScreen<T extends LocationRecord>({
                     id: `selected-${selectedLocation.ID}`,
                     latitude: selectedLocation.Latitude,
                     longitude: selectedLocation.Longitude,
-                    title: selectedLocation.Label,
+                    title: getLocationDisplayLabel(selectedLocation.Label),
                     description: selectedLocation.FullAddress,
                     pinColor: "#3b82f6",
                   },
@@ -749,9 +753,9 @@ export default function LocationManagerScreen<T extends LocationRecord>({
 
               <View className="flex-row items-center justify-between mt-4">
                 <View className="flex-1 pr-3">
-                  <Text className="text-sm font-semibold text-gray-800">設為 Primary</Text>
+                  <Text className="text-sm font-semibold text-gray-800">設為主要地點</Text>
                   <Text className="text-xs text-gray-600 mt-1">
-                    勾選後，這筆新位置會以 Primary 保存
+                    勾選後，這筆新位置會以主要地點保存
                   </Text>
                 </View>
                 <Switch
@@ -850,7 +854,7 @@ export default function LocationManagerScreen<T extends LocationRecord>({
           <View className="bg-white p-5 rounded-t-2xl">
             <Text className="text-lg font-semibold text-gray-800 mb-4">編輯位置</Text>
 
-            <Text className="text-sm text-gray-700 mb-2">Label</Text>
+            <Text className="text-sm text-gray-700 mb-2">地點名稱</Text>
             <TextInput
               value={editLabel}
               onChangeText={setEditLabel}
@@ -860,7 +864,7 @@ export default function LocationManagerScreen<T extends LocationRecord>({
             />
 
             <View className="flex-row items-center justify-between mt-4">
-              <Text className="text-sm text-gray-700">是否為 Primary</Text>
+              <Text className="text-sm text-gray-700">設為主要地點</Text>
               <Switch
                 value={editIsPrimary}
                 onValueChange={setEditIsPrimary}

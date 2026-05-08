@@ -71,30 +71,6 @@ const ConsumerLayout = () => {
           ),
         }}
       />
-      <Tabs.Screen
-        name="menu"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="orders"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="recommendations"
-        options={{
-          href: null, // 隱藏tab但保持頁面可訪問
-        }}
-      />
-      <Tabs.Screen
-        name="vendor/[id]"
-        options={{
-          href: null, // 隱藏tab但保持頁面可訪問
-        }}
-      />
     </Tabs>
   );
 };

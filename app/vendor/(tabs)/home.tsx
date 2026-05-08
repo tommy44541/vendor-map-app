@@ -1,6 +1,11 @@
+import type { PublishLocationNotificationData } from "@/services/api/notification";
+import {
+  clearRecentPublishedResult,
+  getRecentPublishedResults,
+} from "@/utils/vendor/recentPublish";
+import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { useFocusEffect } from "@react-navigation/native";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
@@ -14,11 +19,6 @@ import {
   View,
 } from "react-native";
 import { useAuth } from "../../../contexts/AuthContext";
-import type { PublishLocationNotificationData } from "@/services/api/notification";
-import {
-  clearRecentPublishedResult,
-  getRecentPublishedResults,
-} from "@/utils/vendor/recentPublish";
 
 export default function VendorHomeScreen() {
   const router = useRouter();
@@ -137,7 +137,7 @@ export default function VendorHomeScreen() {
           </TouchableOpacity>
         </View>
 
-        <View className="bg-white/10 rounded-2xl p-5">
+        {/* <View className="bg-white/10 rounded-2xl p-5">
           <Text className="text-base font-semibold text-white mb-4 text-center">
             今日營業狀態
           </Text>
@@ -155,7 +155,7 @@ export default function VendorHomeScreen() {
               <Text className="text-xs text-white/80">評分</Text>
             </View>
           </View>
-        </View>
+        </View> */}
       </LinearGradient>
 
       {/* 主要內容區域 */}

@@ -3,10 +3,11 @@ import { ApiError } from "@/services/api/util";
 import { getFcmTokenOrNull, getStableDeviceId } from "@/utils/push";
 import { parseMerchantIdFromQrData } from "@/utils/qr/subscriptionQr";
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -145,7 +146,7 @@ export default function ConsumerHomeScreen() {
     setMerchantId("");
   };
 
-  const loadSubscribedVendors = async () => {
+  const loadSubscribedVendors = useCallback(async () => {
     try {
       setSubscriptionsLoading(true);
       const res = await subscriptionsApi.getSubscriptions();
@@ -170,11 +171,17 @@ export default function ConsumerHomeScreen() {
     } finally {
       setSubscriptionsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    loadSubscribedVendors();
-  }, []);
+    void loadSubscribedVendors();
+  }, [loadSubscribedVendors]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadSubscribedVendors();
+    }, [loadSubscribedVendors])
+  );
 
   return (
     <View className="flex-1 bg-gray-50">
