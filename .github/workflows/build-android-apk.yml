@@ -13,6 +13,11 @@ on:
         type: boolean
         default: false
 
+# Reusable workflow _android-build.yml 需要 OIDC token 上傳 GCS。
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   build:
     uses: ./.github/workflows/_android-build.yml

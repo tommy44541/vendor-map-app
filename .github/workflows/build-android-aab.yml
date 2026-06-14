@@ -13,6 +13,13 @@ on:
         type: boolean
         default: false
 
+# Reusable workflow _android-build.yml 需要 OIDC token 向 GCP Workload Identity
+# Federation 換 access token 才能上傳 GCS。caller 必須明確宣告權限上限,
+# 否則會繼承 repo 預設(id-token: none)導致 reusable workflow 直接被 reject。
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   build:
     uses: ./.github/workflows/_android-build.yml
