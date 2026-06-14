@@ -1,3 +1,4 @@
+import { pixelColors, pixelBorderWidth, pixelRadius } from "@/theme/pixel";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React from "react";
@@ -11,12 +12,26 @@ const ConsumerNotificationsTabButton = ({
   return (
     <TouchableOpacity
       accessibilityRole="button"
-      activeOpacity={0.9}
+      activeOpacity={0.85}
       onPress={() => router.push("/consumer/notifications")}
       style={styles.hitArea}
     >
-      <View style={[styles.fab, isFocused && styles.fabFocused]}>
-        <Ionicons name="notifications" size={32} color="white" />
+      {/* 用 ink 色背板模擬硬陰影,維持與 PixelButton 一致風格 */}
+      <View style={styles.shadow}>
+        <View
+          style={[
+            styles.fab,
+            {
+              backgroundColor: isFocused ? pixelColors.gold : pixelColors.red,
+            },
+          ]}
+        >
+          <Ionicons
+            name="notifications"
+            size={28}
+            color={isFocused ? pixelColors.ink : pixelColors.white}
+          />
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -28,25 +43,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  fab: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
+  shadow: {
     marginTop: -28,
-    backgroundColor: "#FF6B6B",
-    borderWidth: 3,
-    borderColor: "#FFFFFF",
+    backgroundColor: pixelColors.ink,
+    borderRadius: pixelRadius,
+  },
+  fab: {
+    width: 60,
+    height: 60,
+    borderWidth: pixelBorderWidth,
+    borderColor: pixelColors.ink,
+    borderRadius: pixelRadius,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#FF6B6B",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  fabFocused: {
-    shadowOpacity: 0.5,
-    elevation: 10,
+    transform: [{ translateX: -2 }, { translateY: -2 }],
   },
 });
 

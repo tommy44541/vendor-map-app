@@ -1,72 +1,83 @@
-import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { useRootNavigationState, useRouter } from "expo-router";
 import React, { useEffect } from "react";
 import {
+  ActivityIndicator,
   Image,
-  Platform,
   Pressable,
-  Text,
-  useWindowDimensions,
+  StyleSheet,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import LoadingScreen from "../components/LoadingScreen";
+import {
+  PixelBorder,
+  PixelButton,
+  PixelCard,
+  PixelChip,
+  PixelText,
+} from "../components/pixel";
 import { useAuth } from "../contexts/AuthContext";
+import { pixelColors, pixelBorderWidth, pixelRadius } from "../theme/pixel";
 import { getPostAuthRoute } from "../utils/onboarding";
 
-function RoleCard({
-  title,
-  description,
-  icon,
-  colors,
-  onPress,
-  height,
-}: {
+type RoleKey = "vendor" | "consumer";
+
+interface RoleCardOption {
+  key: RoleKey;
+  tag: string;
   title: string;
   description: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  colors: [string, string, ...string[]];
+  callToAction: string;
+  tone: "red" | "gold" | "blue";
+  badge: string;
+}
+
+const ROLE_OPTIONS: RoleCardOption[] = [
+  {
+    key: "vendor",
+    tag: "PLAYER 1",
+    title: "我是商家",
+    description: "管理店家、發送位置與通知,讓粉絲找得到你。",
+    callToAction: "開始營業",
+    tone: "red",
+    badge: "VENDOR",
+  },
+  {
+    key: "consumer",
+    tag: "PLAYER 2",
+    title: "我是吃貨",
+    description: "追蹤喜歡的攤車,第一時間收到附近開賣通知。",
+    callToAction: "開始探索",
+    tone: "blue",
+    badge: "EXPLORER",
+  },
+];
+
+function RoleBlock({
+  option,
+  onPress,
+}: {
+  option: RoleCardOption;
   onPress: () => void;
-  height: number;
 }) {
-  const titleFont = Platform.select({
-    ios: "AvenirNext-Bold",
-    android: "sans-serif-condensed",
-    default: undefined,
-  });
-
   return (
-    <Pressable
-      onPress={onPress}
-      className="rounded-3xl overflow-hidden shadow-xl"
-      style={{ height }}
-    >
-      <LinearGradient
-        colors={colors}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={{ flex: 1, padding: 22 }}
-      >
-        <View className="flex-row items-start justify-between">
-          <View className="w-12 h-12 rounded-2xl bg-white/25 items-center justify-center">
-            <Ionicons name={icon} size={24} color="#fff" />
-          </View>
-          <View className="w-10 h-10 rounded-2xl bg-white/25 items-center justify-center">
-            <Ionicons name="arrow-forward" size={18} color="#fff" />
-          </View>
+    <Pressable onPress={onPress} style={styles.rolePressable}>
+      <PixelCard title={option.badge} titleTone={option.tone} titleDisplay padding={16}>
+        <View style={styles.roleHeader}>
+          <PixelChip label={option.tag} tone={option.tone} active display />
+          <PixelText variant="caption" tone="muted" display>
+            {"PRESS  >>"}
+          </PixelText>
         </View>
-
-        <View className="mt-4">
-          <Text
-            className="text-white text-[26px] leading-[30px]"
-            style={{ fontFamily: titleFont }}
-          >
-            {title}
-          </Text>
-          <Text className="text-white/90 text-sm leading-6 mt-2">{description}</Text>
+        <PixelText variant="title" style={styles.roleTitle}>
+          {option.title}
+        </PixelText>
+        <PixelText variant="body" tone="muted" style={styles.roleDesc}>
+          {option.description}
+        </PixelText>
+        <View style={styles.roleCta}>
+          <PixelChip label={option.callToAction} tone="gold" active />
         </View>
-      </LinearGradient>
+      </PixelCard>
     </Pressable>
   );
 }
@@ -75,16 +86,8 @@ export default function IndexScreen() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const router = useRouter();
   const rootNavState = useRootNavigationState();
-  const { height: windowHeight } = useWindowDimensions();
-  const cardHeight = Math.max(172, Math.min(224, Math.round(windowHeight * 0.24)));
-  const titleFont = Platform.select({
-    ios: "AvenirNext-Heavy",
-    android: "sans-serif-condensed",
-    default: undefined,
-  });
 
   useEffect(() => {
-    // 避免在 navigation 尚未初始化時就呼叫 router.replace（會噴 navigation 未初始化）
     if (!rootNavState?.key) return;
     if (!isLoading && isAuthenticated && user) {
       const run = async () => {
@@ -95,86 +98,186 @@ export default function IndexScreen() {
     }
   }, [isAuthenticated, isLoading, user, router, rootNavState?.key]);
 
-  const handleLogin = (type: "vendor" | "consumer") =>
+  const handleSelect = (type: RoleKey) =>
     router.push(`/auth/register?type=${type}`);
 
   if (isLoading) {
-    return <LoadingScreen message="正在檢查登入狀態..." />;
+    return (
+      <SafeAreaView style={styles.loadingWrap}>
+        <PixelBorder variant="double" padding={20} style={styles.loadingBox}>
+          <PixelText variant="bodyLg" display>
+            LOADING...
+          </PixelText>
+          <View style={{ height: 12 }} />
+          <ActivityIndicator color={pixelColors.gold} />
+          <View style={{ height: 8 }} />
+          <PixelText variant="caption" tone="muted">
+            正在讀取存檔
+          </PixelText>
+        </PixelBorder>
+      </SafeAreaView>
+    );
   }
 
   if (isAuthenticated && user) {
     return (
-      <LinearGradient colors={["#0F172A", "#102A43", "#1E293B"]} style={{ flex: 1 }}>
-        <SafeAreaView className="flex-1 items-center justify-center px-6">
-          <View className="w-full max-w-[360px] rounded-3xl bg-white/10 border border-white/20 p-6 items-center">
-            <Image
-              source={require("../assets/images/logo.png")}
-              className="w-20 h-20 mb-4"
-              resizeMode="contain"
-            />
-            <Text className="text-white text-xl font-bold mb-2">歡迎回來，{user.name}！</Text>
-            <Text className="text-white/80 text-sm mb-4">
-              正在為您跳轉到{user.userType === "vendor" ? "攤商" : "消費者"}頁面...
-            </Text>
-            <LoadingScreen message="正在跳轉..." />
-          </View>
-        </SafeAreaView>
-      </LinearGradient>
+      <SafeAreaView style={styles.loadingWrap}>
+        <PixelBorder variant="double" padding={20} style={styles.loadingBox}>
+          <PixelText variant="caption" tone="muted" display>
+            WELCOME BACK
+          </PixelText>
+          <View style={{ height: 6 }} />
+          <PixelText variant="title">
+            {user.name || "玩家"}
+          </PixelText>
+          <View style={{ height: 12 }} />
+          <PixelText variant="body" tone="muted">
+            {user.userType === "vendor"
+              ? "傳送到商家後台..."
+              : "傳送到探索地圖..."}
+          </PixelText>
+          <View style={{ height: 12 }} />
+          <ActivityIndicator color={pixelColors.gold} />
+        </PixelBorder>
+      </SafeAreaView>
     );
   }
 
-  // 未认证用户显示身份选择页面
   return (
-    <LinearGradient colors={["#FFF7ED", "#EEF6FF", "#ECFDF5"]} style={{ flex: 1 }}>
-      <View className="absolute -top-16 -right-12 w-48 h-48 rounded-full bg-orange-200/40" />
-      <View className="absolute top-44 -left-16 w-44 h-44 rounded-full bg-cyan-200/40" />
-      <View className="absolute bottom-28 right-0 w-40 h-40 rounded-full bg-indigo-200/40" />
-
-      <SafeAreaView className="flex-1">
-        <View className="px-6 pt-4 items-center">
-          <View className="mt-4 items-center">
-            <View className="w-14 h-14 rounded-2xl bg-white/80 items-center justify-center border border-white mb-4">
-              <Image
-                source={require("../assets/images/logo.png")}
-                className="w-10 h-10"
-                resizeMode="contain"
-              />
-            </View>
-            <Text
-              className="text-[34px] leading-[42px] text-gray-900 text-center mt-1"
-              style={{ fontFamily: titleFont }}
-            >
-              攤車雷達
-            </Text>
-            <Text className="text-gray-600 text-sm mt-1 text-center">
-              你的街邊美食通知系統
-            </Text>
+    <SafeAreaView style={styles.root} edges={["top", "left", "right"]}>
+      <View style={styles.header}>
+        <View style={styles.logoRow}>
+          <View style={styles.logoBadge}>
+            <Image
+              source={require("../assets/images/logo.png")}
+              style={styles.logoImg}
+              resizeMode="contain"
+            />
+          </View>
+          <View style={styles.logoText}>
+            <PixelText variant="caption" tone="muted" display>
+              VENDOR.MAP v.1
+            </PixelText>
+            <PixelText variant="display">攤位雷達</PixelText>
           </View>
         </View>
+        <PixelBorder
+          variant="single"
+          padding={10}
+          background={pixelColors.surfaceAlt}
+          style={styles.tagline}
+        >
+          <PixelText variant="body" tone="default">
+            街邊小吃 x 行動商家  -  即時通報、隨叫隨到
+          </PixelText>
+        </PixelBorder>
+      </View>
 
-        <View className="flex-1 px-6 justify-center gap-4">
-          <RoleCard
-            title="攤車商家端"
-            description="發布位置與通知、管理店家資訊與營運節奏。"
-            icon="storefront-outline"
-            colors={["#F97316", "#EA580C", "#BE123C"]}
-            onPress={() => handleLogin("vendor")}
-            height={cardHeight}
-          />
-          <RoleCard
-            title="消費者端"
-            description="追蹤喜歡的攤車，第一時間接收附近營業通知。"
-            icon="compass-outline"
-            colors={["#0EA5E9", "#0284C7", "#0F766E"]}
-            onPress={() => handleLogin("consumer")}
-            height={cardHeight}
-          />
-        </View>
+      <View style={styles.cardsWrap}>
+        <PixelText variant="bodyLg" display style={styles.selectLabel}>
+          {"SELECT  PLAYER"}
+        </PixelText>
+        {ROLE_OPTIONS.map((opt) => (
+          <RoleBlock key={opt.key} option={opt} onPress={() => handleSelect(opt.key)} />
+        ))}
+      </View>
 
-        <View className="items-center pb-6 px-6">
-          <Text className="text-xs text-gray-500">選擇你的身份開始使用</Text>
-        </View>
-      </SafeAreaView>
-    </LinearGradient>
+      <View style={styles.footer}>
+        <PixelButton
+          label="START"
+          tone="gold"
+          size="lg"
+          display
+          fullWidth
+          onPress={() => handleSelect("consumer")}
+        />
+        <View style={{ height: 8 }} />
+        <PixelText variant="caption" tone="muted" display style={{ textAlign: "center" }}>
+          (C) 2026 PIXEL VENDOR MAP
+        </PixelText>
+      </View>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: pixelColors.bg,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 12,
+  },
+  loadingWrap: {
+    flex: 1,
+    backgroundColor: pixelColors.bg,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
+  loadingBox: {
+    minWidth: 240,
+    alignItems: "center",
+  },
+  header: {
+    marginTop: 4,
+    marginBottom: 12,
+  },
+  logoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 12,
+  },
+  logoBadge: {
+    width: 56,
+    height: 56,
+    backgroundColor: pixelColors.gold,
+    borderWidth: pixelBorderWidth,
+    borderColor: pixelColors.ink,
+    borderRadius: pixelRadius,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  logoImg: {
+    width: 36,
+    height: 36,
+  },
+  logoText: {
+    flex: 1,
+  },
+  tagline: {
+    // 一條告示牌
+  },
+  cardsWrap: {
+    flex: 1,
+    gap: 12,
+    justifyContent: "center",
+  },
+  selectLabel: {
+    textAlign: "center",
+    marginBottom: 4,
+    letterSpacing: 2,
+  },
+  rolePressable: {
+    // pressable wrapper
+  },
+  roleHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 10,
+  },
+  roleTitle: {
+    marginBottom: 4,
+  },
+  roleDesc: {
+    marginBottom: 12,
+  },
+  roleCta: {
+    flexDirection: "row",
+  },
+  footer: {
+    marginTop: 12,
+  },
+});

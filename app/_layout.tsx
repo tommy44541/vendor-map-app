@@ -1,10 +1,17 @@
 import React, { useEffect } from "react";
 import { Stack } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { useFonts } from "expo-font";
+import * as SplashScreen from "expo-splash-screen";
+import { View } from "react-native";
 import { AuthProvider, useAuth } from "../contexts/AuthContext";
+import { pixelColors } from "../theme/pixel";
 import "./globals.css";
 
-// 认证路由组件
+SplashScreen.preventAutoHideAsync().catch(() => {
+  // 已隱藏或不可用時忽略
+});
+
 function AuthRouter() {
   const { isAuthenticated } = useAuth();
 
@@ -12,6 +19,7 @@ function AuthRouter() {
     <Stack
       screenOptions={{
         headerShown: false,
+        contentStyle: { backgroundColor: pixelColors.bg },
       }}
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />
@@ -25,6 +33,17 @@ function AuthRouter() {
 }
 
 export default function RootLayout() {
+  const [fontsLoaded, fontError] = useFonts({
+    Cubic11: require("../assets/fonts/Cubic_11.ttf"),
+    PressStart2P: require("../assets/fonts/PressStart2P-Regular.ttf"),
+  });
+
+  useEffect(() => {
+    if (fontsLoaded || fontError) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [fontsLoaded, fontError]);
+
   // 前台也顯示通知（測試流程用）
   useEffect(() => {
     (async () => {
@@ -45,8 +64,13 @@ export default function RootLayout() {
     })();
   }, []);
 
+  if (!fontsLoaded && !fontError) {
+    // 字體載入中,保持背景色避免閃白。
+    return <View style={{ flex: 1, backgroundColor: pixelColors.bg }} />;
+  }
+
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: pixelColors.bg }}>
       <AuthProvider>
         <AuthRouter />
       </AuthProvider>

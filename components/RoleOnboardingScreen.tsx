@@ -1,12 +1,17 @@
+import {
+  PixelButton,
+  PixelCard,
+  PixelChip,
+  PixelText,
+} from "@/components/pixel";
+import { pixelBorderWidth, pixelColors, pixelRadius } from "@/theme/pixel";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Platform,
-  Pressable,
   ScrollView,
   StatusBar,
-  Text,
+  StyleSheet,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -23,7 +28,8 @@ type Props = {
   title: string;
   subtitle: string;
   steps: Step[];
-  colors: [string, string, string];
+  // 為了相容既有 callsite,接受 colors 但實際不使用
+  colors?: [string, string, string];
   accent: string;
   finishLabel: string;
   onFinish: () => Promise<void> | void;
@@ -34,7 +40,6 @@ export default function RoleOnboardingScreen({
   title,
   subtitle,
   steps,
-  colors,
   accent,
   finishLabel,
   onFinish,
@@ -52,11 +57,6 @@ export default function RoleOnboardingScreen({
 
   const currentStep = steps[index];
   const isLastStep = index === steps.length - 1;
-  const titleFont = Platform.select({
-    ios: "AvenirNext-Heavy",
-    android: "sans-serif-condensed",
-    default: undefined,
-  });
 
   const stepCounter = useMemo(
     () => `${index + 1} / ${steps.length}`,
@@ -64,110 +64,167 @@ export default function RoleOnboardingScreen({
   );
 
   return (
-    <LinearGradient colors={colors} style={{ flex: 1 }}>
-      <View className="absolute -top-20 right-[-52] h-56 w-56 rounded-full bg-white/10" />
-      <View className="absolute top-40 left-[-64] h-64 w-64 rounded-full bg-white/10" />
-      <View className="absolute bottom-20 right-[-40] h-44 w-44 rounded-full bg-black/10" />
-
-      <SafeAreaView className="flex-1 px-6">
-        <View className="flex-row items-center justify-between pt-2">
-          <View className="rounded-full bg-white/15 px-4 py-2">
-            <Text className="text-xs font-semibold tracking-[0.5px] text-white">
-              首次使用引導
-            </Text>
-          </View>
-          <Pressable
-            onPress={onSkip}
-            className="rounded-full border border-white/20 bg-white/10 px-4 py-2"
-          >
-            <Text className="text-sm font-semibold text-white">略過</Text>
-          </Pressable>
+    <View style={styles.root}>
+      <SafeAreaView style={{ flex: 1 }}>
+        <View style={styles.topBar}>
+          <PixelChip label="首次使用引導" tone="gold" active />
+          <PixelButton
+            label="略過"
+            tone="paper"
+            size="sm"
+            onPress={() => void onSkip()}
+          />
         </View>
 
         <ScrollView
-          className="flex-1"
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ flexGrow: 1, paddingBottom: 28 }}
+          contentContainerStyle={{
+            paddingHorizontal: 16,
+            paddingTop: 12,
+            paddingBottom: 32,
+            flexGrow: 1,
+          }}
         >
-          <View className="pt-8">
-            <Text
-              className="text-[34px] leading-[38px] text-white"
-              style={{ fontFamily: titleFont }}
-            >
-              {title}
-            </Text>
-            <Text className="mt-3 text-sm leading-6 text-white/85">{subtitle}</Text>
+          <View style={{ gap: 6 }}>
+            <PixelText variant="caption" tone="gold" display>
+              ONBOARDING
+            </PixelText>
+            <PixelText variant="display">{title}</PixelText>
+            <View style={{ height: 4 }} />
+            <PixelText variant="body" tone="muted">
+              {subtitle}
+            </PixelText>
           </View>
 
-          <View className="mt-8 rounded-[32px] border border-white/15 bg-white/12 p-5">
-            <View className="flex-row items-center justify-between">
-              <View className="rounded-full bg-black/20 px-3 py-1.5">
-                <Text className="text-[11px] font-semibold text-white/85">
-                  {currentStep.eyebrow}
-                </Text>
-              </View>
-              <Text className="text-xs font-semibold text-white/75">
+          <View style={{ height: 18 }} />
+
+          <PixelCard
+            title={`STEP  ${index + 1} / ${steps.length}`}
+            titleTone="blue"
+            titleDisplay
+            padding={16}
+          >
+            <View style={styles.stepHeader}>
+              <PixelChip label={currentStep.eyebrow} tone="purple" active />
+              <PixelText variant="caption" tone="muted" display>
                 {stepCounter}
-              </Text>
+              </PixelText>
             </View>
 
-            <View
-              className="mt-5 h-28 w-28 items-center justify-center rounded-[28px] border border-white/20"
-              style={{ backgroundColor: accent }}
-            >
-              <Ionicons name={currentStep.icon} size={42} color="#FFFFFF" />
+            <View style={{ height: 14 }} />
+            <View style={[styles.iconBox, { backgroundColor: accent }]}>
+              <Ionicons name={currentStep.icon} size={44} color={pixelColors.ink} />
             </View>
 
-            <Text className="mt-6 text-[28px] leading-[32px] font-bold text-white">
-              {currentStep.title}
-            </Text>
-            <Text className="mt-3 text-base leading-7 text-white/90">
+            <View style={{ height: 14 }} />
+            <PixelText variant="titleLg">{currentStep.title}</PixelText>
+            <View style={{ height: 8 }} />
+            <PixelText variant="body" tone="muted">
               {currentStep.description}
-            </Text>
+            </PixelText>
 
-            <View className="mt-5 rounded-2xl bg-black/20 px-4 py-3">
-              <Text className="text-sm leading-6 text-white/85">
-                {currentStep.note}
-              </Text>
+            <View style={{ height: 12 }} />
+            <View style={styles.noteBox}>
+              <PixelText variant="caption" tone="gold" display>
+                NOTE
+              </PixelText>
+              <View style={{ height: 4 }} />
+              <PixelText variant="body">{currentStep.note}</PixelText>
             </View>
-          </View>
+          </PixelCard>
 
-          <View className="mt-6 flex-row gap-2">
+          <View style={{ height: 14 }} />
+          <View style={styles.progressRow}>
             {steps.map((_, stepIndex) => (
               <View
                 key={`step-${stepIndex}`}
-                className={`h-2 flex-1 rounded-full ${
-                  stepIndex <= index ? "bg-white" : "bg-white/25"
-                }`}
+                style={[
+                  styles.progressDot,
+                  {
+                    backgroundColor:
+                      stepIndex <= index
+                        ? pixelColors.gold
+                        : pixelColors.gray700,
+                  },
+                ]}
               />
             ))}
           </View>
 
-          <View className="mt-auto pt-8">
-            {isLastStep ? (
-              <Pressable
-                onPress={onFinish}
-                className="items-center rounded-3xl bg-white py-4"
-              >
-                <Text className="text-base font-bold text-slate-900">
-                  {finishLabel}
-                </Text>
-              </Pressable>
-            ) : (
-              <Pressable
-                onPress={() => setIndex((prev) => prev + 1)}
-                className="items-center rounded-3xl bg-white py-4"
-              >
-                <Text className="text-base font-bold text-slate-900">下一步</Text>
-              </Pressable>
-            )}
+          <View style={{ flex: 1, minHeight: 24 }} />
 
-            <Text className="mt-4 text-center text-xs leading-5 text-white/70">
-              引導只會在首次登入時顯示一次，之後可直接進入主畫面。
-            </Text>
+          <View style={{ marginTop: 24 }}>
+            <PixelButton
+              label={isLastStep ? `> ${finishLabel}` : "> 下一步"}
+              tone="gold"
+              size="lg"
+              fullWidth
+              onPress={() => {
+                if (isLastStep) {
+                  void onFinish();
+                  return;
+                }
+                setIndex((prev) => prev + 1);
+              }}
+            />
+            <View style={{ height: 8 }} />
+            <PixelText
+              variant="caption"
+              tone="muted"
+              style={{ textAlign: "center" }}
+            >
+              引導只會在首次登入時顯示一次,之後可直接進入主畫面。
+            </PixelText>
           </View>
         </ScrollView>
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: pixelColors.bg,
+  },
+  topBar: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingTop: 4,
+    paddingBottom: 4,
+  },
+  stepHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  iconBox: {
+    width: 112,
+    height: 112,
+    borderWidth: pixelBorderWidth * 2,
+    borderColor: pixelColors.ink,
+    borderRadius: pixelRadius,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  noteBox: {
+    borderWidth: pixelBorderWidth,
+    borderColor: pixelColors.ink,
+    borderRadius: pixelRadius,
+    backgroundColor: pixelColors.surfaceAlt,
+    padding: 10,
+  },
+  progressRow: {
+    flexDirection: "row",
+    gap: 4,
+  },
+  progressDot: {
+    flex: 1,
+    height: 8,
+    borderWidth: 1,
+    borderColor: pixelColors.ink,
+    borderRadius: 2,
+  },
+});

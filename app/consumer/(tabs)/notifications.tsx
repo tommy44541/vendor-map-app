@@ -1,8 +1,20 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Platform, Pressable, ScrollView, StatusBar, Text, View } from "react-native";
+import {
+  PixelButton,
+  PixelCard,
+  PixelChip,
+  PixelText,
+} from "@/components/pixel";
+import { pixelBorderWidth, pixelColors, pixelRadius } from "@/theme/pixel";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type ReceivedItem = {
   id: string;
@@ -34,7 +46,6 @@ export default function ConsumerNotificationsScreen() {
     }
   }, []);
 
-  // 前台接收通知（用於測試：收到時把內容顯示在這頁）
   useEffect(() => {
     let sub: any = null;
     (async () => {
@@ -65,79 +76,148 @@ export default function ConsumerNotificationsScreen() {
   const hasItems = useMemo(() => items.length > 0, [items.length]);
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50" edges={["left", "right", "bottom"]}>
-      <LinearGradient
-        colors={["#3B82F6", "#22C55E"]}
-        style={{
-          paddingTop: insets.top + 12,
-          paddingBottom: 18,
-          paddingHorizontal: 16,
-        }}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        <View className="flex-row items-start justify-between">
-          <View className="flex-1 pr-3">
-            <Text className="text-2xl font-extrabold text-white">通知</Text>
-            <Text className="text-sm text-white/85 mt-1">
-              僅顯示最近收到的通知（App 在前台時）。
-            </Text>
-          </View>
-          <Pressable
-            onPress={() => setItems([])}
-            className="w-10 h-10 rounded-2xl items-center justify-center bg-white/25"
-          >
-            <Ionicons name="trash" size={18} color="#fff" />
-          </Pressable>
+    <View style={styles.root}>
+      <View style={[styles.hud, { paddingTop: insets.top + 8 }]}>
+        <View style={{ flex: 1 }}>
+          <PixelText variant="caption" tone="red" display>
+            INBOX
+          </PixelText>
+          <PixelText variant="display">通知</PixelText>
+          <View style={{ height: 4 }} />
+          <PixelText variant="caption" tone="muted">
+            僅顯示 App 在前台時收到的訊息
+          </PixelText>
         </View>
-      </LinearGradient>
+        <PixelButton
+          label="x 清空"
+          tone="red"
+          size="sm"
+          onPress={() => setItems([])}
+          disabled={!hasItems}
+        />
+      </View>
 
       <ScrollView
-        className="flex-1 px-5"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: 16, paddingBottom: 120, gap: 14 }}
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingTop: 16,
+          paddingBottom: 120,
+          gap: 14,
+        }}
       >
-        <View className="bg-white border border-gray-200 rounded-3xl p-4">
-          <View className="flex-row items-center gap-2">
-            <View className="w-9 h-9 rounded-xl bg-gray-100 items-center justify-center">
-              <Ionicons name="chatbubble-ellipses" size={18} color="#6b7280" />
+        <PixelCard title="LOG" titleTone="red" titleDisplay padding={14}>
+          <View style={styles.headerRow}>
+            <View style={styles.headerIcon}>
+              <Ionicons
+                name="chatbubble-ellipses"
+                size={18}
+                color={pixelColors.ink}
+              />
             </View>
-            <View className="flex-1">
-              <Text className="text-base font-bold text-gray-900">最近收到的通知</Text>
-              <Text className="text-xs text-gray-500 mt-0.5">
-                目前僅展示前台接收（方便測試）；後台通知請看系統通知中心
-              </Text>
+            <View style={{ flex: 1 }}>
+              <PixelText variant="bodyLg">最近收到的通知</PixelText>
+              <PixelText variant="caption" tone="muted">
+                後台通知請看系統通知中心
+              </PixelText>
             </View>
+            <PixelChip
+              label={hasItems ? `${items.length} 則` : "無"}
+              tone={hasItems ? "gold" : "paper"}
+              active
+            />
           </View>
 
           {!hasItems ? (
-            <View className="mt-4 bg-gray-50 border border-gray-200 rounded-2xl p-4">
-              <Text className="text-sm text-gray-700">目前尚未收到通知。</Text>
+            <View style={styles.emptyBox}>
+              <PixelText variant="body" tone="muted">
+                目前尚未收到通知。
+              </PixelText>
+              <View style={{ height: 4 }} />
+              <PixelText variant="caption" tone="muted">
+                訂閱商家後,商家發布訊息時會在這裡列出。
+              </PixelText>
             </View>
           ) : (
-            <View className="mt-4 gap-3">
+            <View style={{ marginTop: 12, gap: 10 }}>
               {items.map((it) => (
-                <View
-                  key={it.id}
-                  className="border border-gray-200 rounded-2xl p-4 bg-white"
-                >
-                  <Text className="text-sm font-semibold text-gray-900" numberOfLines={1}>
-                    {it.title || "(無標題)"}
-                  </Text>
+                <View key={it.id} style={styles.itemBox}>
+                  <View style={styles.itemTitleRow}>
+                    <PixelChip label="NEW" tone="red" active display />
+                    <View style={{ flex: 1 }}>
+                      <PixelText variant="bodyLg" numberOfLines={1}>
+                        {it.title || "(無標題)"}
+                      </PixelText>
+                    </View>
+                  </View>
                   {it.body ? (
-                    <Text className="text-sm text-gray-700 mt-2 leading-5">
-                      {it.body}
-                    </Text>
+                    <>
+                      <View style={{ height: 8 }} />
+                      <PixelText variant="body">{it.body}</PixelText>
+                    </>
                   ) : null}
-                  <Text className="text-xs text-gray-500 mt-3">
+                  <View style={{ height: 8 }} />
+                  <PixelText variant="caption" tone="muted">
                     {formatTime(it.receivedAt)}
-                  </Text>
+                  </PixelText>
                 </View>
               ))}
             </View>
           )}
-        </View>
+        </PixelCard>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: pixelColors.bg,
+  },
+  hud: {
+    backgroundColor: pixelColors.surface,
+    paddingHorizontal: 16,
+    paddingBottom: 14,
+    borderBottomWidth: pixelBorderWidth,
+    borderBottomColor: pixelColors.ink,
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 12,
+  },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  headerIcon: {
+    width: 36,
+    height: 36,
+    backgroundColor: pixelColors.red,
+    borderWidth: pixelBorderWidth,
+    borderColor: pixelColors.ink,
+    borderRadius: pixelRadius,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyBox: {
+    marginTop: 12,
+    borderWidth: pixelBorderWidth,
+    borderColor: pixelColors.ink,
+    borderRadius: pixelRadius,
+    backgroundColor: pixelColors.surfaceAlt,
+    padding: 12,
+  },
+  itemBox: {
+    borderWidth: pixelBorderWidth,
+    borderColor: pixelColors.ink,
+    borderRadius: pixelRadius,
+    backgroundColor: pixelColors.surface,
+    padding: 12,
+  },
+  itemTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+});

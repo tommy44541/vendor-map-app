@@ -1,20 +1,36 @@
+import { pixelBorderWidth, pixelColors, pixelRadius } from "@/theme/pixel";
 import Octicons from "@expo/vector-icons/Octicons";
 import { router } from "expo-router";
 import React from "react";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 import type { BottomTabBarButtonProps } from "@react-navigation/bottom-tabs";
 
-const VendorBroadcastTabButton = ({ accessibilityState }: BottomTabBarButtonProps) => {
+const VendorBroadcastTabButton = ({
+  accessibilityState,
+}: BottomTabBarButtonProps) => {
   const isFocused = !!accessibilityState?.selected;
   return (
     <TouchableOpacity
       accessibilityRole="button"
-      activeOpacity={0.9}
+      activeOpacity={0.85}
       onPress={() => router.push("/vendor/notifications")}
       style={styles.hitArea}
     >
-      <View style={[styles.fab, isFocused && styles.fabFocused]}>
-        <Octicons name="broadcast" size={30} color="white" />
+      <View style={styles.shadow}>
+        <View
+          style={[
+            styles.fab,
+            {
+              backgroundColor: isFocused ? pixelColors.gold : pixelColors.red,
+            },
+          ]}
+        >
+          <Octicons
+            name="broadcast"
+            size={26}
+            color={isFocused ? pixelColors.ink : pixelColors.white}
+          />
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -26,25 +42,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  fab: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
+  shadow: {
     marginTop: -28,
-    backgroundColor: "#FF6B6B",
-    borderWidth: 3,
-    borderColor: "#FFFFFF",
+    backgroundColor: pixelColors.ink,
+    borderRadius: pixelRadius,
+  },
+  fab: {
+    width: 60,
+    height: 60,
+    borderWidth: pixelBorderWidth,
+    borderColor: pixelColors.ink,
+    borderRadius: pixelRadius,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#FF6B6B",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  fabFocused: {
-    shadowOpacity: 0.5,
-    elevation: 10,
+    transform: [{ translateX: -2 }, { translateY: -2 }],
   },
 });
 

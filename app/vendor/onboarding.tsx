@@ -1,5 +1,6 @@
 import RoleOnboardingScreen from "@/components/RoleOnboardingScreen";
 import { useAuth } from "@/contexts/AuthContext";
+import { pixelColors } from "@/theme/pixel";
 import {
   getHomeRouteForUser,
   hasCompletedOnboarding,
@@ -13,7 +14,7 @@ const steps = [
     eyebrow: "營業位置",
     title: "先把營業地點設好",
     description:
-      "攤車端最重要的是位置。先把常用出攤點建立起來，之後發布通知會快很多。",
+      "商家端最重要的是位置。先把常用營業點建立起來，之後發布通知會快很多。",
     icon: "location-outline" as const,
     note: "你可以建立多個位置，像是固定攤位、夜市點位、臨時活動現場。",
   },
@@ -26,12 +27,12 @@ const steps = [
     note: "發布成功後，首頁最近活動區會保留最近 5 筆本地紀錄。",
   },
   {
-    eyebrow: "菜單管理",
+    eyebrow: "品項管理",
     title: "把品項整理好",
     description:
-      "菜單頁可以維護上架品項，消費者之後就能從店家詳情頁看到你的菜單內容。",
+      "品項頁可以維護上架內容，消費者之後就能從店家詳情頁看到你的商品或服務。",
     icon: "restaurant-outline" as const,
-    note: "先把熱門品項、價格與備餐時間填好，前台資訊會更完整。",
+    note: "先把熱門品項、價格與準備時間填好，前台資訊會更完整。",
   },
   {
     eyebrow: "分享訂閱",
@@ -39,7 +40,7 @@ const steps = [
     description:
       "個人頁可以開啟訂閱 QR Code，顧客掃碼後就能收藏並接收你的通知。",
     icon: "qr-code-outline" as const,
-    note: "這會是攤商端拉高回訪率最直接的入口，建議印出來放在攤位前。",
+    note: "這會是商家端拉高回訪率最直接的入口，建議印出來放在攤位前。",
   },
 ];
 
@@ -61,11 +62,10 @@ export default function VendorOnboardingPage() {
 
   return (
     <RoleOnboardingScreen
-      title="攤商端使用流程"
-      subtitle="先把位置、發布、菜單與 QR 流程跑順，之後這套 app 才真的能替你帶來回訪。"
+      title="商家端使用流程"
+      subtitle="先把位置、發布、品項與 QR 流程跑順，之後這套 app 才真的能替你帶來回訪。"
       steps={steps}
-      colors={["#7C2D12", "#C2410C", "#9A3412"]}
-      accent="#EA580C"
+      accent={pixelColors.red}
       finishLabel="前往位置設定"
       onSkip={async () => {
         await markOnboardingCompleted(user);

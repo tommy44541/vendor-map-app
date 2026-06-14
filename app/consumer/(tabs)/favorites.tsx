@@ -4,8 +4,14 @@ import {
 } from "@/services/api/subscriptions";
 import { ApiError } from "@/services/api/util";
 import { getMerchantDisplayName } from "@/utils/merchant/getMerchantDisplayName";
+import {
+  PixelButton,
+  PixelCard,
+  PixelChip,
+  PixelText,
+} from "@/components/pixel";
+import { pixelBorderWidth, pixelColors } from "@/theme/pixel";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -15,13 +21,10 @@ import {
   Pressable,
   ScrollView,
   StatusBar,
-  Text,
+  StyleSheet,
   View,
 } from "react-native";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const formatTime = (iso: string) => {
   try {
@@ -32,32 +35,6 @@ const formatTime = (iso: string) => {
     return iso;
   }
 };
-
-function Badge({
-  label,
-  tone = "neutral",
-}: {
-  label: string;
-  tone?: "neutral" | "success" | "danger";
-}) {
-  const cls =
-    tone === "success"
-      ? "bg-green-100"
-      : tone === "danger"
-        ? "bg-rose-100"
-        : "bg-gray-100";
-  const textCls =
-    tone === "success"
-      ? "text-green-700"
-      : tone === "danger"
-        ? "text-rose-700"
-        : "text-gray-700";
-  return (
-    <View className={`${cls} px-2.5 py-1 rounded-full`}>
-      <Text className={`text-xs font-semibold ${textCls}`}>{label}</Text>
-    </View>
-  );
-}
 
 export default function ConsumerFavoritesScreen() {
   const router = useRouter();
@@ -91,7 +68,7 @@ export default function ConsumerFavoritesScreen() {
 
   const activeCount = useMemo(
     () => subs.filter((s) => s.is_active).length,
-    [subs],
+    [subs]
   );
 
   const unsubscribe = useCallback(
@@ -99,7 +76,7 @@ export default function ConsumerFavoritesScreen() {
       const mId = String(merchantId || "").trim();
       if (!mId) return;
 
-      Alert.alert("取消訂閱", "確定要取消訂閱這個攤商嗎？", [
+      Alert.alert("取消訂閱", "確定要取消訂閱這個商家嗎？", [
         { text: "取消", style: "cancel" },
         {
           text: "取消訂閱",
@@ -122,14 +99,14 @@ export default function ConsumerFavoritesScreen() {
         },
       ]);
     },
-    [loadSubscriptions],
+    [loadSubscriptions]
   );
 
   const openVendorMenu = useCallback(
     (merchantId: string, merchantName?: string) => {
       const mId = String(merchantId || "").trim();
       if (!mId) {
-        Alert.alert("錯誤", "缺少攤商 ID");
+        Alert.alert("錯誤", "缺少商家 ID");
         return;
       }
       router.push({
@@ -140,119 +117,178 @@ export default function ConsumerFavoritesScreen() {
         },
       });
     },
-    [router],
+    [router]
   );
 
   return (
-    <SafeAreaView
-      className="flex-1 bg-gray-50"
-      edges={["left", "right", "bottom"]}
-    >
-      <LinearGradient
-        colors={["#EC4899", "#F97316"]}
-        style={{
-          paddingTop: insets.top + 12,
-          paddingBottom: 18,
-          paddingHorizontal: 16,
-        }}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        <View className="flex-row items-start justify-between">
-          <View className="flex-1 pr-3">
-            <Text className="text-2xl font-extrabold text-white">收藏</Text>
-            <Text className="text-sm text-white/85 mt-1">
-              我的訂閱（啟用中：{activeCount} / 共 {subs.length}）
-            </Text>
+    <View style={styles.root}>
+      {/* HUD 標題列 */}
+      <View style={[styles.hud, { paddingTop: insets.top + 8 }]}>
+        <View style={{ flex: 1 }}>
+          <PixelText variant="caption" tone="pink" display>
+            COLLECTION
+          </PixelText>
+          <PixelText variant="display">收藏</PixelText>
+          <View style={{ height: 4 }} />
+          <View style={{ flexDirection: "row", gap: 6 }}>
+            <PixelChip
+              label={`啟用 ${activeCount}`}
+              tone="green"
+              active
+            />
+            <PixelChip label={`總計 ${subs.length}`} tone="paper" active />
           </View>
-          <Pressable
-            onPress={loadSubscriptions}
-            disabled={loading}
-            className="w-10 h-10 rounded-2xl items-center justify-center bg-white/25"
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Ionicons name="refresh" size={18} color="#fff" />
-            )}
-          </Pressable>
         </View>
-      </LinearGradient>
+        <PixelButton
+          label={loading ? "..." : ">> 重新整理"}
+          tone="pink"
+          size="sm"
+          onPress={loadSubscriptions}
+          disabled={loading}
+        />
+      </View>
 
       <ScrollView
-        className="flex-1 px-5"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: 16, paddingBottom: 120, gap: 14 }}
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingTop: 16,
+          paddingBottom: 120,
+          gap: 14,
+        }}
       >
-        <View className="bg-white border border-gray-200 rounded-3xl p-4">
-          <View className="flex-row items-center gap-2">
-            <View className="w-9 h-9 rounded-xl bg-gray-100 items-center justify-center">
-              <Ionicons name="heart" size={18} color="#6b7280" />
+        <PixelCard title="MY  LIST" titleTone="pink" titleDisplay padding={14}>
+          <View style={styles.headerRow}>
+            <View style={styles.headerIcon}>
+              <Ionicons name="heart" size={18} color={pixelColors.ink} />
             </View>
-            <View className="flex-1">
-              <Text className="text-base font-bold text-gray-900">
-                我的訂閱
-              </Text>
-              <Text className="text-xs text-gray-500 mt-0.5">
-                你已訂閱的攤商會出現在這裡
-              </Text>
+            <View style={{ flex: 1 }}>
+              <PixelText variant="bodyLg">我的訂閱清單</PixelText>
+              <PixelText variant="caption" tone="muted">
+                你已訂閱的商家會列在這裡
+              </PixelText>
             </View>
           </View>
 
-          {subs.length === 0 ? (
-            <View className="mt-4 bg-gray-50 border border-gray-200 rounded-2xl p-4">
-              <Text className="text-sm text-gray-700">
-                目前沒有訂閱。請到「首頁」使用掃碼訂閱攤商。
-              </Text>
+          {loading && subs.length === 0 ? (
+            <View style={{ alignItems: "center", marginTop: 16, gap: 8 }}>
+              <ActivityIndicator color={pixelColors.gold} />
+              <PixelText variant="body" tone="muted">
+                讀取中…
+              </PixelText>
+            </View>
+          ) : subs.length === 0 ? (
+            <View
+              style={{
+                marginTop: 14,
+                padding: 12,
+                borderWidth: pixelBorderWidth,
+                borderColor: pixelColors.ink,
+                borderRadius: 4,
+                backgroundColor: pixelColors.surfaceAlt,
+              }}
+            >
+              <PixelText variant="body">
+                目前沒有訂閱。先到「首頁」掃碼或手動輸入 ID 加入第一個商家。
+              </PixelText>
             </View>
           ) : (
-            <View className="mt-4 gap-3">
-              {subs.map((s) => (
-                <View
-                  key={s.id}
-                  className="border border-gray-200 rounded-2xl p-4 bg-white"
-                >
-                  <Pressable
-                    onPress={() =>
-                      openVendorMenu(s.merchant_id, getMerchantDisplayName(s))
-                    }
-                    className="flex-row items-center justify-between"
-                  >
-                    <View className="flex-1 pr-2">
-                      <Text className="text-sm font-semibold text-gray-900">
-                        攤商：{getMerchantDisplayName(s) || "未命名攤商"}
-                      </Text>
-                    </View>
-                    <View className="flex-row items-center gap-2">
-                      <Badge
-                        label={s.is_active ? "啟用" : "停用"}
-                        tone={s.is_active ? "success" : "neutral"}
-                      />
-                      <Ionicons
-                        name="chevron-forward"
-                        size={16}
-                        color="#6B7280"
-                      />
-                    </View>
-                  </Pressable>
-                  <Text className="text-xs text-gray-500 mt-2">
-                    訂閱時間：{formatTime(s.subscribed_at)}
-                  </Text>
-                  <Pressable
-                    onPress={() => unsubscribe(s.merchant_id)}
-                    disabled={loading}
-                    className={`mt-3 rounded-2xl py-2 items-center ${
-                      loading ? "bg-gray-200" : "bg-rose-600"
-                    }`}
-                  >
-                    <Text className="text-white font-semibold">取消訂閱</Text>
-                  </Pressable>
-                </View>
-              ))}
+            <View style={{ marginTop: 14, gap: 10 }}>
+              {subs.map((s) => {
+                const name = getMerchantDisplayName(s) || "未命名商家";
+                return (
+                  <View key={s.id} style={styles.itemBox}>
+                    <Pressable
+                      onPress={() => openVendorMenu(s.merchant_id, name)}
+                      style={styles.itemHeader}
+                    >
+                      <View style={{ flex: 1, paddingRight: 8 }}>
+                        <PixelText variant="caption" tone="muted">
+                          商家
+                        </PixelText>
+                        <PixelText variant="bodyLg">{name}</PixelText>
+                      </View>
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 8,
+                        }}
+                      >
+                        <PixelChip
+                          label={s.is_active ? "啟用" : "停用"}
+                          tone={s.is_active ? "green" : "paper"}
+                          active
+                        />
+                        <PixelText variant="title" tone="gold" display>
+                          {">"}
+                        </PixelText>
+                      </View>
+                    </Pressable>
+
+                    <View style={{ height: 8 }} />
+                    <PixelText variant="caption" tone="muted">
+                      訂閱時間 {formatTime(s.subscribed_at)}
+                    </PixelText>
+                    <View style={{ height: 10 }} />
+                    <PixelButton
+                      label={loading ? "..." : "x 取消訂閱"}
+                      tone="red"
+                      fullWidth
+                      disabled={loading}
+                      onPress={() => unsubscribe(s.merchant_id)}
+                    />
+                  </View>
+                );
+              })}
             </View>
           )}
-        </View>
+        </PixelCard>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: pixelColors.bg,
+  },
+  hud: {
+    backgroundColor: pixelColors.surface,
+    paddingHorizontal: 16,
+    paddingBottom: 14,
+    borderBottomWidth: pixelBorderWidth,
+    borderBottomColor: pixelColors.ink,
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 12,
+  },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  headerIcon: {
+    width: 36,
+    height: 36,
+    backgroundColor: pixelColors.pink,
+    borderWidth: pixelBorderWidth,
+    borderColor: pixelColors.ink,
+    borderRadius: 4,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  itemBox: {
+    borderWidth: pixelBorderWidth,
+    borderColor: pixelColors.ink,
+    borderRadius: 4,
+    backgroundColor: pixelColors.surface,
+    padding: 12,
+  },
+  itemHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+});

@@ -1,8 +1,21 @@
+import {
+  PixelButton,
+  PixelCard,
+  PixelChip,
+  PixelText,
+} from "@/components/pixel";
+import { menuApi, MenuItem } from "@/services/api/menu";
+import {
+  subscriptionsApi,
+  UserMerchantSubscription,
+} from "@/services/api/subscriptions";
+import { ApiError } from "@/services/api/util";
+import { pixelBorderWidth, pixelColors, pixelRadius } from "@/theme/pixel";
+import { getMerchantDisplayName } from "@/utils/merchant/getMerchantDisplayName";
+import { getFcmTokenOrNull, getStableDeviceId } from "@/utils/push";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
-import { menuApi, MenuItem } from "@/services/api/menu";
 import {
   ActivityIndicator,
   Alert,
@@ -10,17 +23,10 @@ import {
   Pressable,
   ScrollView,
   StatusBar,
-  Text,
+  StyleSheet,
   View,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import {
-  subscriptionsApi,
-  UserMerchantSubscription,
-} from "@/services/api/subscriptions";
-import { ApiError } from "@/services/api/util";
-import { getMerchantDisplayName } from "@/utils/merchant/getMerchantDisplayName";
-import { getFcmTokenOrNull, getStableDeviceId } from "@/utils/push";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type MockMenuItem = {
   name: string;
@@ -47,15 +53,15 @@ type MockVendorDetail = {
 };
 
 const defaultMenu: MockMenuItem[] = [
-  { name: "招牌炒麵", price: 85, popular: true, category: "主食", prepMinutes: 8 },
-  { name: "蒜香雞腿飯", price: 110, popular: true, category: "主食", prepMinutes: 10 },
-  { name: "古早味紅茶", price: 35, category: "飲品", prepMinutes: 2 },
-  { name: "椒鹽雞米花", price: 70, category: "小點", prepMinutes: 6 },
+  { name: "手作帆布小包", price: 480, popular: true, category: "主打", prepMinutes: 15 },
+  { name: "限定香氛蠟燭", price: 320, popular: true, category: "主打", prepMinutes: 10 },
+  { name: "客製化吊飾", price: 180, category: "小品", prepMinutes: 8 },
+  { name: "品牌明信片組", price: 120, category: "小品", prepMinutes: 3 },
 ];
 
 const categoryLabels: Record<MenuItem["category"], string> = {
-  main: "主食",
-  snack: "小點",
+  main: "主打",
+  snack: "小品",
   drink: "飲品",
   dessert: "甜點",
 };
@@ -124,18 +130,18 @@ const getMockVendorDetail = (merchantId: string): MockVendorDetail => {
   if (samples[merchantId]) return samples[merchantId];
 
   return {
-    name: "街邊美食攤車",
-    cuisine: "綜合料理",
+    name: "街邊風格小店",
+    cuisine: "精選商家",
     rating: 4.5,
     distance: "0.8 km",
     eta: "約 10 分鐘",
     isOpen: true,
-    tags: ["熱門攤車", "即時通知", "現點現做"],
+    tags: ["熱門商家", "即時通知", "現場販售"],
     description:
-      "這是示範用攤商頁面，正式上線後將由後端提供完整攤商資訊與菜單資料。",
+      "這是示範用商家頁面，正式上線後將由後端提供完整商家資訊與品項資料。",
     address: "台北市中正區示範路 1 號",
     businessHours: "11:00 - 20:00",
-    recentUpdate: "今日已更新菜單，歡迎訂閱通知。",
+    recentUpdate: "今日已更新品項，歡迎訂閱通知。",
     menu: defaultMenu,
   };
 };
@@ -150,12 +156,16 @@ const buildDeviceInfo = async () => {
 };
 
 export default function VendorDetailScreen() {
-  const { id, name, cuisine, is_open } = useLocalSearchParams<{
-    id?: string;
-    name?: string;
-    cuisine?: string;
-    is_open?: string;
-  }>();
+  const { id, name, cuisine, is_open, description, address, distance } =
+    useLocalSearchParams<{
+      id?: string;
+      name?: string;
+      cuisine?: string;
+      is_open?: string;
+      description?: string;
+      address?: string;
+      distance?: string;
+    }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const merchantId = useMemo(() => String(id || "").trim(), [id]);
@@ -170,6 +180,15 @@ export default function VendorDetailScreen() {
   const detail = useMemo(() => getMockVendorDetail(merchantId), [merchantId]);
   const routeName = useMemo(() => String(name || "").trim(), [name]);
   const routeCuisine = useMemo(() => String(cuisine || "").trim(), [cuisine]);
+  const routeDescription = useMemo(
+    () => String(description || "").trim(),
+    [description]
+  );
+  const routeAddress = useMemo(() => String(address || "").trim(), [address]);
+  const routeDistance = useMemo(
+    () => String(distance || "").trim(),
+    [distance]
+  );
   const subscriptionMerchantName = useMemo(() => {
     if (!merchantId) return "";
     const matched = subs.find((item) => item.merchant_id === merchantId);
@@ -186,9 +205,21 @@ export default function VendorDetailScreen() {
       ...detail,
       name: routeName || subscriptionMerchantName || detail.name,
       cuisine: routeCuisine || detail.cuisine,
+      description: routeDescription || detail.description,
+      address: routeAddress || detail.address,
+      distance: routeDistance || detail.distance,
       isOpen: typeof routeIsOpen === "boolean" ? routeIsOpen : detail.isOpen,
     }),
-    [detail, routeCuisine, routeIsOpen, routeName, subscriptionMerchantName]
+    [
+      detail,
+      routeAddress,
+      routeCuisine,
+      routeDescription,
+      routeDistance,
+      routeIsOpen,
+      routeName,
+      subscriptionMerchantName,
+    ]
   );
 
   const displayMenu = useMemo(() => {
@@ -261,7 +292,7 @@ export default function VendorDetailScreen() {
         console.warn("load public merchant menu failed:", e);
         setMenuItems([]);
         setMenuUsingFallback(true);
-        setMenuError(e?.message || "目前無法載入即時菜單，先顯示示意內容。");
+        setMenuError(e?.message || "目前無法載入即時品項，先顯示示意內容。");
       } finally {
         setMenuLoading(false);
       }
@@ -272,7 +303,7 @@ export default function VendorDetailScreen() {
 
   const subscribe = async () => {
     if (!merchantId) {
-      Alert.alert("錯誤", "缺少攤商 ID");
+      Alert.alert("錯誤", "缺少商家 ID");
       return;
     }
     try {
@@ -314,227 +345,389 @@ export default function VendorDetailScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50" edges={["left", "right", "bottom"]}>
-      <LinearGradient
-        colors={["#0EA5E9", "#0284C7", "#0369A1"]}
-        style={{
-          paddingTop: insets.top + 10,
-          paddingBottom: 18,
-          paddingHorizontal: 16,
-        }}
-      >
-        <View className="flex-row items-center justify-between">
-          <Pressable
+    <View style={styles.root}>
+      {/* HUD */}
+      <View style={[styles.hud, { paddingTop: insets.top + 8 }]}>
+        <View style={styles.hudTopRow}>
+          <PixelButton
+            label="<< BACK"
+            tone="ink"
+            size="sm"
+            display
             onPress={() => router.back()}
-            className="w-10 h-10 rounded-2xl bg-white/20 items-center justify-center"
-          >
-            <Ionicons name="arrow-back" size={20} color="#fff" />
-          </Pressable>
-
-          <View className="bg-white/20 rounded-full px-3 py-1.5">
-            <Text className="text-white text-xs font-semibold">
-              {displayDetail.isOpen ? "營業中" : "休息中"}
-            </Text>
-          </View>
+          />
+          <PixelChip
+            label={displayDetail.isOpen ? "營業中" : "休息中"}
+            tone={displayDetail.isOpen ? "green" : "paper"}
+            active
+          />
         </View>
 
-        <View className="mt-4">
-          <Text className="text-white text-[30px] leading-[34px] font-extrabold">
-            {displayDetail.name}
-          </Text>
-          <Text className="text-white/85 text-sm mt-2">{displayDetail.cuisine}</Text>
+        <View style={{ marginTop: 10, gap: 4 }}>
+          <PixelText variant="caption" tone="gold" display>
+            VENDOR  PROFILE
+          </PixelText>
+          <PixelText variant="display">{displayDetail.name}</PixelText>
+          <PixelText variant="body" tone="muted">
+            {displayDetail.cuisine}
+          </PixelText>
         </View>
 
-        <View className="mt-4 flex-row gap-2">
-          <View className="flex-1 rounded-2xl bg-white/20 px-3 py-2.5">
-            <Text className="text-white/80 text-[11px]">評分</Text>
-              <Text className="text-white text-base font-bold mt-0.5">
-              {displayDetail.rating.toFixed(1)}
-              </Text>
-            </View>
-            <View className="flex-1 rounded-2xl bg-white/20 px-3 py-2.5">
-              <Text className="text-white/80 text-[11px]">距離</Text>
-              <Text className="text-white text-base font-bold mt-0.5">{displayDetail.distance}</Text>
-            </View>
-            <View className="flex-1 rounded-2xl bg-white/20 px-3 py-2.5">
-              <Text className="text-white/80 text-[11px]">到達時間</Text>
-              <Text className="text-white text-base font-bold mt-0.5">{displayDetail.eta}</Text>
-            </View>
-          </View>
-      </LinearGradient>
+        <View style={styles.statRow}>
+          <StatBox label="評分" value={displayDetail.rating.toFixed(1)} tone="gold" />
+          <StatBox label="距離" value={displayDetail.distance} tone="blue" />
+          <StatBox label="到達" value={displayDetail.eta} tone="pink" />
+        </View>
+      </View>
 
       <ScrollView
-        className="flex-1"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: 10, paddingBottom: 120 }}
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingTop: 14,
+          paddingBottom: 120,
+          gap: 14,
+        }}
       >
-        <View className="px-4">
-          <View className="bg-white border border-slate-200 rounded-3xl p-4 shadow-sm">
-            <View className="flex-row items-center justify-between">
-              <View className="flex-row items-center gap-2">
-                <View
-                  className={`w-2.5 h-2.5 rounded-full ${
-                    isSubscribed ? "bg-emerald-500" : "bg-slate-400"
-                  }`}
-                />
-                <Text className="text-sm font-semibold text-slate-800">
-                  {isSubscribed ? "已訂閱通知" : "尚未訂閱"}
-                </Text>
-              </View>
-              <Text className="text-xs text-slate-500">即時營業通知</Text>
+        {/* 訂閱狀態 */}
+        <PixelCard
+          title={isSubscribed ? "SUBSCRIBED" : "NOT  SUBSCRIBED"}
+          titleTone={isSubscribed ? "green" : "ink"}
+          titleDisplay
+          padding={14}
+        >
+          <View style={styles.subRow}>
+            <View style={styles.subDot}>
+              <View
+                style={[
+                  styles.dot,
+                  {
+                    backgroundColor: isSubscribed
+                      ? pixelColors.green
+                      : pixelColors.gray500,
+                  },
+                ]}
+              />
+              <PixelText variant="bodyLg">
+                {isSubscribed ? "通知已開啟" : "尚未訂閱通知"}
+              </PixelText>
             </View>
+            <PixelChip label="即時通知" tone="paper" active />
+          </View>
 
-            <View className="flex-row gap-2 mt-3">
-              <Pressable
-                onPress={subscribe}
+          <View style={{ height: 12 }} />
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <View style={{ flex: 1 }}>
+              <PixelButton
+                label={
+                  subscriptionLoading && !isSubscribed
+                    ? "..."
+                    : "> 訂閱通知"
+                }
+                tone="green"
+                fullWidth
                 disabled={subscriptionLoading || isSubscribed}
-                className={`flex-1 rounded-xl py-3 items-center ${
-                  subscriptionLoading || isSubscribed ? "bg-slate-200" : "bg-emerald-600"
-                }`}
-              >
-                {subscriptionLoading && !isSubscribed ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text className="text-white font-semibold">訂閱通知</Text>
-                )}
-              </Pressable>
-              <Pressable
-                onPress={unsubscribe}
+                onPress={subscribe}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <PixelButton
+                label={
+                  subscriptionLoading && isSubscribed ? "..." : "x 取消訂閱"
+                }
+                tone="red"
+                fullWidth
                 disabled={subscriptionLoading || !isSubscribed}
-                className={`flex-1 rounded-xl py-3 items-center ${
-                  subscriptionLoading || !isSubscribed ? "bg-slate-200" : "bg-rose-600"
-                }`}
-              >
-                {subscriptionLoading && isSubscribed ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text className="text-white font-semibold">取消訂閱</Text>
-                )}
-              </Pressable>
+                onPress={unsubscribe}
+              />
             </View>
           </View>
-        </View>
+        </PixelCard>
 
-        <View className="px-4 mt-4 gap-3">
-          <View className="bg-white border border-slate-200 rounded-2xl p-4">
-            <Text className="text-base font-bold text-slate-900">攤商介紹</Text>
-            <Text className="text-sm text-slate-600 leading-6 mt-2">{displayDetail.description}</Text>
-            <View className="flex-row flex-wrap gap-2 mt-3">
-              {displayDetail.tags.map((tag) => (
-                <View key={tag} className="px-2.5 py-1 rounded-full bg-sky-50 border border-sky-100">
-                  <Text className="text-[11px] font-semibold text-sky-700">{tag}</Text>
-                </View>
-              ))}
-            </View>
+        {/* 商家介紹 */}
+        <PixelCard title="商家介紹" titleTone="blue" padding={14}>
+          <PixelText variant="body">{displayDetail.description}</PixelText>
+          {displayDetail.tags.length ? (
+            <>
+              <View style={{ height: 10 }} />
+              <View style={styles.tagRow}>
+                {displayDetail.tags.map((tag) => (
+                  <PixelChip key={tag} label={tag} tone="purple" active />
+                ))}
+              </View>
+            </>
+          ) : null}
+        </PixelCard>
+
+        {/* 營業資訊 */}
+        <PixelCard title="營業資訊" titleTone="ink" padding={14}>
+          <View style={styles.infoRow}>
+            <Ionicons
+              name="location-outline"
+              size={18}
+              color={pixelColors.gold}
+            />
+            <PixelText variant="body" style={{ flex: 1 }}>
+              {displayDetail.address}
+            </PixelText>
+          </View>
+          <View style={{ height: 8 }} />
+          <View style={styles.infoRow}>
+            <Ionicons
+              name="time-outline"
+              size={18}
+              color={pixelColors.blue}
+            />
+            <PixelText variant="body">{displayDetail.businessHours}</PixelText>
+          </View>
+        </PixelCard>
+
+        {/* 品項 */}
+        <PixelCard title="品項" titleTone="red" padding={14}>
+          <View style={styles.menuHeader}>
+            {menuLoading ? (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <ActivityIndicator color={pixelColors.gold} />
+                <PixelText variant="caption" tone="muted">
+                  載入中…
+                </PixelText>
+              </View>
+            ) : (
+              <PixelChip
+                label={
+                  menuUsingFallback
+                    ? "示意資料"
+                    : `共 ${displayMenu.length} 項`
+                }
+                tone="paper"
+                active
+              />
+            )}
           </View>
 
-          <View className="bg-white border border-slate-200 rounded-2xl p-4">
-            <Text className="text-base font-bold text-slate-900">營業資訊</Text>
-            <View className="mt-3 gap-2.5">
-              <View className="flex-row items-start">
-                <Ionicons name="location-outline" size={18} color="#334155" />
-                <Text className="text-sm text-slate-600 ml-2 flex-1 leading-5">
-                  {displayDetail.address}
-                </Text>
-              </View>
-              <View className="flex-row items-center">
-                <Ionicons name="time-outline" size={18} color="#334155" />
-                <Text className="text-sm text-slate-600 ml-2">{displayDetail.businessHours}</Text>
-              </View>
+          {menuError ? (
+            <View style={styles.warnBox}>
+              <PixelText variant="caption" tone="gold">
+                {menuError}
+              </PixelText>
             </View>
-          </View>
+          ) : null}
 
-          <View className="bg-white border border-slate-200 rounded-2xl p-4">
-            <View className="flex-row items-center justify-between">
-              <Text className="text-base font-bold text-slate-900">菜單</Text>
-              {menuLoading ? (
-                <ActivityIndicator size="small" color="#0F172A" />
-              ) : (
-                <Text className="text-xs text-slate-500">
-                  {menuUsingFallback ? "示意資料" : `共 ${displayMenu.length} 項`}
-                </Text>
-              )}
+          {!menuLoading && displayMenu.length === 0 ? (
+            <View style={styles.emptyMenu}>
+              <PixelText variant="body" tone="muted">
+                這間商家目前尚未上架品項。
+              </PixelText>
             </View>
+          ) : null}
 
-            {menuError ? (
-              <View className="mt-3 rounded-xl bg-amber-50 border border-amber-100 px-3 py-2.5">
-                <Text className="text-[12px] leading-5 text-amber-800">{menuError}</Text>
-              </View>
-            ) : null}
-
-            <View className="mt-3 gap-2">
-              {!menuLoading && displayMenu.length === 0 ? (
-                <View className="rounded-xl border border-dashed border-slate-300 px-4 py-5">
-                  <Text className="text-sm text-slate-500 text-center">
-                    這間攤商目前尚未上架菜單。
-                  </Text>
-                </View>
-              ) : null}
-
-              {displayMenu.map((item) => (
-                <View
-                  key={item.key}
-                  className="rounded-xl border border-slate-200 px-3.5 py-3"
-                >
-                  <View className="flex-row items-start justify-between gap-3">
-                    <View className="flex-1">
-                      <View className="flex-row items-center gap-2">
-                        <Text className="text-sm font-semibold text-slate-800">
-                          {item.name}
-                        </Text>
-                        {item.popular ? (
-                          <View className="px-2 py-0.5 rounded-full bg-rose-100">
-                            <Text className="text-[10px] font-semibold text-rose-700">
-                              HOT
-                            </Text>
-                          </View>
+          <View style={{ gap: 8, marginTop: 10 }}>
+            {displayMenu.map((item) => (
+              <View key={item.key} style={styles.menuItem}>
+                <View style={{ flex: 1 }}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
+                    <PixelText variant="bodyLg">{item.name}</PixelText>
+                    {item.popular ? (
+                      <PixelChip label="HOT" tone="red" active display />
+                    ) : null}
+                  </View>
+                  {item.description ? (
+                    <>
+                      <View style={{ height: 4 }} />
+                      <PixelText variant="caption" tone="muted">
+                        {item.description}
+                      </PixelText>
+                    </>
+                  ) : null}
+                  {item.category || item.prepMinutes ? (
+                    <>
+                      <View style={{ height: 8 }} />
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
+                      >
+                        {item.category ? (
+                          <PixelChip
+                            label={item.category}
+                            tone="paper"
+                            active
+                          />
+                        ) : null}
+                        {typeof item.prepMinutes === "number" ? (
+                          <PixelText variant="caption" tone="muted">
+                            約 {item.prepMinutes} 分鐘
+                          </PixelText>
                         ) : null}
                       </View>
-                      {item.description ? (
-                        <Text className="text-xs text-slate-500 leading-5 mt-1">
-                          {item.description}
-                        </Text>
-                      ) : null}
-                      {item.category || item.prepMinutes ? (
-                        <View className="flex-row items-center gap-2 mt-2">
-                          {item.category ? (
-                            <View className="px-2.5 py-1 rounded-full bg-slate-100">
-                              <Text className="text-[10px] font-semibold text-slate-600">
-                                {item.category}
-                              </Text>
-                            </View>
-                          ) : null}
-                          {typeof item.prepMinutes === "number" ? (
-                            <Text className="text-[11px] text-slate-500">
-                              約 {item.prepMinutes} 分鐘
-                            </Text>
-                          ) : null}
-                        </View>
-                      ) : null}
-                    </View>
-
-                    <Text className="text-sm font-bold text-slate-900">
-                      ${item.price}
-                    </Text>
-                  </View>
+                    </>
+                  ) : null}
                 </View>
-              ))}
-            </View>
-          </View>
 
-          <View className="bg-amber-50 border border-amber-100 rounded-2xl p-4">
-            <View className="flex-row items-start">
-              <Ionicons name="notifications-outline" size={18} color="#B45309" />
-              <View className="ml-2 flex-1">
-                <Text className="text-sm font-semibold text-amber-800">最新公告</Text>
-                <Text className="text-sm text-amber-700 leading-6 mt-1">
-                  {displayDetail.recentUpdate}
-                </Text>
+                <View style={styles.priceBox}>
+                  <PixelText variant="title" tone="gold" display>
+                    ${item.price}
+                  </PixelText>
+                </View>
               </View>
-            </View>
+            ))}
           </View>
-        </View>
+        </PixelCard>
+
+        {/* 最新公告 */}
+        <PixelCard title="最新公告" titleTone="gold" padding={14}>
+          <View style={styles.infoRow}>
+            <Ionicons
+              name="notifications-outline"
+              size={18}
+              color={pixelColors.gold}
+            />
+            <PixelText variant="body" style={{ flex: 1 }}>
+              {displayDetail.recentUpdate}
+            </PixelText>
+          </View>
+        </PixelCard>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
+
+function StatBox({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: "gold" | "blue" | "pink";
+}) {
+  const accent =
+    tone === "gold"
+      ? pixelColors.gold
+      : tone === "blue"
+        ? pixelColors.blue
+        : pixelColors.pink;
+  return (
+    <View style={[styles.statBox, { borderTopColor: accent }]}>
+      <PixelText variant="caption" tone="muted">
+        {label}
+      </PixelText>
+      <View style={{ height: 2 }} />
+      <PixelText variant="bodyLg">{value}</PixelText>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: pixelColors.bg,
+  },
+  hud: {
+    backgroundColor: pixelColors.surface,
+    paddingHorizontal: 16,
+    paddingBottom: 14,
+    borderBottomWidth: pixelBorderWidth,
+    borderBottomColor: pixelColors.ink,
+  },
+  hudTopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  statRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 12,
+  },
+  statBox: {
+    flex: 1,
+    borderWidth: pixelBorderWidth,
+    borderColor: pixelColors.ink,
+    borderRadius: pixelRadius,
+    borderTopWidth: 6,
+    backgroundColor: pixelColors.surfaceAlt,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  subRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  subDot: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  dot: {
+    width: 10,
+    height: 10,
+    borderWidth: 1,
+    borderColor: pixelColors.ink,
+    borderRadius: 2,
+  },
+  tagRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+  },
+  menuHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    marginBottom: 8,
+  },
+  warnBox: {
+    borderWidth: pixelBorderWidth,
+    borderColor: pixelColors.gold,
+    borderRadius: pixelRadius,
+    backgroundColor: pixelColors.surfaceAlt,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginBottom: 8,
+  },
+  emptyMenu: {
+    borderWidth: pixelBorderWidth,
+    borderColor: pixelColors.borderSoft,
+    borderRadius: pixelRadius,
+    backgroundColor: pixelColors.surfaceAlt,
+    paddingHorizontal: 14,
+    paddingVertical: 16,
+    alignItems: "center",
+  },
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    borderWidth: pixelBorderWidth,
+    borderColor: pixelColors.ink,
+    borderRadius: pixelRadius,
+    backgroundColor: pixelColors.surface,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  priceBox: {
+    borderWidth: pixelBorderWidth,
+    borderColor: pixelColors.ink,
+    borderRadius: pixelRadius,
+    backgroundColor: pixelColors.ink,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});

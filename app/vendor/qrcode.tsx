@@ -1,25 +1,29 @@
+import {
+  PixelButton,
+  PixelCard,
+  PixelText,
+} from "@/components/pixel";
+import { useAuth } from "@/contexts/AuthContext";
+import { subscriptionsApi } from "@/services/api/subscriptions";
+import { pixelBorderWidth, pixelColors, pixelRadius } from "@/theme/pixel";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import * as FileSystem from "expo-file-system";
 import * as Print from "expo-print";
-import * as Sharing from "expo-sharing";
 import { router } from "expo-router";
+import * as Sharing from "expo-sharing";
 import React, { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Image,
   Platform,
-  Pressable,
   ScrollView,
   StatusBar,
-  Text,
+  StyleSheet,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import ViewShot from "react-native-view-shot";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { useAuth } from "@/contexts/AuthContext";
-import { subscriptionsApi } from "@/services/api/subscriptions";
 
 export default function VendorQrCodeScreen() {
   const insets = useSafeAreaInsets();
@@ -80,7 +84,7 @@ export default function VendorQrCodeScreen() {
       quality: 1,
       result: "tmpfile",
     });
-    if (!uri) throw new Error("無法匯出圖片，請稍後再試");
+    if (!uri) throw new Error("無法匯出圖片,請稍後再試");
     return uri as string;
   };
 
@@ -88,7 +92,7 @@ export default function VendorQrCodeScreen() {
     const base64 = await FileSystem.readAsStringAsync(pngUri, {
       encoding: FileSystem.EncodingType.Base64,
     });
-    const title = user?.name ? String(user.name) : "攤商";
+    const title = user?.name ? String(user.name) : "商家";
     const html = `
       <html>
         <head>
@@ -171,163 +175,232 @@ export default function VendorQrCodeScreen() {
       const pdf = await buildPdfFromPng(pngUri);
       await Print.printAsync({ uri: pdf.uri });
     } catch (e: any) {
-      Alert.alert("錯誤", e?.message || "列印失敗（可改用匯出 PDF）");
+      Alert.alert("錯誤", e?.message || "列印失敗 (可改用匯出 PDF)");
     } finally {
       setBusy("none");
     }
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50" edges={["left", "right", "bottom"]}>
-      <LinearGradient
-        colors={["#FF6B6B", "#FF8E53"]}
-        style={{
-          paddingTop: insets.top + 12,
-          paddingBottom: 18,
-          paddingHorizontal: 16,
-        }}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        <View className="flex-row items-center justify-between">
-          <Pressable
-            onPress={() => router.back()}
-            className="w-10 h-10 rounded-2xl bg-white/20 items-center justify-center"
-          >
-            <Ionicons name="chevron-back" size={20} color="#fff" />
-          </Pressable>
-          <View className="flex-1 px-3">
-            <Text className="text-lg font-extrabold text-white text-center">
-              我的訂閱 QR Code
-            </Text>
-            <Text className="text-xs text-white/85 mt-0.5 text-center">
-              讓客戶掃描即可訂閱通知
-            </Text>
-          </View>
-          <View className="w-10 h-10" />
+    <View style={styles.root}>
+      {/* HUD */}
+      <View style={[styles.hud, { paddingTop: insets.top + 8 }]}>
+        <PixelButton
+          label="<< BACK"
+          tone="ink"
+          size="sm"
+          display
+          onPress={() => router.back()}
+        />
+        <View style={{ flex: 1 }}>
+          <PixelText variant="caption" tone="gold" display>
+            SHARE  QR
+          </PixelText>
+          <PixelText variant="title">我的訂閱 QR Code</PixelText>
         </View>
-      </LinearGradient>
+      </View>
 
       <ScrollView
-        className="flex-1 px-5"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: 16, paddingBottom: 120, gap: 14 }}
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingTop: 14,
+          paddingBottom: 40,
+          gap: 14,
+        }}
       >
-        <View className="bg-white border border-gray-200 rounded-3xl p-4">
-          <View className="flex-row items-center gap-2">
-            <View className="w-9 h-9 rounded-xl bg-gray-100 items-center justify-center">
-              <Ionicons name="qr-code" size={18} color="#6b7280" />
+        <PixelCard
+          title="MERCHANT  QR"
+          titleTone="gold"
+          titleDisplay
+          padding={14}
+        >
+          <View style={styles.headerRow}>
+            <View style={styles.headerIcon}>
+              <Ionicons name="qr-code" size={18} color={pixelColors.ink} />
             </View>
-            <View className="flex-1">
-              <Text className="text-base font-bold text-gray-900">掃描訂閱</Text>
-              <Text className="text-xs text-gray-500 mt-0.5">
-                客戶端掃描此 QR，即可訂閱你的通知
-              </Text>
+            <View style={{ flex: 1 }}>
+              <PixelText variant="bodyLg">掃描訂閱</PixelText>
+              <PixelText variant="caption" tone="muted">
+                客戶端掃描此 QR,即可訂閱你的通知
+              </PixelText>
             </View>
           </View>
 
-          <View className="mt-4 items-center">
+          <View style={{ height: 14 }} />
+          <View style={styles.shotWrap}>
             <ViewShot
               ref={shotRef}
               options={{ format: "png", quality: 1, result: "tmpfile" }}
               style={{ width: "100%", alignItems: "center" }}
             >
-              <View className="bg-white border border-gray-200 rounded-3xl p-5">
-                <View className="items-center">
-                  <View className="bg-white p-3 rounded-2xl border border-gray-200">
-                    {isQrLoading ? (
-                      <View className="w-[260px] h-[260px] items-center justify-center gap-3">
-                        <ActivityIndicator size="large" color="#6b7280" />
-                        <Text className="text-sm text-gray-600">載入 QR Code 中...</Text>
-                      </View>
-                    ) : qrImageUri ? (
-                      <Image
-                        source={{ uri: qrImageUri }}
-                        style={{ width: 260, height: 260 }}
-                        resizeMode="contain"
+              <View style={styles.qrCard}>
+                <View style={styles.qrInner}>
+                  {isQrLoading ? (
+                    <View style={styles.qrBox}>
+                      <ActivityIndicator size="large" color={pixelColors.ink} />
+                      <View style={{ height: 8 }} />
+                      <PixelText variant="caption" tone="inverse">
+                        載入 QR Code 中...
+                      </PixelText>
+                    </View>
+                  ) : qrImageUri ? (
+                    <Image
+                      source={{ uri: qrImageUri }}
+                      style={{ width: 260, height: 260 }}
+                      resizeMode="contain"
+                    />
+                  ) : qrError ? (
+                    <View style={styles.qrBox}>
+                      <Ionicons
+                        name="alert-circle-outline"
+                        size={28}
+                        color={pixelColors.red}
                       />
-                    ) : qrError ? (
-                      <View className="w-[260px] h-[260px] items-center justify-center px-4">
-                        <Ionicons name="alert-circle-outline" size={28} color="#DC2626" />
-                        <Text className="mt-3 text-center text-sm text-gray-700">
-                          {qrError}
-                        </Text>
-                        <Pressable
-                          onPress={() => void loadQrCode()}
-                          className="mt-4 rounded-xl bg-gray-900 px-4 py-2"
-                        >
-                          <Text className="font-semibold text-white">重新載入</Text>
-                        </Pressable>
-                      </View>
-                    ) : (
-                      <View className="w-[260px] h-[260px] items-center justify-center">
-                        <Text className="text-sm text-gray-600">尚未取得 QR Code</Text>
-                      </View>
-                    )}
-                  </View>
-
-                  <Text className="mt-4 text-xs text-gray-500">
-                    此 QR Code 由系統依目前登入的攤商帳號產生
-                  </Text>
+                      <View style={{ height: 8 }} />
+                      <PixelText
+                        variant="body"
+                        tone="inverse"
+                        style={{ textAlign: "center", paddingHorizontal: 12 }}
+                      >
+                        {qrError}
+                      </PixelText>
+                      <View style={{ height: 10 }} />
+                      <PixelButton
+                        label="> 重新載入"
+                        tone="red"
+                        size="sm"
+                        onPress={() => void loadQrCode()}
+                      />
+                    </View>
+                  ) : (
+                    <View style={styles.qrBox}>
+                      <PixelText variant="body" tone="inverse">
+                        尚未取得 QR Code
+                      </PixelText>
+                    </View>
+                  )}
                 </View>
+
+                <View style={{ height: 10 }} />
+                <PixelText variant="caption" tone="inverse">
+                  此 QR Code 由系統依目前登入的商家帳號產生
+                </PixelText>
               </View>
             </ViewShot>
           </View>
 
-          <View className="flex-row gap-3 mt-5">
-            <Pressable
-              onPress={onShareImage}
-              disabled={busy !== "none"}
-              className={`flex-1 rounded-2xl py-3 items-center ${
-                busy !== "none" ? "bg-gray-300" : "bg-gray-900"
-              }`}
-            >
-              {busy === "image" ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text className="text-white font-semibold">分享圖片</Text>
-              )}
-            </Pressable>
-            <Pressable
-              onPress={onExportPdf}
-              disabled={busy !== "none"}
-              className={`flex-1 rounded-2xl py-3 items-center ${
-                busy !== "none" ? "bg-gray-300" : "bg-blue-600"
-              }`}
-            >
-              {busy === "pdf" ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text className="text-white font-semibold">匯出 PDF</Text>
-              )}
-            </Pressable>
+          <View style={{ height: 14 }} />
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <View style={{ flex: 1 }}>
+              <PixelButton
+                label={busy === "image" ? "..." : "> 分享圖片"}
+                tone="ink"
+                fullWidth
+                disabled={busy !== "none"}
+                onPress={onShareImage}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <PixelButton
+                label={busy === "pdf" ? "..." : "> 匯出 PDF"}
+                tone="blue"
+                fullWidth
+                disabled={busy !== "none"}
+                onPress={onExportPdf}
+              />
+            </View>
           </View>
 
-          <Pressable
-            onPress={onPrint}
+          <View style={{ height: 8 }} />
+          <PixelButton
+            label={busy === "print" ? "..." : "> 列印"}
+            tone="gold"
+            fullWidth
             disabled={busy !== "none"}
-            className={`mt-3 rounded-2xl py-3 items-center ${
-              busy !== "none" ? "bg-gray-300" : "bg-amber-500"
-            }`}
-          >
-            {busy === "print" ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text className="text-white font-semibold">列印</Text>
-            )}
-          </Pressable>
-        </View>
+            onPress={onPrint}
+          />
+        </PixelCard>
 
-        <View className="bg-white border border-gray-200 rounded-3xl p-4">
-          <View className="flex-row items-start gap-2">
-            <Ionicons name="information-circle" size={18} color="#6b7280" />
-            <Text className="text-sm text-gray-700 flex-1 leading-6">
-              建議將「匯出 PDF」的檔案分享給列印 App 或 AirPrint 進行列印，
-              並張貼在攤位旁讓顧客掃碼訂閱。
-            </Text>
+        <PixelCard
+          title="TIP"
+          titleTone="blue"
+          titleDisplay
+          padding={14}
+        >
+          <View style={styles.tipRow}>
+            <Ionicons
+              name="information-circle"
+              size={18}
+              color={pixelColors.blue}
+            />
+            <PixelText variant="body" style={{ flex: 1 }}>
+              建議將「匯出 PDF」的檔案分享給列印 App 或 AirPrint 列印,張貼在攤位旁讓顧客掃碼訂閱。
+            </PixelText>
           </View>
-        </View>
+        </PixelCard>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: pixelColors.bg,
+  },
+  hud: {
+    backgroundColor: pixelColors.surface,
+    paddingHorizontal: 16,
+    paddingBottom: 14,
+    borderBottomWidth: pixelBorderWidth,
+    borderBottomColor: pixelColors.ink,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  headerIcon: {
+    width: 36,
+    height: 36,
+    backgroundColor: pixelColors.gold,
+    borderWidth: pixelBorderWidth,
+    borderColor: pixelColors.ink,
+    borderRadius: pixelRadius,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  shotWrap: {
+    alignItems: "center",
+  },
+  qrCard: {
+    backgroundColor: pixelColors.paper,
+    borderWidth: pixelBorderWidth * 2,
+    borderColor: pixelColors.ink,
+    borderRadius: pixelRadius,
+    padding: 14,
+    alignItems: "center",
+  },
+  qrInner: {
+    backgroundColor: pixelColors.white,
+    borderWidth: pixelBorderWidth,
+    borderColor: pixelColors.ink,
+    borderRadius: pixelRadius,
+    padding: 10,
+  },
+  qrBox: {
+    width: 260,
+    height: 260,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tipRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+  },
+});

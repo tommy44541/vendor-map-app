@@ -1,6 +1,18 @@
-import { useAuth } from "@/contexts/AuthContext";
 import { UnifiedMap, UnifiedMapRef } from "@/components/maps/UnifiedMap";
+import {
+  PixelButton,
+  PixelCard,
+  PixelChip,
+  PixelText,
+  PixelTextInput,
+} from "@/components/pixel";
+import { useAuth } from "@/contexts/AuthContext";
 import { ApiError } from "@/services/api/util";
+import {
+  pixelBorderWidth,
+  pixelColors,
+  pixelRadius,
+} from "@/theme/pixel";
 import { getLocationDisplayLabel } from "@/utils/location/getLocationDisplayLabel";
 import * as Location from "expo-location";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -10,10 +22,8 @@ import {
   Modal,
   Pressable,
   ScrollView,
+  StyleSheet,
   Switch,
-  Text,
-  TextInput,
-  TouchableOpacity,
   useWindowDimensions,
   View,
 } from "react-native";
@@ -111,7 +121,7 @@ export default function LocationManagerScreen<T extends LocationRecord>({
   const mapRef = useRef<UnifiedMapRef>(null);
 
   const { height: windowHeight } = useWindowDimensions();
-  const TAB_BAR_HEIGHT = 70;
+  const TAB_BAR_HEIGHT = 74;
   const COLLAPSED_HEIGHT = 56;
   const expandedHeight = Math.min(Math.round(windowHeight * 0.62), 560);
   const maxTranslate = Math.max(0, expandedHeight - COLLAPSED_HEIGHT);
@@ -403,7 +413,7 @@ export default function LocationManagerScreen<T extends LocationRecord>({
       setIsGeocoding(true);
       const list = await Location.geocodeAsync(q);
       if (!Array.isArray(list) || list.length === 0) {
-        Alert.alert("找不到地址", "請嘗試輸入更完整的地址（包含城市/區域）");
+        Alert.alert("找不到地址", "請嘗試輸入更完整的地址(包含城市/區域)");
         return;
       }
       if (list.length === 1) {
@@ -450,7 +460,7 @@ export default function LocationManagerScreen<T extends LocationRecord>({
     } catch (error: unknown) {
       console.error("保存位置失敗:", error);
       if (error instanceof ApiError && error.code === "LOCATION_LIMIT_EXCEEDED") {
-        Alert.alert("錯誤", "您已達到位置數量限制（最多5個位置）");
+        Alert.alert("錯誤", "您已達到位置數量限制(最多5個位置)");
       } else if (error instanceof ApiError && error.code === "TOKEN_EXPIRED") {
         handleAuthExpired();
       } else {
@@ -511,32 +521,38 @@ export default function LocationManagerScreen<T extends LocationRecord>({
   };
 
   const confirmDelete = (location: T) => {
-    Alert.alert("確認刪除", `確定要刪除「${getLocationDisplayLabel(location.Label)}」嗎？`, [
-      { text: "取消", style: "cancel" },
-      {
-        text: "刪除",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            setIsListLoading(true);
-            await api.remove(location.ID);
-            setSavedLocations((prev) => prev.filter((l) => l.ID !== location.ID));
-            if (selectedLocationId === location.ID) {
-              setSelectedLocationId(null);
+    Alert.alert(
+      "確認刪除",
+      `確定要刪除「${getLocationDisplayLabel(location.Label)}」嗎？`,
+      [
+        { text: "取消", style: "cancel" },
+        {
+          text: "刪除",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setIsListLoading(true);
+              await api.remove(location.ID);
+              setSavedLocations((prev) =>
+                prev.filter((l) => l.ID !== location.ID)
+              );
+              if (selectedLocationId === location.ID) {
+                setSelectedLocationId(null);
+              }
+            } catch (error: unknown) {
+              console.error("刪除位置失敗:", error);
+              if (error instanceof ApiError && error.code === "TOKEN_EXPIRED") {
+                handleAuthExpired();
+              } else {
+                Alert.alert("錯誤", "刪除位置失敗，請重試");
+              }
+            } finally {
+              setIsListLoading(false);
             }
-          } catch (error: unknown) {
-            console.error("刪除位置失敗:", error);
-            if (error instanceof ApiError && error.code === "TOKEN_EXPIRED") {
-              handleAuthExpired();
-            } else {
-              Alert.alert("錯誤", "刪除位置失敗，請重試");
-            }
-          } finally {
-            setIsListLoading(false);
-          }
+          },
         },
-      },
-    ]);
+      ]
+    );
   };
 
   const renderLocationItem = (item: T) => {
@@ -549,62 +565,51 @@ export default function LocationManagerScreen<T extends LocationRecord>({
           setSelectedLocationId(item.ID);
           animateTo(item.Latitude, item.Longitude);
         }}
-        className={`border rounded-lg p-3 mb-3 ${
-          isSelected ? "border-blue-500 bg-blue-50" : "border-gray-200 bg-white"
-        }`}
+        style={[
+          styles.listItem,
+          isSelected ? styles.listItemSelected : null,
+        ]}
       >
-        <View className="flex-row justify-between items-start gap-3">
-          <View className="flex-1">
-            <View className="flex-row items-center gap-2">
-              <Text className="text-base font-semibold text-gray-800">
-                {displayLabel}
-              </Text>
-              {item.IsPrimary && (
-                <View className="bg-purple-100 px-2 py-0.5 rounded-full">
-                  <Text className="text-xs text-purple-700">主要</Text>
-                </View>
-              )}
-              <View
-                className={`px-2 py-0.5 rounded-full ${
-                  item.IsActive ? "bg-green-100" : "bg-gray-200"
-                }`}
-              >
-                <Text
-                  className={`text-xs ${
-                    item.IsActive ? "text-green-700" : "text-gray-700"
-                  }`}
-                >
-                  {item.IsActive ? "啟用" : "停用"}
-                </Text>
-              </View>
-            </View>
-            <Text className="text-sm text-gray-600 mt-1" numberOfLines={2}>
-              {item.FullAddress}
-            </Text>
+        <View style={{ flex: 1 }}>
+          <View style={styles.listItemTitleRow}>
+            <PixelText variant="bodyLg">{displayLabel}</PixelText>
+            {item.IsPrimary ? (
+              <PixelChip label="主要" tone="purple" active />
+            ) : null}
+            <PixelChip
+              label={item.IsActive ? "啟用" : "停用"}
+              tone={item.IsActive ? "green" : "paper"}
+              active
+            />
           </View>
+          <View style={{ height: 4 }} />
+          <PixelText variant="caption" tone="muted" numberOfLines={2}>
+            {item.FullAddress}
+          </PixelText>
+        </View>
 
-          <View className="flex-row gap-2">
-            <TouchableOpacity
-              className="bg-blue-500 px-3 py-2 rounded-md"
-              onPress={() => openEditModal(item)}
-            >
-              <Text className="text-white text-xs font-semibold">編輯</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              className="bg-red-500 px-3 py-2 rounded-md"
-              onPress={() => confirmDelete(item)}
-            >
-              <Text className="text-white text-xs font-semibold">刪除</Text>
-            </TouchableOpacity>
-          </View>
+        <View style={styles.listItemActions}>
+          <PixelButton
+            label="編輯"
+            tone="blue"
+            size="sm"
+            onPress={() => openEditModal(item)}
+          />
+          <PixelButton
+            label="x"
+            tone="red"
+            size="sm"
+            display
+            onPress={() => confirmDelete(item)}
+          />
         </View>
       </Pressable>
     );
   };
 
   return (
-    <View className="flex-1 bg-gray-50">
-      <View className="flex-1">
+    <View style={styles.root}>
+      <View style={{ flex: 1 }}>
         <UnifiedMap
           ref={mapRef}
           style={{ flex: 1 }}
@@ -625,7 +630,7 @@ export default function LocationManagerScreen<T extends LocationRecord>({
                     longitude: selectedLocation.Longitude,
                     title: getLocationDisplayLabel(selectedLocation.Label),
                     description: selectedLocation.FullAddress,
-                    pinColor: "#3b82f6",
+                    pinColor: pixelColors.blue,
                   },
                 ]
               : []),
@@ -642,7 +647,7 @@ export default function LocationManagerScreen<T extends LocationRecord>({
                           ? "搜尋位置"
                           : "選取位置",
                     description: currentLocation.address,
-                    pinColor: "#f97316",
+                    pinColor: pixelColors.gold,
                   },
                 ]
               : []),
@@ -652,153 +657,174 @@ export default function LocationManagerScreen<T extends LocationRecord>({
 
       <Animated.View
         style={[
+          styles.sheet,
           {
-            position: "absolute",
-            left: 0,
-            right: 0,
             bottom: TAB_BAR_HEIGHT,
             height: expandedHeight,
           },
           sheetAnimatedStyle,
         ]}
-        className="bg-white border-t border-gray-200 rounded-t-3xl overflow-hidden"
       >
         <GestureDetector gesture={panGesture}>
-          <Pressable onPress={expandSheet} className="py-3 items-center">
+          <Pressable onPress={expandSheet} style={styles.handleWrap}>
             <Animated.View
-              style={[pulseLineStyle, { backgroundColor: accentColor }]}
-              className="absolute top-0 left-0 right-0 h-[2px]"
+              style={[
+                styles.pulseLine,
+                pulseLineStyle,
+                { backgroundColor: accentColor || pixelColors.gold },
+              ]}
             />
-            <View className="w-12 h-1.5 rounded-full bg-gray-200" />
+            <View style={styles.handle} />
+            <View style={{ height: 4 }} />
+            <PixelText variant="caption" tone="muted" display>
+              LOCATION  PANEL
+            </PixelText>
           </Pressable>
         </GestureDetector>
 
         <ScrollView
-          className="px-5 pb-5"
+          contentContainerStyle={{
+            paddingHorizontal: 16,
+            paddingBottom: 24,
+            gap: 12,
+          }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View className="mb-4 bg-gray-50 p-4 rounded-lg">
-            <Text className="text-sm font-semibold text-gray-800 mb-2">手動輸入地址</Text>
-            <View className="flex-row gap-3">
-              <TextInput
-                value={addressQuery}
-                onChangeText={setAddressQuery}
-                placeholder="例如：台北市中正區忠孝西路一段"
-                className="flex-1 border border-gray-200 bg-white rounded-lg px-3 py-3 text-gray-800"
-                editable={!isLoading && !isGeocoding}
-                returnKeyType="search"
-                onSubmitEditing={searchAddress}
-              />
-              <TouchableOpacity
-                className={`px-4 rounded-lg items-center justify-center ${
-                  isGeocoding ? "bg-gray-300" : "bg-gray-900"
-                }`}
-                onPress={searchAddress}
-                disabled={isLoading || isGeocoding}
-                activeOpacity={0.85}
-              >
-                {isGeocoding ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text className="text-white font-semibold">搜尋</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-            <Text className="text-xs text-gray-500 mt-2 leading-5">
-              找不到時請輸入更完整地址（城市/區域/路名）。
-            </Text>
-          </View>
+          {/* 地址搜尋 */}
+          <PixelCard
+            title="ADDRESS  SEARCH"
+            titleTone="blue"
+            titleDisplay
+            padding={12}
+          >
+            <PixelTextInput
+              placeholder="例如:台北市中正區忠孝西路一段"
+              value={addressQuery}
+              onChangeText={setAddressQuery}
+              editable={!isLoading && !isGeocoding}
+              returnKeyType="search"
+              onSubmitEditing={searchAddress}
+            />
+            <View style={{ height: 10 }} />
+            <PixelButton
+              label={isGeocoding ? "..." : "> 搜尋地址"}
+              tone="ink"
+              fullWidth
+              disabled={isLoading || isGeocoding}
+              onPress={searchAddress}
+            />
+            <View style={{ height: 6 }} />
+            <PixelText variant="caption" tone="muted">
+              找不到時請輸入更完整地址(城市/區域/路名)。
+            </PixelText>
+          </PixelCard>
 
-          <View className="flex-row space-x-3 mb-4 gap-3">
-            <TouchableOpacity
-              className="flex-1 bg-blue-500 p-4 rounded-lg items-center"
-              onPress={getCurrentLocation}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text className="text-white text-sm font-semibold text-center">獲取當前位置</Text>
-              )}
-            </TouchableOpacity>
-
-            {currentLocation && (
-              <TouchableOpacity
-                className="flex-1 bg-orange-500 p-4 rounded-lg items-center"
-                onPress={saveLocation}
+          {/* GPS / 保存 */}
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <View style={{ flex: 1 }}>
+              <PixelButton
+                label={isLoading ? "..." : "> 取得目前位置"}
+                tone="blue"
+                fullWidth
                 disabled={isLoading}
-              >
-                {isLoading ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text className="text-white text-sm font-semibold text-center">保存位置</Text>
-                )}
-              </TouchableOpacity>
-            )}
+                onPress={getCurrentLocation}
+              />
+            </View>
+            {currentLocation ? (
+              <View style={{ flex: 1 }}>
+                <PixelButton
+                  label={isLoading ? "..." : "> 保存位置"}
+                  tone="gold"
+                  fullWidth
+                  disabled={isLoading}
+                  onPress={saveLocation}
+                />
+              </View>
+            ) : null}
           </View>
 
-          {currentLocation && (
-            <View className="mb-4 bg-gray-50 p-4 rounded-lg">
-              <Text className="text-sm font-semibold text-gray-800 mb-2">新增位置名稱</Text>
-              <TextInput
+          {/* 新增位置設定 */}
+          {currentLocation ? (
+            <PixelCard
+              title="NEW  LOCATION"
+              titleTone="gold"
+              titleDisplay
+              padding={12}
+            >
+              <PixelTextInput
+                label="位置名稱"
+                placeholder={createLabelPlaceholder}
                 value={createLabel}
                 onChangeText={setCreateLabel}
-                placeholder={createLabelPlaceholder}
-                className="border border-gray-200 bg-white rounded-lg px-3 py-3 text-gray-800"
                 editable={!isLoading}
                 maxLength={30}
                 returnKeyType="done"
               />
-
-              <View className="flex-row items-center justify-between mt-4">
-                <View className="flex-1 pr-3">
-                  <Text className="text-sm font-semibold text-gray-800">設為主要地點</Text>
-                  <Text className="text-xs text-gray-600 mt-1">
-                    勾選後，這筆新位置會以主要地點保存
-                  </Text>
+              <View style={{ height: 10 }} />
+              <View style={styles.switchRow}>
+                <View style={{ flex: 1 }}>
+                  <PixelText variant="bodyLg">設為主要地點</PixelText>
+                  <PixelText variant="caption" tone="muted">
+                    勾選後,這筆位置會成為主要地點
+                  </PixelText>
                 </View>
                 <Switch
                   value={createIsPrimary}
                   onValueChange={setCreateIsPrimary}
                   disabled={isLoading}
+                  trackColor={{
+                    false: pixelColors.gray700,
+                    true: pixelColors.gold,
+                  }}
+                  thumbColor={pixelColors.paper}
                 />
               </View>
-            </View>
-          )}
 
-          <View className="mb-2 flex-row items-center justify-between">
-            <Text className="text-base font-semibold text-gray-800">已保存位置</Text>
-            <TouchableOpacity
-              className="bg-gray-200 px-3 py-2 rounded-md"
-              onPress={() => loadSavedLocations("refresh")}
+              <View style={{ height: 10 }} />
+              <View style={styles.addressBox}>
+                <PixelText variant="caption" tone="gold" display>
+                  CURRENT  ADDRESS
+                </PixelText>
+                <View style={{ height: 4 }} />
+                <PixelText variant="body">{currentLocation.address}</PixelText>
+              </View>
+            </PixelCard>
+          ) : null}
+
+          {/* 已保存位置 */}
+          <View style={styles.savedHeader}>
+            <PixelText variant="bodyLg">已保存位置</PixelText>
+            <PixelButton
+              label={isListLoading || isRefreshing ? "..." : ">> 刷新"}
+              tone="paper"
+              size="sm"
               disabled={isListLoading || isRefreshing}
-            >
-              <Text className="text-xs text-gray-800 font-semibold">
-                {isListLoading || isRefreshing ? "加載中..." : "刷新"}
-              </Text>
-            </TouchableOpacity>
+              onPress={() => loadSavedLocations("refresh")}
+            />
           </View>
 
           {isListLoading && savedLocations.length === 0 ? (
-            <View className="py-6 items-center">
-              <ActivityIndicator />
-              <Text className="text-sm text-gray-600 mt-2">加載中...</Text>
+            <View style={styles.emptyBox}>
+              <ActivityIndicator color={pixelColors.gold} />
+              <View style={{ height: 6 }} />
+              <PixelText variant="caption" tone="muted">
+                加載中...
+              </PixelText>
             </View>
           ) : savedLocations.length === 0 ? (
-            <View className="py-6">
-              <Text className="text-sm text-gray-600">
-                暫無已保存位置。你可以先獲取當前位置並保存。
-              </Text>
+            <View style={styles.emptyBox}>
+              <PixelText variant="body" tone="muted">
+                暫無已保存位置。先取得目前位置或搜尋地址再保存。
+              </PixelText>
             </View>
           ) : (
-            <View style={{ maxHeight: 240 }}>
-              {savedLocations.map(renderLocationItem)}
-            </View>
+            <View style={{ gap: 8 }}>{savedLocations.map(renderLocationItem)}</View>
           )}
         </ScrollView>
       </Animated.View>
 
+      {/* 候選地址 Modal */}
       <Modal
         visible={geocodeModalVisible}
         transparent
@@ -806,104 +832,250 @@ export default function LocationManagerScreen<T extends LocationRecord>({
         onRequestClose={() => setGeocodeModalVisible(false)}
       >
         <Pressable
-          className="flex-1 bg-black/50 justify-center px-6"
+          style={styles.modalBackdrop}
           onPress={() => setGeocodeModalVisible(false)}
         >
-          <Pressable className="bg-white rounded-2xl p-5" onPress={() => {}}>
-            <Text className="text-lg font-semibold text-gray-900">選擇一個候選位置</Text>
-            <Text className="text-xs text-gray-500 mt-1">
-              共有 {geocodeResults.length} 筆候選（顯示最多 10 筆）
-            </Text>
-
-            <View className="mt-4">
-              {geocodeResults.map((r, idx) => (
-                <Pressable
-                  key={`${r.latitude}-${r.longitude}-${idx}`}
-                  className="py-3 border-b border-gray-100"
-                  onPress={async () => {
-                    setGeocodeModalVisible(false);
-                    await applyGeocodedCoordinate(r.latitude, r.longitude);
-                  }}
-                >
-                  <Text className="text-sm font-semibold text-gray-900">候選 {idx + 1}</Text>
-                  <Text className="text-xs text-gray-600 mt-1">
-                    lat: {r.latitude.toFixed(6)}, lng: {r.longitude.toFixed(6)}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-
-            <TouchableOpacity
-              className="mt-4 bg-gray-200 rounded-xl py-3 items-center"
-              onPress={() => setGeocodeModalVisible(false)}
-              activeOpacity={0.85}
+          <Pressable onPress={(e) => e.stopPropagation()}>
+            <PixelCard
+              title="GEOCODE  CANDIDATES"
+              titleTone="blue"
+              titleDisplay
+              padding={16}
+              style={styles.modalCard}
             >
-              <Text className="text-gray-800 font-semibold">取消</Text>
-            </TouchableOpacity>
+              <PixelText variant="body">選擇一個候選位置</PixelText>
+              <View style={{ height: 4 }} />
+              <PixelText variant="caption" tone="muted">
+                共 {geocodeResults.length} 筆候選(顯示最多 10 筆)
+              </PixelText>
+
+              <View style={{ height: 12 }} />
+              <View style={{ gap: 8 }}>
+                {geocodeResults.map((r, idx) => (
+                  <Pressable
+                    key={`${r.latitude}-${r.longitude}-${idx}`}
+                    style={styles.candidateRow}
+                    onPress={async () => {
+                      setGeocodeModalVisible(false);
+                      await applyGeocodedCoordinate(r.latitude, r.longitude);
+                    }}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <PixelText variant="bodyLg">候選 {idx + 1}</PixelText>
+                      <PixelText variant="caption" tone="muted">
+                        lat {r.latitude.toFixed(6)} / lng {r.longitude.toFixed(6)}
+                      </PixelText>
+                    </View>
+                    <PixelText variant="title" tone="gold" display>
+                      {">"}
+                    </PixelText>
+                  </Pressable>
+                ))}
+              </View>
+
+              <View style={{ height: 12 }} />
+              <PixelButton
+                label="取消"
+                tone="paper"
+                fullWidth
+                onPress={() => setGeocodeModalVisible(false)}
+              />
+            </PixelCard>
           </Pressable>
         </Pressable>
       </Modal>
 
+      {/* 編輯 Modal */}
       <Modal
         visible={editModalVisible}
         transparent
         animationType="slide"
         onRequestClose={closeEditModal}
       >
-        <View className="flex-1 justify-end bg-black/40">
-          <View className="bg-white p-5 rounded-t-2xl">
-            <Text className="text-lg font-semibold text-gray-800 mb-4">編輯位置</Text>
-
-            <Text className="text-sm text-gray-700 mb-2">地點名稱</Text>
-            <TextInput
+        <View style={styles.modalBottomWrap}>
+          <PixelCard
+            title="EDIT  LOCATION"
+            titleTone="purple"
+            titleDisplay
+            padding={16}
+            style={styles.modalBottomCard}
+          >
+            <PixelTextInput
+              label="地點名稱"
+              placeholder="請輸入位置名稱"
               value={editLabel}
               onChangeText={setEditLabel}
-              placeholder="請輸入位置名稱"
-              className="border border-gray-200 rounded-lg px-3 py-3 text-gray-800"
               editable={!isSavingEdit}
             />
 
-            <View className="flex-row items-center justify-between mt-4">
-              <Text className="text-sm text-gray-700">設為主要地點</Text>
+            <View style={{ height: 12 }} />
+            <View style={styles.switchRow}>
+              <PixelText variant="bodyLg">設為主要地點</PixelText>
               <Switch
                 value={editIsPrimary}
                 onValueChange={setEditIsPrimary}
                 disabled={isSavingEdit}
+                trackColor={{
+                  false: pixelColors.gray700,
+                  true: pixelColors.gold,
+                }}
+                thumbColor={pixelColors.paper}
               />
             </View>
 
-            <View className="flex-row items-center justify-between mt-4">
-              <Text className="text-sm text-gray-700">是否啟用</Text>
+            <View style={{ height: 8 }} />
+            <View style={styles.switchRow}>
+              <PixelText variant="bodyLg">是否啟用</PixelText>
               <Switch
                 value={editIsActive}
                 onValueChange={setEditIsActive}
                 disabled={isSavingEdit}
+                trackColor={{
+                  false: pixelColors.gray700,
+                  true: pixelColors.green,
+                }}
+                thumbColor={pixelColors.paper}
               />
             </View>
 
-            <View className="flex-row gap-3 mt-6">
-              <TouchableOpacity
-                className="flex-1 bg-gray-200 p-4 rounded-lg items-center"
-                onPress={closeEditModal}
-                disabled={isSavingEdit}
-              >
-                <Text className="text-gray-800 font-semibold">取消</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                className="flex-1 bg-blue-500 p-4 rounded-lg items-center"
-                onPress={submitEdit}
-                disabled={isSavingEdit}
-              >
-                {isSavingEdit ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text className="text-white font-semibold">保存</Text>
-                )}
-              </TouchableOpacity>
+            <View style={{ height: 16 }} />
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <View style={{ flex: 1 }}>
+                <PixelButton
+                  label="取消"
+                  tone="paper"
+                  fullWidth
+                  disabled={isSavingEdit}
+                  onPress={closeEditModal}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <PixelButton
+                  label={isSavingEdit ? "..." : "> 保存"}
+                  tone="blue"
+                  fullWidth
+                  disabled={isSavingEdit}
+                  onPress={submitEdit}
+                />
+              </View>
             </View>
-          </View>
+          </PixelCard>
         </View>
       </Modal>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: pixelColors.bg,
+  },
+  sheet: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    backgroundColor: pixelColors.surface,
+    borderTopWidth: 4,
+    borderTopColor: pixelColors.ink,
+    borderTopLeftRadius: pixelRadius * 2,
+    borderTopRightRadius: pixelRadius * 2,
+    overflow: "hidden",
+  },
+  handleWrap: {
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  pulseLine: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 2,
+  },
+  handle: {
+    width: 48,
+    height: 6,
+    backgroundColor: pixelColors.gray500,
+    borderRadius: 2,
+  },
+  switchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  addressBox: {
+    borderWidth: pixelBorderWidth,
+    borderColor: pixelColors.ink,
+    borderRadius: pixelRadius,
+    backgroundColor: pixelColors.surfaceAlt,
+    padding: 10,
+  },
+  savedHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 4,
+  },
+  emptyBox: {
+    borderWidth: pixelBorderWidth,
+    borderColor: pixelColors.ink,
+    borderRadius: pixelRadius,
+    backgroundColor: pixelColors.surfaceAlt,
+    padding: 14,
+    alignItems: "center",
+  },
+  listItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    borderWidth: pixelBorderWidth,
+    borderColor: pixelColors.ink,
+    borderRadius: pixelRadius,
+    backgroundColor: pixelColors.surface,
+    padding: 12,
+  },
+  listItemSelected: {
+    backgroundColor: pixelColors.surfaceAlt,
+    borderColor: pixelColors.gold,
+  },
+  listItemTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  listItemActions: {
+    gap: 6,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    paddingHorizontal: 16,
+  },
+  modalCard: {
+    maxHeight: "80%",
+  },
+  modalBottomWrap: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
+  modalBottomCard: {
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+  },
+  candidateRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderWidth: pixelBorderWidth,
+    borderColor: pixelColors.ink,
+    borderRadius: pixelRadius,
+    backgroundColor: pixelColors.surfaceAlt,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+});

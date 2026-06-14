@@ -13,7 +13,7 @@ npm test
 目前覆蓋：
 
 - 地點名稱顯示：`Home`、`Work`、`Office`、`Current Location`、`Default` 顯示為中文。
-- 攤商名稱顯示：不同後端資料 shape 都能取到可顯示店名。
+- 商家名稱顯示：不同後端資料 shape 都能取到可顯示店名。
 - 密碼規則：註冊密碼至少符合長度、大寫、小寫、數字、特殊符號。
 - QR 訂閱解析：支援 app deep link、JSON、UUID，並拒絕無效 payload。
 
@@ -22,15 +22,15 @@ npm test
 ### Auth
 
 - 使用 email/password 註冊 consumer，完成 onboarding 後應進入 consumer home。
-- 使用 email/password 註冊 vendor，補齊店名與攤商編號後應進入 vendor home。
+- 使用 email/password 註冊 vendor，補齊店名與營業執照資料後應進入 vendor home。
 - 使用 Google 登入 consumer，成功後應進入正確角色首頁。
 - 使用 Google 登入 vendor，若需補商家資訊，畫面只顯示 Google 補填欄位，不顯示一般註冊欄位。
 - 登出後應清除 token/device 狀態，再次開 App 不應直接進入內頁。
 
 ### Consumer
 
-- Home 的「已訂閱攤車」在新增訂閱後，返回首頁應刷新。
-- Favorites 點擊攤商後可進入該攤商詳情/菜單頁。
+- Home 的「已訂閱商家」在新增訂閱後，返回首頁應刷新。
+- Favorites 點擊商家後可進入該商家詳情/品項頁。
 - Notifications 中央 tab 可開啟通知列表。
 - Profile 推播狀態應使用一般使用者看得懂的描述，不顯示工程欄位。
 

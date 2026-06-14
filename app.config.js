@@ -1,3 +1,8 @@
+const androidGoogleMapsApiKey =
+  process.env.GOOGLE_MAPS_ANDROID_API_KEY ||
+  process.env.EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY ||
+  process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+
 module.exports = () => ({
   name: "vendor_map_app",
   slug: "vendor_map_app",
@@ -29,6 +34,13 @@ module.exports = () => ({
     },
     edgeToEdgeEnabled: true,
     package: "com.tomslighter.vendormapapp",
+    config: androidGoogleMapsApiKey
+      ? {
+          googleMaps: {
+            apiKey: androidGoogleMapsApiKey,
+          },
+        }
+      : undefined,
   },
   web: {
     bundler: "metro",

@@ -1,3 +1,4 @@
+import { pixelColors, pixelFont } from "@/theme/pixel";
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import VendorBroadcastTabButton from "../../../components/VendorBroadcastTabButton";
@@ -15,14 +16,23 @@ const VendorLayout = () => {
           alignItems: "center",
         },
         tabBarStyle: {
-          backgroundColor: "#ffffff",
+          backgroundColor: pixelColors.surface,
           height: 74,
           position: "absolute",
           elevation: 0,
           overflow: "visible",
+          borderTopWidth: 2,
+          borderTopColor: pixelColors.ink,
         },
-        tabBarActiveTintColor: "#FF6B6B",
-        tabBarInactiveTintColor: "#9ca3af",
+        tabBarLabelStyle: {
+          fontFamily: pixelFont.body,
+          fontSize: 11,
+          letterSpacing: 0.5,
+          includeFontPadding: false,
+          marginTop: 2,
+        },
+        tabBarActiveTintColor: pixelColors.gold,
+        tabBarInactiveTintColor: pixelColors.gray300,
       }}
     >
       <Tabs.Screen
@@ -37,8 +47,8 @@ const VendorLayout = () => {
       <Tabs.Screen
         name="menu"
         options={{
-          title: "菜單",
-          tabBarIcon: ({ color, size }) => (
+          title: "品項",
+          tabBarIcon: ({ color }) => (
             <Ionicons name="restaurant" size={24} color={color} />
           ),
         }}
@@ -56,7 +66,7 @@ const VendorLayout = () => {
         name="location"
         options={{
           title: "地點",
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon: ({ color }) => (
             <Ionicons name="location" size={24} color={color} />
           ),
         }}
@@ -65,7 +75,7 @@ const VendorLayout = () => {
         name="profile"
         options={{
           title: "個人",
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon: ({ color }) => (
             <Ionicons name="person" size={24} color={color} />
           ),
         }}

@@ -1,4 +1,5 @@
 import ConsumerNotificationsTabButton from "@/components/ConsumerNotificationsTabButton";
+import { pixelColors, pixelFont } from "@/theme/pixel";
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 
@@ -15,14 +16,23 @@ const ConsumerLayout = () => {
           alignItems: "center",
         },
         tabBarStyle: {
-          backgroundColor: "#ffffff",
+          backgroundColor: pixelColors.surface,
           height: 74,
           position: "absolute",
           elevation: 0,
           overflow: "visible",
+          borderTopWidth: 2,
+          borderTopColor: pixelColors.ink,
         },
-        tabBarActiveTintColor: "#667eea",
-        tabBarInactiveTintColor: "#9ca3af",
+        tabBarLabelStyle: {
+          fontFamily: pixelFont.body,
+          fontSize: 11,
+          letterSpacing: 0.5,
+          includeFontPadding: false,
+          marginTop: 2,
+        },
+        tabBarActiveTintColor: pixelColors.gold,
+        tabBarInactiveTintColor: pixelColors.gray300,
       }}
     >
       <Tabs.Screen
@@ -38,12 +48,12 @@ const ConsumerLayout = () => {
         name="location"
         options={{
           title: "地點",
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon: ({ color }) => (
             <Ionicons name="location" size={24} color={color} />
           ),
         }}
       />
-      {/* TODO: 主動掃描附近開啟攤車 */}
+      {/* TODO: 主動掃描附近開啟商家 */}
       <Tabs.Screen
         name="notifications"
         options={{
@@ -57,7 +67,7 @@ const ConsumerLayout = () => {
         name="favorites"
         options={{
           title: "收藏",
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon: ({ color }) => (
             <Ionicons name="heart" size={24} color={color} />
           ),
         }}
@@ -66,11 +76,12 @@ const ConsumerLayout = () => {
         name="profile"
         options={{
           title: "個人",
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon: ({ color }) => (
             <Ionicons name="person" size={24} color={color} />
           ),
         }}
       />
+      <Tabs.Screen name="vendor/[id]" options={{ href: null }} />
     </Tabs>
   );
 };

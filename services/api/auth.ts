@@ -19,6 +19,10 @@ export interface UserData {
     business_license?: string;
     verification_status?: "unverified" | "verified";
     business_license_verified_at?: string | null;
+    discovery_category_id?: string | null;
+    discovery_subcategory_id?: string | null;
+    active_hub_id?: string | null;
+    is_public?: boolean;
     updated_at: string;
   };
   created_at: string;
@@ -137,7 +141,7 @@ export const authApi = {
     }),
 
   getProfile: () =>
-    request<UserData>('/user/profile', {
+    request<UserData>('/api/v1/user/profile', {
       method: 'GET',
       requireAuth: true,
     }) as Promise<GetUserInfoResponse>,

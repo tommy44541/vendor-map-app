@@ -107,6 +107,8 @@ export interface User {
   userType: UserType;
   avatar?: string;
   createdAt: string;
+  merchantProfile?: UserData["merchant_profile"];
+  userProfile?: UserData["user_profile"];
 }
 
 export type AuthActionResult =
@@ -150,6 +152,7 @@ interface AuthContextType extends AuthState {
   }) => Promise<AuthActionResult>;
   logout: () => Promise<void>;
   updateUser: (userData: Partial<User>) => void;
+  syncUserFromApi: (apiUser: UserData) => void;
 }
 
 const resolveUserType = (
@@ -161,9 +164,9 @@ const resolveUserType = (
 
   if (preferredUserType === "vendor" && hasVendorRole) return "vendor";
   if (preferredUserType === "consumer" && hasConsumerRole) return "consumer";
-  if (hasVendorRole && !hasConsumerRole) return "vendor";
-  if (hasConsumerRole) return "consumer";
 
+  // 不要因為另一種 role 存在就靜默切換,
+  // 維持 caller 表達的意圖,讓下游能 surface「此帳號沒有對應角色」。
   return preferredUserType;
 };
 
@@ -176,6 +179,8 @@ const mapApiUserToAuthUser = (
   name: apiUser.name,
   userType: resolveUserType(apiUser, preferredUserType),
   createdAt: apiUser.created_at,
+  merchantProfile: apiUser.merchant_profile,
+  userProfile: apiUser.user_profile,
 });
 
 const roleToUserType = (role: string | undefined, fallback: UserType): UserType => {
@@ -617,6 +622,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     });
   };
 
+  // 由 getProfile 等 API 拿到最新 apiUser 後,把 merchant_profile / user_profile
+  // 同步回 context 與 AsyncStorage,讓其他畫面與下次 app 啟動都看到最新狀態。
+  const syncUserFromApi = (apiUser: UserData) => {
+    setAuthState((prev) => {
+      if (!prev.user) return prev;
+      const updatedUser = mapApiUserToAuthUser(apiUser, prev.user.userType);
+      saveUserInfo(updatedUser);
+      return { ...prev, user: updatedUser };
+    });
+  };
+
   const value: AuthContextType = {
     ...authState,
     login,
@@ -625,6 +641,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     completeMerchantOnboarding,
     logout,
     updateUser,
+    syncUserFromApi,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

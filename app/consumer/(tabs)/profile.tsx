@@ -1,28 +1,34 @@
+import {
+  PixelButton,
+  PixelCard,
+  PixelChip,
+  PixelText,
+  PixelTextInput,
+} from "@/components/pixel";
+import { deviceApi, GetDevicesData } from "@/services/api/device";
+import { ApiError } from "@/services/api/util";
+import { pixelBorderWidth, pixelColors, pixelRadius } from "@/theme/pixel";
+import {
+  getFcmTokenOrNull,
+  getPushPermissionStatus,
+  getRegistrationCache,
+  getStableDeviceId,
+  onUserAuthenticated,
+} from "@/utils/push";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
+import * as Device from "expo-device";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Platform,
   Pressable,
   ScrollView,
   StatusBar,
+  StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { deviceApi, GetDevicesData } from "../../../services/api/device";
-import { ApiError } from "../../../services/api/util";
-import * as Device from "expo-device";
-import {
-  getRegistrationCache,
-  getFcmTokenOrNull,
-  getPushPermissionStatus,
-  getStableDeviceId,
-  onUserAuthenticated,
-} from "../../../utils/push";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const normalizePlatform = () => {
   if (Platform.OS === "ios") return "ios";
@@ -36,35 +42,7 @@ const shortText = (v: string, head = 14, tail = 10) => {
   return `${s.slice(0, head)}...${s.slice(-tail)}`;
 };
 
-function Badge({
-  label,
-  tone = "neutral",
-}: {
-  label: string;
-  tone?: "neutral" | "success" | "danger" | "warning";
-}) {
-  const cls =
-    tone === "success"
-      ? "bg-green-100"
-      : tone === "danger"
-        ? "bg-rose-100"
-        : tone === "warning"
-          ? "bg-amber-100"
-          : "bg-gray-100";
-  const textCls =
-    tone === "success"
-      ? "text-green-700"
-      : tone === "danger"
-        ? "text-rose-700"
-        : tone === "warning"
-          ? "text-amber-700"
-          : "text-gray-700";
-  return (
-    <View className={`${cls} px-2.5 py-1 rounded-full`}>
-      <Text className={`text-xs font-semibold ${textCls}`}>{label}</Text>
-    </View>
-  );
-}
+type ChipTone = "green" | "red" | "gold" | "paper";
 
 const Profile = () => {
   const insets = useSafeAreaInsets();
@@ -75,6 +53,7 @@ const Profile = () => {
   const [devices, setDevices] = useState<GetDevicesData[]>([]);
   const [cacheSummary, setCacheSummary] = useState<string>("");
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showDebugTools, setShowDebugTools] = useState(false);
   const [showFullToken, setShowFullToken] = useState(false);
 
   const platform = useMemo(() => normalizePlatform(), []);
@@ -94,7 +73,7 @@ const Profile = () => {
       if (error instanceof ApiError && error.code === "TOKEN_EXPIRED") {
         Alert.alert("登入已過期", "請重新登入後再試");
       } else {
-        Alert.alert("錯誤", "取得裝置列表失敗，請稍後重試");
+        Alert.alert("錯誤", "取得裝置列表失敗,請稍後重試");
       }
     } finally {
       setIsLoading(false);
@@ -113,7 +92,10 @@ const Profile = () => {
     (async () => {
       const p = await getPushPermissionStatus();
       setPermission(p);
-      const [id, t] = await Promise.all([getStableDeviceId(), getFcmTokenOrNull()]);
+      const [id, t] = await Promise.all([
+        getStableDeviceId(),
+        getFcmTokenOrNull(),
+      ]);
       setLocalDeviceId(id || "");
       setFcmToken(t || "");
       await refreshCache();
@@ -123,11 +105,11 @@ const Profile = () => {
 
   const handleRegister = useCallback(async () => {
     if (!localDeviceId) {
-      Alert.alert("提示", "尚未取得本機 device_id，請稍後再試");
+      Alert.alert("提示", "尚未取得本機 device_id,請稍後再試");
       return;
     }
     if (!fcmToken.trim()) {
-      Alert.alert("提示", "請先輸入 FCM Token（或你目前使用的推播 token）");
+      Alert.alert("提示", "請先輸入 FCM Token (或你目前使用的推播 token)");
       return;
     }
 
@@ -143,7 +125,7 @@ const Profile = () => {
       await refreshCache();
     } catch (error: any) {
       console.error("註冊裝置失敗:", error);
-      Alert.alert("錯誤", "註冊裝置失敗，請稍後重試");
+      Alert.alert("錯誤", "註冊裝置失敗,請稍後重試");
     } finally {
       setIsLoading(false);
     }
@@ -165,7 +147,7 @@ const Profile = () => {
         await refreshCache();
       } catch (error: any) {
         console.error("更新 FCM token 失敗:", error);
-        Alert.alert("錯誤", "更新 FCM token 失敗，請稍後重試");
+        Alert.alert("錯誤", "更新 FCM token 失敗,請稍後重試");
       } finally {
         setIsLoading(false);
       }
@@ -175,7 +157,7 @@ const Profile = () => {
 
   const handleDeactivate = useCallback(
     async (deviceServerId: string) => {
-      Alert.alert("確認停用", "確定要停用此裝置嗎？", [
+      Alert.alert("確認停用", "確定要停用此裝置嗎?", [
         { text: "取消", style: "cancel" },
         {
           text: "停用",
@@ -184,15 +166,12 @@ const Profile = () => {
             try {
               setIsLoading(true);
               await deviceApi.deleteDevice(deviceServerId);
-              Alert.alert(
-                "成功",
-                "Device deactivated successfully"
-              );
+              Alert.alert("成功", "Device deactivated successfully");
               await loadDevices();
               await refreshCache();
             } catch (error: any) {
               console.error("停用裝置失敗:", error);
-              Alert.alert("錯誤", "停用裝置失敗，請稍後重試");
+              Alert.alert("錯誤", "停用裝置失敗,請稍後重試");
             } finally {
               setIsLoading(false);
             }
@@ -203,12 +182,12 @@ const Profile = () => {
     [loadDevices, refreshCache]
   );
 
-  const permissionMeta = useMemo(() => {
+  const permissionMeta = useMemo<{ label: string; tone: ChipTone }>(() => {
     const p = String(permission || "unknown");
-    if (p === "granted") return { label: "已允許", tone: "success" as const };
-    if (p === "denied") return { label: "已拒絕", tone: "danger" as const };
-    if (p === "undetermined") return { label: "未決定", tone: "warning" as const };
-    return { label: "未知", tone: "neutral" as const };
+    if (p === "granted") return { label: "已允許", tone: "green" };
+    if (p === "denied") return { label: "已拒絕", tone: "red" };
+    if (p === "undetermined") return { label: "未決定", tone: "gold" };
+    return { label: "未知", tone: "paper" };
   }, [permission]);
 
   const currentDevice = useMemo(
@@ -216,368 +195,515 @@ const Profile = () => {
     [devices, localDeviceId]
   );
 
-  const registrationMeta = useMemo(() => {
+  const registrationMeta = useMemo<{
+    label: string;
+    tone: ChipTone;
+    description: string;
+    actionLabel: string;
+    actionTone: "blue" | "gold" | "red";
+  }>(() => {
     if (currentDevice?.IsActive && fcmToken) {
       return {
         label: "已完成",
-        tone: "success" as const,
-        description: "這台裝置可以接收攤車通知。",
-        actionLabel: "重新檢查通知設定",
+        tone: "green",
+        description: "這台裝置可以接收已追蹤商家的通知。",
+        actionLabel: ">> 重新檢查通知設定",
+        actionTone: "blue",
       };
     }
 
     if (permission === "denied") {
       return {
         label: "未啟用",
-        tone: "danger" as const,
-        description: "你已拒絕通知權限，可能收不到攤車提醒。",
-        actionLabel: "重新設定通知",
+        tone: "red",
+        description: "你已拒絕通知權限,可能收不到商家提醒。",
+        actionLabel: "> 重新設定通知",
+        actionTone: "red",
       };
     }
 
     if (permission === "granted") {
       return {
         label: "處理中",
-        tone: "warning" as const,
-        description: "通知權限已開啟，但這台裝置尚未完成綁定。",
-        actionLabel: "完成通知設定",
+        tone: "gold",
+        description: "通知權限已開啟,但這台裝置尚未完成綁定。",
+        actionLabel: "> 完成通知設定",
+        actionTone: "gold",
       };
     }
 
     return {
       label: "未設定",
-      tone: "neutral" as const,
-      description: "完成通知設定後，才會在攤車出攤時收到提醒。",
-      actionLabel: "開啟通知",
+      tone: "paper",
+      description: "完成通知設定後,才會在商家發布營業訊息時收到提醒。",
+      actionLabel: "> 開啟通知",
+      actionTone: "blue",
     };
   }, [currentDevice?.IsActive, fcmToken, permission]);
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50" edges={["left", "right", "bottom"]}>
-      <LinearGradient
-        colors={["#667eea", "#764ba2"]}
-        style={{
-          paddingTop: insets.top + 12,
-          paddingBottom: 18,
-          paddingHorizontal: 16,
-        }}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        <View className="flex-row items-start justify-between">
-          <View className="flex-1 pr-3">
-            <Text className="text-2xl font-extrabold text-white">個人</Text>
-            <Text className="text-sm text-white/85 mt-1">
-              通知設定與帳號資訊
-            </Text>
-          </View>
-          <Pressable
-            onPress={async () => {
-              try {
-                setIsLoading(true);
-                await Promise.all([refreshCache(), loadDevices()]);
-              } finally {
-                setIsLoading(false);
-              }
-            }}
-            disabled={isLoading}
-            className="w-10 h-10 rounded-2xl items-center justify-center bg-white/25"
-          >
-            {isLoading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Ionicons name="refresh" size={18} color="#fff" />
-            )}
-          </Pressable>
+    <View style={styles.root}>
+      {/* HUD */}
+      <View style={[styles.hud, { paddingTop: insets.top + 8 }]}>
+        <View style={{ flex: 1 }}>
+          <PixelText variant="caption" tone="purple" display>
+            ACCOUNT
+          </PixelText>
+          <PixelText variant="display">個人</PixelText>
+          <View style={{ height: 4 }} />
+          <PixelText variant="caption" tone="muted">
+            通知設定與帳號資訊
+          </PixelText>
         </View>
-      </LinearGradient>
+        <PixelButton
+          label={isLoading ? "..." : ">> 重新整理"}
+          tone="purple"
+          size="sm"
+          disabled={isLoading}
+          onPress={async () => {
+            try {
+              setIsLoading(true);
+              await Promise.all([refreshCache(), loadDevices()]);
+            } finally {
+              setIsLoading(false);
+            }
+          }}
+        />
+      </View>
 
       <ScrollView
-        className="flex-1 px-5"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: 16, paddingBottom: 120, gap: 14 }}
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingTop: 16,
+          paddingBottom: 120,
+          gap: 14,
+        }}
       >
-        <View className="bg-white border border-gray-200 rounded-3xl p-4">
-          <View className="flex-row items-center justify-between">
-            <View className="flex-row items-center gap-2">
-              <View className="w-9 h-9 rounded-xl bg-gray-100 items-center justify-center">
-                <Ionicons name="notifications" size={18} color="#6b7280" />
-              </View>
-              <View>
-                <Text className="text-base font-bold text-gray-900">通知設定</Text>
-                <Text className="text-xs text-gray-500 mt-0.5">
-                  開啟後可收到已追蹤攤車的營業提醒
-                </Text>
-              </View>
-            </View>
-            <Badge label={registrationMeta.label} tone={registrationMeta.tone} />
-          </View>
-
-          <View className="mt-4 bg-gray-50 border border-gray-200 rounded-2xl p-4">
-            <View className="flex-row items-center justify-between">
-              <Text className="text-sm text-gray-600">通知權限</Text>
-              <Badge label={permissionMeta.label} tone={permissionMeta.tone} />
-            </View>
-
-            <View className="mt-3 flex-row items-center justify-between">
-              <Text className="text-sm text-gray-600">裝置綁定</Text>
-              <Badge label={registrationMeta.label} tone={registrationMeta.tone} />
-            </View>
-
-            <Text className="mt-4 text-sm leading-6 text-gray-700">
-              {registrationMeta.description}
-            </Text>
-          </View>
-
-          <View className="flex-row gap-3 mt-4">
-            <Pressable
-              onPress={async () => {
-                try {
-                  setIsLoading(true);
-                  const res = await onUserAuthenticated({
-                    requestPermissionIfNeeded: true,
-                  });
-                  const [p, id, t] = await Promise.all([
-                    getPushPermissionStatus(),
-                    getStableDeviceId(),
-                    getFcmTokenOrNull(),
-                  ]);
-                  setPermission(p);
-                  setLocalDeviceId(id || "");
-                  setFcmToken(t || "");
-                  await Promise.all([refreshCache(), loadDevices()]);
-                  Alert.alert("完成", res.ok ? "推播設定完成" : `未完成：${res.step}`);
-                } catch (e: any) {
-                  Alert.alert("錯誤", e?.message || "推播註冊失敗");
-                } finally {
-                  setIsLoading(false);
-                }
-              }}
-              disabled={isLoading}
-              className={`flex-1 rounded-2xl py-3 items-center ${
-                isLoading ? "bg-gray-300" : "bg-blue-600"
-              }`}
-            >
-              {isLoading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text className="text-white font-semibold">
-                  {registrationMeta.actionLabel}
-                </Text>
-              )}
-            </Pressable>
-
-            <Pressable
-              onPress={() => setShowAdvanced((v) => !v)}
-              className={`rounded-2xl py-3 px-4 items-center ${
-                showAdvanced ? "bg-gray-900" : "bg-gray-100"
-              }`}
-            >
+        {/* 通知設定 */}
+        <PixelCard
+          title="NOTIFY  SETUP"
+          titleTone={
+            registrationMeta.tone === "green"
+              ? "green"
+              : registrationMeta.tone === "red"
+                ? "red"
+                : "blue"
+          }
+          titleDisplay
+          padding={14}
+        >
+          <View style={styles.headerRow}>
+            <View style={styles.headerIcon}>
               <Ionicons
-                name={showAdvanced ? "close" : "construct-outline"}
+                name="notifications"
                 size={18}
-                color={showAdvanced ? "#FFFFFF" : "#111827"}
+                color={pixelColors.ink}
               />
-            </Pressable>
+            </View>
+            <View style={{ flex: 1 }}>
+              <PixelText variant="bodyLg">通知設定</PixelText>
+              <PixelText variant="caption" tone="muted">
+                開啟後可收到已追蹤商家的營業提醒
+              </PixelText>
+            </View>
+            <PixelChip
+              label={registrationMeta.label}
+              tone={registrationMeta.tone}
+              active
+            />
           </View>
-        </View>
 
-        <View className="bg-white border border-gray-200 rounded-3xl p-4">
+          <View style={styles.divider} />
+
+          <View style={styles.miniRow}>
+            <PixelText variant="caption" tone="muted">
+              通知權限
+            </PixelText>
+            <PixelChip
+              label={permissionMeta.label}
+              tone={permissionMeta.tone}
+              active
+            />
+          </View>
+          <View style={{ height: 8 }} />
+          <View style={styles.miniRow}>
+            <PixelText variant="caption" tone="muted">
+              裝置綁定
+            </PixelText>
+            <PixelChip
+              label={registrationMeta.label}
+              tone={registrationMeta.tone}
+              active
+            />
+          </View>
+
+          <View style={styles.divider} />
+
+          <PixelText variant="body">{registrationMeta.description}</PixelText>
+
+          <View style={{ height: 12 }} />
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <View style={{ flex: 1 }}>
+              <PixelButton
+                label={isLoading ? "..." : registrationMeta.actionLabel}
+                tone={registrationMeta.actionTone}
+                fullWidth
+                disabled={isLoading}
+                onPress={async () => {
+                  try {
+                    setIsLoading(true);
+                    const res = await onUserAuthenticated({
+                      requestPermissionIfNeeded: true,
+                    });
+                    const [p, id, t] = await Promise.all([
+                      getPushPermissionStatus(),
+                      getStableDeviceId(),
+                      getFcmTokenOrNull(),
+                    ]);
+                    setPermission(p);
+                    setLocalDeviceId(id || "");
+                    setFcmToken(t || "");
+                    await Promise.all([refreshCache(), loadDevices()]);
+                    Alert.alert(
+                      "完成",
+                      res.ok ? "推播設定完成" : `未完成:${res.step}`
+                    );
+                  } catch (e: any) {
+                    Alert.alert("錯誤", e?.message || "推播註冊失敗");
+                  } finally {
+                    setIsLoading(false);
+                  }
+                }}
+              />
+            </View>
+            <PixelButton
+              label={showAdvanced ? "x" : "DEV"}
+              tone={showAdvanced ? "ink" : "paper"}
+              size="md"
+              display
+              onPress={() => setShowAdvanced((v) => !v)}
+            />
+          </View>
+        </PixelCard>
+
+        {/* 診斷資訊 */}
+        <PixelCard
+          title="DIAGNOSTICS"
+          titleTone="purple"
+          titleDisplay
+          padding={14}
+        >
           <Pressable
             onPress={() => setShowAdvanced((v) => !v)}
-            className="flex-row items-center justify-between"
+            style={styles.headerRow}
           >
-            <View className="flex-row items-center gap-2">
-              <View className="w-9 h-9 rounded-xl bg-gray-100 items-center justify-center">
-                <Ionicons name="code-slash" size={18} color="#6b7280" />
-              </View>
-              <View>
-                <Text className="text-base font-bold text-gray-900">診斷資訊</Text>
-                <Text className="text-xs text-gray-500 mt-0.5">
-                  裝置編號、token、快取與除錯工具
-                </Text>
-              </View>
+            <View style={styles.headerIconAlt}>
+              <Ionicons
+                name="code-slash"
+                size={18}
+                color={pixelColors.ink}
+              />
             </View>
-            <Ionicons
-              name={showAdvanced ? "chevron-up" : "chevron-down"}
-              size={18}
-              color="#6b7280"
-            />
+            <View style={{ flex: 1 }}>
+              <PixelText variant="bodyLg">診斷資訊</PixelText>
+              <PixelText variant="caption" tone="muted">
+                裝置編號、token、除錯工具
+              </PixelText>
+            </View>
+            <PixelText variant="title" tone="gold" display>
+              {showAdvanced ? "-" : "+"}
+            </PixelText>
           </Pressable>
 
           {showAdvanced ? (
-            <View className="mt-4 gap-3">
-              <View className="bg-gray-50 border border-gray-200 rounded-2xl p-4">
-                <View className="flex-row items-center justify-between">
-                  <Text className="text-xs text-gray-500">platform</Text>
-                  <Text className="text-xs text-gray-900 font-semibold">{platform}</Text>
-                </View>
+            <>
+              {/* 裝置基本資訊 */}
+              <View style={styles.divider} />
+              <PixelText variant="caption" tone="gold" display>
+                DEVICE  INFO
+              </PixelText>
+              <View style={{ height: 8 }} />
 
-                <View className="mt-3">
-                  <Text className="text-xs text-gray-500">device_id</Text>
-                  <Text
-                    selectable
-                    className="text-xs text-gray-900 mt-2"
-                    style={{ fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace" }}
-                    numberOfLines={2}
-                  >
-                    {localDeviceId || "(空)"}
-                  </Text>
-                </View>
-
-                <View className="mt-3">
-                  <View className="flex-row items-center justify-between">
-                    <Text className="text-xs text-gray-500">token</Text>
-                    <Pressable
-                      onPress={() => setShowFullToken((v) => !v)}
-                      disabled={!fcmToken}
-                      className={`px-2 py-1 rounded-full ${
-                        fcmToken ? "bg-gray-200" : "bg-gray-100"
-                      }`}
-                    >
-                      <Text className="text-[11px] text-gray-700 font-semibold">
-                        {showFullToken ? "收起" : "展開"}
-                      </Text>
-                    </Pressable>
-                  </View>
-                  <Text
-                    selectable
-                    className="text-xs text-gray-900 mt-2"
-                    style={{ fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace" }}
-                    numberOfLines={showFullToken ? undefined : 2}
-                  >
-                    {fcmToken ? (showFullToken ? fcmToken : shortText(fcmToken)) : "(空)"}
-                  </Text>
-                </View>
+              <View style={styles.miniRow}>
+                <PixelText variant="caption" tone="muted">
+                  platform
+                </PixelText>
+                <PixelText variant="body">{platform}</PixelText>
               </View>
 
-              <View className="bg-gray-50 border border-gray-200 rounded-2xl p-4">
-                <Text className="text-xs font-semibold text-gray-700 mb-2">
-                  註冊快取
-                </Text>
-                <Text
-                  selectable
-                  className="text-xs text-gray-700"
-                  style={{ fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace" }}
-                >
-                  {cacheSummary || "(空)"}
-                </Text>
-              </View>
+              <View style={{ height: 10 }} />
+              <PixelText variant="caption" tone="muted">
+                device_id
+              </PixelText>
+              <Text selectable style={styles.monoText} numberOfLines={2}>
+                {localDeviceId || "(空)"}
+              </Text>
 
-              <View className="bg-gray-50 border border-gray-200 rounded-2xl p-4">
-                <Text className="text-xs font-semibold text-gray-700 mb-2">
-                  手動註冊（除錯）
-                </Text>
-                <TextInput
-                  value={fcmToken}
-                  onChangeText={setFcmToken}
-                  placeholder="貼上 token..."
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  editable={!isLoading}
-                  className="border border-gray-200 rounded-2xl px-4 py-3 text-gray-900 bg-white"
+              <View style={{ height: 10 }} />
+              <View style={styles.miniRow}>
+                <PixelText variant="caption" tone="muted">
+                  token
+                </PixelText>
+                <PixelChip
+                  label={showFullToken ? "收起" : "展開"}
+                  tone="paper"
+                  active={!!fcmToken}
+                  onPress={() =>
+                    fcmToken ? setShowFullToken((v) => !v) : null
+                  }
                 />
-                <Pressable
-                  onPress={handleRegister}
-                  disabled={isLoading}
-                  className={`mt-3 rounded-2xl py-3 items-center ${
-                    isLoading ? "bg-gray-300" : "bg-gray-900"
-                  }`}
-                >
-                  <Text className="text-white font-semibold">手動註冊本機裝置</Text>
-                </Pressable>
-                <Pressable
-                  onPress={async () => {
-                    try {
-                      setIsLoading(true);
-                      const t = await getFcmTokenOrNull();
-                      if (!t) {
-                        const msg =
-                          Platform.OS === "ios" && Device.isDevice === false
-                            ? "iOS 模擬器無法取得 APNs token，也無法測真正遠端推播。請改用 iPhone 實機測試。"
-                            : Platform.OS === "android"
-                              ? "目前取不到 FCM token。請確認你用的是含 Google Play 的模擬器，且原生端已正確配置 FCM。"
-                              : "目前取不到推播 token，請確認原生端推播設定是否正確。";
-                        Alert.alert("找不到 Token", msg);
-                        return;
-                      }
-                      setFcmToken(t);
-                    } catch (e: any) {
-                      Alert.alert("錯誤", e?.message || "取得 token 失敗");
-                    } finally {
-                      setIsLoading(false);
-                    }
-                  }}
-                  disabled={isLoading}
-                  className={`mt-3 rounded-2xl py-3 items-center ${
-                    isLoading ? "bg-gray-200" : "bg-white border border-gray-200"
-                  }`}
-                >
-                  <Text className="text-gray-900 font-semibold">重新取得 Token</Text>
-                </Pressable>
               </View>
+              <Text
+                selectable
+                style={styles.monoText}
+                numberOfLines={showFullToken ? undefined : 2}
+              >
+                {fcmToken
+                  ? showFullToken
+                    ? fcmToken
+                    : shortText(fcmToken)
+                  : "(空)"}
+              </Text>
 
-              <View className="bg-gray-50 border border-gray-200 rounded-2xl p-4">
-                <Text className="text-xs font-semibold text-gray-700 mb-2">
-                  我的裝置列表
-                </Text>
+              {/* 我的裝置列表 */}
+              <View style={styles.divider} />
+              <View style={styles.miniRow}>
+                <PixelText variant="caption" tone="blue" display>
+                  MY  DEVICES
+                </PixelText>
+                <PixelChip
+                  label={`${devices.length} 台`}
+                  tone="paper"
+                  active
+                />
+              </View>
+              <View style={{ height: 8 }} />
 
-                {devices.length === 0 ? (
-                  <Text className="text-xs text-gray-600">（目前沒有）</Text>
-                ) : (
-                  <View className="gap-3">
-                    {devices.map((d) => (
-                      <View
-                        key={d.ID}
-                        className="bg-white border border-gray-200 rounded-2xl p-4"
-                      >
-                        <Text className="text-xs font-semibold text-gray-900">
-                          ID: {d.ID}
-                        </Text>
-                        <Text className="text-xs text-gray-600 mt-2">
-                          DeviceID: {d.DeviceID}
-                        </Text>
-                        <Text className="text-xs text-gray-600 mt-1">
-                          Platform: {d.Platform}
-                        </Text>
-                        <Text className="text-xs text-gray-600 mt-1">
-                          Active: {String(d.IsActive)}
-                        </Text>
-                        <Text className="text-[11px] text-gray-500 mt-2">
-                          UpdatedAt: {d.UpdatedAt}
-                        </Text>
+              {devices.length === 0 ? (
+                <PixelText variant="caption" tone="muted">
+                  (目前沒有)
+                </PixelText>
+              ) : (
+                <View style={{ gap: 10 }}>
+                  {devices.map((d) => (
+                    <View key={d.ID} style={styles.deviceBox}>
+                      <View style={styles.miniRow}>
+                        <PixelText variant="caption" tone="muted">
+                          DeviceID
+                        </PixelText>
+                        <PixelChip
+                          label={d.IsActive ? "啟用" : "停用"}
+                          tone={d.IsActive ? "green" : "red"}
+                          active
+                        />
+                      </View>
+                      <Text selectable style={styles.monoText}>
+                        {d.DeviceID}
+                      </Text>
 
-                        <View className="flex-row gap-3 mt-3">
-                          <Pressable
+                      <View style={{ height: 8 }} />
+                      <View style={styles.miniRow}>
+                        <PixelText variant="caption" tone="muted">
+                          Platform
+                        </PixelText>
+                        <PixelText variant="body">{d.Platform}</PixelText>
+                      </View>
+
+                      <View style={{ height: 4 }} />
+                      <View style={styles.miniRow}>
+                        <PixelText variant="caption" tone="muted">
+                          UpdatedAt
+                        </PixelText>
+                        <Text
+                          selectable
+                          style={[styles.monoText, styles.monoRight]}
+                          numberOfLines={1}
+                        >
+                          {d.UpdatedAt}
+                        </Text>
+                      </View>
+
+                      <View style={{ height: 10 }} />
+                      <View style={{ flexDirection: "row", gap: 8 }}>
+                        <View style={{ flex: 1 }}>
+                          <PixelButton
+                            label={isLoading ? "..." : "> 更新 Token"}
+                            tone="blue"
+                            fullWidth
+                            disabled={isLoading}
                             onPress={() => handleUpdateToken(d.ID)}
+                          />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <PixelButton
+                            label={isLoading ? "..." : "x 停用"}
+                            tone="red"
+                            fullWidth
                             disabled={isLoading}
-                            className={`flex-1 rounded-2xl py-2 items-center ${
-                              isLoading ? "bg-gray-200" : "bg-blue-600"
-                            }`}
-                          >
-                            <Text className="text-white font-semibold">更新 Token</Text>
-                          </Pressable>
-                          <Pressable
                             onPress={() => handleDeactivate(d.ID)}
-                            disabled={isLoading}
-                            className={`flex-1 rounded-2xl py-2 items-center ${
-                              isLoading ? "bg-gray-200" : "bg-rose-600"
-                            }`}
-                          >
-                            <Text className="text-white font-semibold">停用</Text>
-                          </Pressable>
+                          />
                         </View>
                       </View>
-                    ))}
-                  </View>
-                )}
-              </View>
-            </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* 除錯工具二級展開 */}
+              <View style={styles.divider} />
+              <Pressable
+                style={styles.miniRow}
+                onPress={() => setShowDebugTools((v) => !v)}
+              >
+                <PixelText variant="caption" tone="red" display>
+                  DEBUG  TOOLS
+                </PixelText>
+                <PixelText variant="body" tone="gold" display>
+                  {showDebugTools ? "-" : "+"}
+                </PixelText>
+              </Pressable>
+
+              {showDebugTools ? (
+                <>
+                  <View style={{ height: 10 }} />
+                  <PixelText variant="caption" tone="muted">
+                    註冊快取
+                  </PixelText>
+                  <Text selectable style={styles.monoText}>
+                    {cacheSummary || "(空)"}
+                  </Text>
+
+                  <View style={{ height: 12 }} />
+                  <PixelTextInput
+                    label="手動填入 FCM TOKEN"
+                    placeholder="貼上 token..."
+                    value={fcmToken}
+                    onChangeText={setFcmToken}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    editable={!isLoading}
+                  />
+                  <View style={{ height: 10 }} />
+                  <PixelButton
+                    label={isLoading ? "..." : "> 手動註冊本機裝置"}
+                    tone="ink"
+                    fullWidth
+                    disabled={isLoading}
+                    onPress={handleRegister}
+                  />
+                  <View style={{ height: 8 }} />
+                  <PixelButton
+                    label={isLoading ? "..." : ">> 重新取得 Token"}
+                    tone="paper"
+                    fullWidth
+                    disabled={isLoading}
+                    onPress={async () => {
+                      try {
+                        setIsLoading(true);
+                        const t = await getFcmTokenOrNull();
+                        if (!t) {
+                          const msg =
+                            Platform.OS === "ios" &&
+                            Device.isDevice === false
+                              ? "iOS 模擬器無法取得 APNs token,也無法測真正遠端推播。請改用 iPhone 實機測試。"
+                              : Platform.OS === "android"
+                                ? "目前取不到 FCM token。請確認你用的是含 Google Play 的模擬器,且原生端已正確配置 FCM。"
+                                : "目前取不到推播 token,請確認原生端推播設定是否正確。";
+                          Alert.alert("找不到 Token", msg);
+                          return;
+                        }
+                        setFcmToken(t);
+                      } catch (e: any) {
+                        Alert.alert("錯誤", e?.message || "取得 token 失敗");
+                      } finally {
+                        setIsLoading(false);
+                      }
+                    }}
+                  />
+                </>
+              ) : null}
+            </>
           ) : null}
-        </View>
+        </PixelCard>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: pixelColors.bg,
+  },
+  hud: {
+    backgroundColor: pixelColors.surface,
+    paddingHorizontal: 16,
+    paddingBottom: 14,
+    borderBottomWidth: pixelBorderWidth,
+    borderBottomColor: pixelColors.ink,
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 12,
+  },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  headerIcon: {
+    width: 36,
+    height: 36,
+    backgroundColor: pixelColors.gold,
+    borderWidth: pixelBorderWidth,
+    borderColor: pixelColors.ink,
+    borderRadius: pixelRadius,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerIconAlt: {
+    width: 36,
+    height: 36,
+    backgroundColor: pixelColors.purple,
+    borderWidth: pixelBorderWidth,
+    borderColor: pixelColors.ink,
+    borderRadius: pixelRadius,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  // 2px 黑線分區,取代雙層 inset box
+  divider: {
+    height: 2,
+    backgroundColor: pixelColors.ink,
+    marginVertical: 12,
+  },
+  miniRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  // 裝置卡仍保留,因為每張卡有自己的 action buttons,需要視覺邊界
+  deviceBox: {
+    borderWidth: pixelBorderWidth,
+    borderColor: pixelColors.ink,
+    borderRadius: pixelRadius,
+    backgroundColor: pixelColors.surfaceAlt,
+    padding: 12,
+  },
+  monoText: {
+    color: pixelColors.white,
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 4,
+  },
+  monoRight: {
+    flex: 1,
+    marginLeft: 8,
+    marginTop: 0,
+    textAlign: "right",
+  },
+});
 
 export default Profile;

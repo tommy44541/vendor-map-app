@@ -30,7 +30,7 @@ test("getMerchantDisplayName falls back through known backend shapes", () => {
 });
 
 test("getMerchantDisplayName trims blanks and returns empty string when unavailable", () => {
-  assert.equal(getMerchantDisplayName({ merchant_name: "  好吃餐車  " }), "好吃餐車");
+  assert.equal(getMerchantDisplayName({ merchant_name: "  好物小店  " }), "好物小店");
   assert.equal(getMerchantDisplayName({ merchant_name: "   " }), "");
   assert.equal(getMerchantDisplayName(undefined), "");
 });

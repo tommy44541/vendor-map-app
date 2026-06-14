@@ -1,10 +1,17 @@
+import {
+  PixelButton,
+  PixelCard,
+  PixelChip,
+  PixelText,
+} from "@/components/pixel";
 import type { PublishLocationNotificationData } from "@/services/api/notification";
+import { pixelBorderWidth, pixelColors, pixelRadius } from "@/theme/pixel";
 import {
   clearRecentPublishedResult,
   getRecentPublishedResults,
 } from "@/utils/vendor/recentPublish";
+import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
@@ -14,21 +21,30 @@ import {
   Pressable,
   ScrollView,
   StatusBar,
-  Text,
-  TouchableOpacity,
+  StyleSheet,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../../../contexts/AuthContext";
+
+type QuickItem = {
+  id: string;
+  title: string;
+  description: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  tone: "red" | "blue" | "gold" | "green";
+  onPress: () => void;
+};
 
 export default function VendorHomeScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [recentPublishes, setRecentPublishes] = useState<
     PublishLocationNotificationData[]
   >([]);
 
-  // 設定狀態列樣式
   useEffect(() => {
     StatusBar.setBarStyle("light-content");
     if (Platform.OS === "android") {
@@ -60,11 +76,11 @@ export default function VendorHomeScreen() {
   useFocusEffect(
     useCallback(() => {
       loadRecentPublish();
-    }, [loadRecentPublish])
+    }, [loadRecentPublish]),
   );
 
   const handleClearRecentPublish = () => {
-    Alert.alert("清除送出紀錄", "要清除此區塊顯示的本地紀錄（最多5筆）嗎？", [
+    Alert.alert("清除送出紀錄", "要清除此區塊顯示的本地紀錄(最多 5 筆)嗎?", [
       { text: "取消", style: "cancel" },
       {
         text: "清除",
@@ -77,246 +93,413 @@ export default function VendorHomeScreen() {
     ]);
   };
 
-  const menuItems = [
+  const quickItems: QuickItem[] = [
     {
       id: "profile",
       title: "個人資料",
-      description: "管理您的攤車資訊",
-      icon: "👤",
-      color: "#FF6B6B",
+      description: "管理商家資訊",
+      icon: "person",
+      tone: "red",
       onPress: () => router.push("/vendor/profile"),
     },
     {
       id: "menu",
-      title: "菜單管理",
-      description: "管理您的菜單",
-      icon: "🍔",
-      color: "#45B7D1",
+      title: "品項管理",
+      description: "編輯商品與價格",
+      icon: "restaurant",
+      tone: "blue",
       onPress: () => router.push("/vendor/menu"),
     },
     {
       id: "location",
       title: "位置設定",
-      description: "設定攤車營業位置",
-      icon: "📍",
-      color: "#45B7D1",
+      description: "出攤地點與時間",
+      icon: "location",
+      tone: "gold",
       onPress: () => router.push("/vendor/location"),
     },
   ];
 
   return (
-    <View className="flex-1 bg-gray-50">
-      {/* 頂部狀態列 */}
-      <LinearGradient
-        colors={["#FF6B6B", "#FF8E53"]}
-        style={{
-          paddingTop: 48,
-          paddingBottom: 10,
-          paddingHorizontal: 10,
-        }}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        <View className="flex-row justify-between items-center mb-6">
-          <TouchableOpacity
-            className="flex-row items-center flex-1"
-            onPress={() => setShowUserMenu(true)}
-            activeOpacity={0.8}
-          >
-            <View className="w-12 h-12 rounded-full bg-white/20 justify-center items-center mr-4">
-              <Text className="text-2xl font-bold text-white">
-                {user?.name?.charAt(0) || "攤"}
-              </Text>
-            </View>
-            <View className="flex-1">
-              <Text className="text-sm text-white/80 mb-1">歡迎回來</Text>
-              <Text className="text-xl font-bold text-white">
-                {user?.name || "攤車商家"}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        </View>
+    <View style={styles.root}>
+      {/* HUD */}
+      <View style={[styles.hud, { paddingTop: insets.top + 8 }]}>
+        <Pressable style={styles.hudUser} onPress={() => setShowUserMenu(true)}>
+          <View style={styles.avatar}>
+            <PixelText variant="bodyLg" display tone="inverse">
+              {(user?.name?.charAt(0) || "V").toUpperCase()}
+            </PixelText>
+          </View>
+          <View style={{ flex: 1 }}>
+            <PixelText variant="caption" tone="red" display>
+              PLAYER 1
+            </PixelText>
+            <PixelText variant="bodyLg">{user?.name || "商家"}</PixelText>
+          </View>
+          <PixelChip label="MENU" tone="paper" active display />
+        </Pressable>
 
-        {/* <View className="bg-white/10 rounded-2xl p-5">
-          <Text className="text-base font-semibold text-white mb-4 text-center">
-            今日營業狀態
-          </Text>
-          <View className="flex-row justify-around">
-            <View className="items-center">
-              <Text className="text-xl font-bold text-white mb-1">-</Text>
-              <Text className="text-xs text-white/80">訂單</Text>
-            </View>
-            <View className="items-center">
-              <Text className="text-xl font-bold text-white mb-1">-</Text>
-              <Text className="text-xs text-white/80">追蹤人數</Text>
-            </View>
-            <View className="items-center">
-              <Text className="text-xl font-bold text-white mb-1">-</Text>
-              <Text className="text-xs text-white/80">評分</Text>
+        <View style={{ height: 12 }} />
+        <View style={styles.statRow}>
+          <StatBox label="訂單" value="-" tone="red" />
+          <StatBox label="追蹤" value="-" tone="gold" />
+          <StatBox label="評分" value="-" tone="blue" />
+        </View>
+      </View>
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingTop: 14,
+          paddingBottom: 110,
+          gap: 16,
+        }}
+      >
+        {/* 快速功能 */}
+        <View>
+          <View style={styles.sectionHeader}>
+            <View>
+              <PixelText variant="caption" tone="gold" display>
+                QUICK ACCESS
+              </PixelText>
+              <PixelText variant="title">快速功能</PixelText>
             </View>
           </View>
-        </View> */}
-      </LinearGradient>
 
-      {/* 主要內容區域 */}
-      <ScrollView
-        className="flex-1 px-6 pt-6"
-        showsVerticalScrollIndicator={false}
-      >
-        <View className="mb-8">
-          <Text className="text-xl font-bold text-gray-800 mb-5">快速功能</Text>
-          <View className="w-full flex-row justify-between flex-wrap">
-            {menuItems.map((item) => (
-              <TouchableOpacity
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            {quickItems.map((item) => (
+              <Pressable
                 key={item.id}
-                className="w-[30%] bg-white rounded-2xl p-5 items-center shadow-sm"
                 onPress={item.onPress}
-                activeOpacity={0.8}
+                style={{ flex: 1 }}
               >
-                <View
-                  className="w-12 h-12 rounded-full justify-center items-center mb-3"
-                  style={{ backgroundColor: item.color }}
-                >
-                  <Text className="text-2xl">{item.icon}</Text>
+                <View style={styles.quickCard}>
+                  <View
+                    style={[
+                      styles.quickIcon,
+                      { backgroundColor: toneToColor(item.tone) },
+                    ]}
+                  >
+                    <Ionicons
+                      name={item.icon}
+                      size={22}
+                      color={pixelColors.ink}
+                    />
+                  </View>
+                  <View style={{ height: 8 }} />
+                  <PixelText variant="bodyLg" style={{ textAlign: "center" }}>
+                    {item.title}
+                  </PixelText>
+                  <View style={{ height: 4 }} />
+                  <PixelText
+                    variant="caption"
+                    tone="muted"
+                    style={{ textAlign: "center" }}
+                  >
+                    {item.description}
+                  </PixelText>
                 </View>
-                <Text className="text-base font-semibold text-gray-800 mb-2 text-center">
-                  {item.title}
-                </Text>
-                <Text className="text-xs text-gray-500 text-center leading-4">
-                  {item.description}
-                </Text>
-              </TouchableOpacity>
+              </Pressable>
             ))}
           </View>
         </View>
 
         {/* 最近活動 */}
-        <View className="mb-8">
-          <View className="flex-row items-center justify-between mb-5">
-            <Text className="text-xl font-bold text-gray-800">最近活動</Text>
-            <TouchableOpacity
-              onPress={handleClearRecentPublish}
+        <View>
+          <View style={styles.sectionHeader}>
+            <View>
+              <PixelText variant="caption" tone="pink" display>
+                BROADCAST LOG
+              </PixelText>
+              <PixelText variant="title">最近活動</PixelText>
+            </View>
+            <PixelButton
+              label="x 清除"
+              tone={recentPublishes.length > 0 ? "red" : "paper"}
+              size="sm"
               disabled={recentPublishes.length === 0}
-              className={`px-3 py-1.5 rounded-full ${
-                recentPublishes.length > 0 ? "bg-gray-200" : "bg-gray-100"
-              }`}
-            >
-              <Text
-                className={`text-xs font-semibold ${
-                  recentPublishes.length > 0 ? "text-gray-800" : "text-gray-400"
-                }`}
-              >
-                清除
-              </Text>
-            </TouchableOpacity>
+              onPress={handleClearRecentPublish}
+            />
           </View>
-          <View className="bg-white rounded-2xl p-5">
+
+          <PixelCard padding={14}>
             {recentPublishes.length === 0 ? (
-              <Text className="text-sm text-gray-500">
-                尚無最近發布結果。請前往「發布通知」頁發布一則通知。
-              </Text>
+              <View style={{ alignItems: "flex-start", gap: 6 }}>
+                <PixelText variant="bodyLg">尚無發布紀錄</PixelText>
+                <PixelText variant="body" tone="muted">
+                  到「發布通知」tab 發出第一則營業訊息,這裡會列出最近 5 筆。
+                </PixelText>
+              </View>
             ) : (
-              <View className="gap-3">
+              <View style={{ gap: 12 }}>
                 {recentPublishes.map((item, index) => (
-                  <View
-                    key={item.ID}
-                    className="border-b border-gray-100 pb-3"
-                  >
-                    <View className="flex-row items-center justify-between">
-                      <Text className="text-sm font-semibold text-gray-900">
-                        發布紀錄 #{index + 1}
-                      </Text>
-                      <Text className="text-xs text-gray-500">
+                  <View key={item.ID} style={styles.publishBox}>
+                    <View style={styles.publishHead}>
+                      <PixelChip
+                        label={`#${index + 1}`}
+                        tone="gold"
+                        active
+                        display
+                      />
+                      <PixelText variant="caption" tone="muted">
                         {formatPublishTime(item.PublishedAt)}
-                      </Text>
+                      </PixelText>
                     </View>
-                    <Text className="text-xs text-gray-600 mt-2">
-                      地點：{item.LocationName}
-                    </Text>
-                    <Text className="text-xs text-gray-600 mt-1">
-                      提示：{item.HintMessage}
-                    </Text>
-                    <Text className="text-xs text-gray-700 mt-1 font-medium">
-                      成功 {item.TotalSent} / 失敗 {item.TotalFailed}
-                    </Text>
+                    <View style={{ height: 6 }} />
+                    <PixelText variant="body">
+                      地點 {item.LocationName}
+                    </PixelText>
+                    <View style={{ height: 2 }} />
+                    <PixelText variant="body" tone="muted">
+                      訊息 {item.HintMessage}
+                    </PixelText>
+                    <View style={{ height: 8 }} />
+                    <View style={{ flexDirection: "row", gap: 6 }}>
+                      <PixelChip
+                        label={`成功 ${item.TotalSent}`}
+                        tone="green"
+                        active
+                      />
+                      <PixelChip
+                        label={`失敗 ${item.TotalFailed}`}
+                        tone={item.TotalFailed > 0 ? "red" : "paper"}
+                        active
+                      />
+                    </View>
                   </View>
                 ))}
               </View>
             )}
-          </View>
+          </PixelCard>
         </View>
-        {/* <TouchableOpacity
-          className="bg-blue-500 rounded-md p-2"
-          onPress={async () => await authApi.testAuth()}
-        >
-          <Text className="text-white">測試帶權限請求</Text>
-        </TouchableOpacity> */}
       </ScrollView>
 
-      {/* 使用者選單 */}
+      {/* User Menu Modal */}
       <Modal
         visible={showUserMenu}
-        transparent={true}
+        transparent
         animationType="fade"
         onRequestClose={() => setShowUserMenu(false)}
       >
         <Pressable
-          className="flex-1 bg-black/50"
+          style={styles.menuBackdrop}
           onPress={() => setShowUserMenu(false)}
         >
-          <View className="flex-1 justify-start pt-20">
-            <View className="mx-6 bg-white rounded-2xl shadow-lg overflow-hidden">
-              {/* 使用者資訊 */}
-              <View className="p-4 border-b border-gray-100">
-                <View className="flex-row items-center">
-                  <View className="w-12 h-12 rounded-full bg-gray-200 justify-center items-center mr-4">
-                    <Text className="text-2xl font-bold text-gray-600">
-                      {user?.name?.charAt(0) || "攤"}
-                    </Text>
-                  </View>
-                  <View className="flex-1">
-                    <Text className="text-base font-semibold text-gray-800">
-                      {user?.name || "攤車商家"}
-                    </Text>
-                    <Text className="text-sm text-gray-500">
-                      {user?.email || "未取得"}
-                    </Text>
+          <View style={[styles.menuContainer, { marginTop: insets.top + 56 }]}>
+            <Pressable onPress={(e) => e.stopPropagation()}>
+              <PixelCard
+                title="VENDOR  MENU"
+                titleTone="red"
+                titleDisplay
+                padding={0}
+              >
+                <View style={{ padding: 14 }}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 10,
+                    }}
+                  >
+                    <View style={styles.avatar}>
+                      <PixelText variant="bodyLg" display tone="inverse">
+                        {(user?.name?.charAt(0) || "V").toUpperCase()}
+                      </PixelText>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <PixelText variant="bodyLg">
+                        {user?.name || "商家"}
+                      </PixelText>
+                      <PixelText variant="caption" tone="muted">
+                        {user?.email || "未取得"}
+                      </PixelText>
+                    </View>
                   </View>
                 </View>
-              </View>
+                <View style={styles.menuSep} />
 
-              {/* 選單項目 */}
-              <View className="py-2">
-                <TouchableOpacity
-                  className="flex-row items-center px-4 py-3 active:bg-gray-50"
+                <MenuItem
+                  icon="person-outline"
+                  label="個人資料"
                   onPress={() => {
                     setShowUserMenu(false);
                     router.push("/vendor/profile");
                   }}
-                >
-                  <Text className="text-lg mr-3">👤</Text>
-                  <Text className="text-base text-gray-700">個人資料</Text>
-                </TouchableOpacity>
-
-                <View className="border-t border-gray-100 my-2" />
-
-                <TouchableOpacity
-                  className="flex-row items-center px-4 py-3 active:bg-red-50"
+                />
+                <View style={styles.menuSep} />
+                <MenuItem
+                  icon="log-out-outline"
+                  label="登出"
+                  tone="red"
                   onPress={async () => {
                     setShowUserMenu(false);
                     await handleLogout();
                   }}
-                >
-                  <Text className="text-lg mr-3">🚪</Text>
-                  <Text className="text-base text-red-600 font-medium">
-                    登出
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+                />
+              </PixelCard>
+            </Pressable>
           </View>
         </Pressable>
       </Modal>
     </View>
   );
 }
+
+function MenuItem({
+  icon,
+  label,
+  tone = "default",
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  tone?: "default" | "red";
+  onPress: () => void;
+}) {
+  const color = tone === "red" ? pixelColors.red : pixelColors.white;
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.menuItem,
+        pressed ? { backgroundColor: pixelColors.surfaceAlt } : null,
+      ]}
+    >
+      <Ionicons name={icon} size={18} color={color} />
+      <PixelText variant="bodyLg" style={{ color }}>
+        {label}
+      </PixelText>
+    </Pressable>
+  );
+}
+
+function StatBox({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: "red" | "gold" | "blue";
+}) {
+  const accent = toneToColor(tone);
+  return (
+    <View style={[styles.statBox, { borderTopColor: accent }]}>
+      <PixelText variant="caption" tone="muted">
+        {label}
+      </PixelText>
+      <View style={{ height: 2 }} />
+      <PixelText variant="bodyLg">{value}</PixelText>
+    </View>
+  );
+}
+
+function toneToColor(tone: "red" | "gold" | "blue" | "green") {
+  switch (tone) {
+    case "red":
+      return pixelColors.red;
+    case "gold":
+      return pixelColors.gold;
+    case "blue":
+      return pixelColors.blue;
+    case "green":
+      return pixelColors.green;
+  }
+}
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: pixelColors.bg,
+  },
+  hud: {
+    backgroundColor: pixelColors.surface,
+    paddingHorizontal: 16,
+    paddingBottom: 14,
+    borderBottomWidth: pixelBorderWidth,
+    borderBottomColor: pixelColors.ink,
+  },
+  hudUser: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  avatar: {
+    width: 44,
+    height: 44,
+    backgroundColor: pixelColors.red,
+    borderWidth: pixelBorderWidth,
+    borderColor: pixelColors.ink,
+    borderRadius: pixelRadius,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  statRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  statBox: {
+    flex: 1,
+    borderWidth: pixelBorderWidth,
+    borderColor: pixelColors.ink,
+    borderRadius: pixelRadius,
+    borderTopWidth: 6,
+    backgroundColor: pixelColors.surfaceAlt,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    marginBottom: 10,
+  },
+  quickCard: {
+    borderWidth: pixelBorderWidth,
+    borderColor: pixelColors.ink,
+    borderRadius: pixelRadius,
+    backgroundColor: pixelColors.surface,
+    padding: 12,
+    alignItems: "center",
+  },
+  quickIcon: {
+    width: 44,
+    height: 44,
+    borderWidth: pixelBorderWidth,
+    borderColor: pixelColors.ink,
+    borderRadius: pixelRadius,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  publishBox: {
+    borderWidth: pixelBorderWidth,
+    borderColor: pixelColors.ink,
+    borderRadius: pixelRadius,
+    backgroundColor: pixelColors.surfaceAlt,
+    padding: 10,
+  },
+  publishHead: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  menuBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+  },
+  menuContainer: {
+    marginHorizontal: 16,
+  },
+  menuSep: {
+    height: 2,
+    backgroundColor: pixelColors.ink,
+  },
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+});
