@@ -16,6 +16,7 @@
 6. [推薦的迭代 SOP](#6-推薦的迭代-sop)
 7. [還沒做但建議補的事](#7-還沒做但建議補的事)
 8. [快速指令參考](#8-快速指令參考)
+9. [踩過的坑與教訓](#9-踩過的坑與教訓)
 
 ---
 
@@ -206,26 +207,58 @@ Play Console 內部測試 → 封閉測試 → 公開
 
 ## 5. Secret / Variable 管理
 
-### 三個地方都有 secret
+### 四個地方都有 secret(順序很重要)
 
 | 位置 | 例子 | 設定方式 |
 |---|---|---|
 | **NomNom-Radar GitHub Secrets** | DB connection string、JWT signing key、GCP SA JSON | `gh secret set` |
-| **vendor-map-app GitHub Secrets** | `EXPO_TOKEN`、Google OAuth Client IDs、API base URL | `gh secret set` |
+| **vendor-map-app GitHub Secrets** | `EXPO_TOKEN`(CI 用)、GCP 相關 OIDC 設定 | `gh secret set` |
+| **EAS Environment Variables** ⚠️ | 所有 `EXPO_PUBLIC_*`(會 inline 進 JS bundle)| `eas env:create --environment <env>` |
 | **Cloud Run service env vars** | runtime 的 DB URL、bucket name 等 | Cloud Run console 或 deploy workflow 帶 |
+
+### ⚠️ 關鍵:`EXPO_PUBLIC_*` 必須在 EAS environment,不是 GitHub secret
+
+**GitHub Actions runner 上的 env 不會自動流進 EAS build。**
+EAS build 跑在 Expo 雲端,有自己獨立的 env 管理。`EXPO_PUBLIC_*` 變數要在 **build 階段** 被
+Metro 看到才能 inline 進 JS bundle,所以必須提前用 `eas env:create` 推到 EAS 對應的 environment
+(對應 `eas.json` 各 profile 的 `environment` 欄位)。
+
+**目前 mapping:**
+
+| eas.json profile | environment | 該 env 內必須有的 EXPO_PUBLIC_* |
+|---|---|---|
+| `production-aab` | `production` | API base URL、3 個 Google OAuth Client ID |
+| `preview-apk` | `preview` | 同上 |
+| 本機 `expo start` | `development` | 同上(也可以放 `.env.local`) |
+
+> 這些 GitHub Secret(`EXPO_PUBLIC_API_BASE_URL` 等)留著當**備援**,未來換 CI provider 或要在
+> runner 內直接用時還在,但目前 **build 時實際吃的是 EAS env**。
+
+詳見 [踩過的坑](#9-踩過的坑與教訓) 的第一個案例。
 
 ### vendor-map-app 目前的 secret / variable 清單
 
-**Secrets**(機密,gh secret set 設定)
+**GitHub Secrets**(機密,`gh secret set` 設定)
+
+| Name | 用途 | 真正吃到的地方 |
+|---|---|---|
+| `EXPO_TOKEN` | CI 觸發 EAS build(從 expo.dev Robot users 建立) | GitHub Actions runner |
+| `EXPO_PROJECT_ID` | EAS project UUID(`eas init` 後拿到) | runner(`extra.eas.projectId` 讀 env) |
+| `EXPO_PUBLIC_API_BASE_URL` | Backend API base(目前 `https://api.whereisvendor.com`) | ⚠️ 備援,實際是 EAS env 在用 |
+| `EXPO_PUBLIC_GOOGLE_CLIENT_ID` | Web OAuth client(給 backend ID token verify) | ⚠️ 備援,實際是 EAS env 在用 |
+| `EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS` | iOS Google Sign-In client | ⚠️ 備援,實際是 EAS env 在用 |
+| `EXPO_PUBLIC_GOOGLE_CLIENT_ID_ANDROID` | Android Google Sign-In client | ⚠️ 備援,實際是 EAS env 在用 |
+
+**EAS Environment Variables**(`eas env:create --environment production --visibility plaintext` 設定)
 
 | Name | 用途 |
 |---|---|
-| `EXPO_TOKEN` | CI 觸發 EAS build(從 expo.dev Robot users 建立) |
-| `EXPO_PROJECT_ID` | EAS project UUID(`eas init` 後拿到) |
-| `EXPO_PUBLIC_API_BASE_URL` | Backend API base(目前 `https://api.whereisvendor.com`) |
-| `EXPO_PUBLIC_GOOGLE_CLIENT_ID` | Web OAuth client(給 backend ID token verify) |
-| `EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS` | iOS Google Sign-In client |
-| `EXPO_PUBLIC_GOOGLE_CLIENT_ID_ANDROID` | Android Google Sign-In client |
+| `EXPO_PUBLIC_API_BASE_URL` | inline 進 JS bundle,frontend 打 API 用 |
+| `EXPO_PUBLIC_GOOGLE_CLIENT_ID` | 同上,Google Sign-In Web client |
+| `EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS` | 同上,iOS |
+| `EXPO_PUBLIC_GOOGLE_CLIENT_ID_ANDROID` | 同上,Android |
+
+3 個 environment(`production` / `preview` / `development`)都應該設,不然切 profile build 會炸。
 
 **Variables**(非機密,gh variable set 設定)
 
@@ -378,6 +411,30 @@ gh secret list --repo tommy44541/vendor-map-app
 gh variable list --repo tommy44541/vendor-map-app
 ```
 
+### 設定 / 更新 EAS Environment Variable
+
+```bash
+# 推一個 env var 到指定 environment(plaintext = build log 看得到)
+eas env:create --environment production \
+  --name EXPO_PUBLIC_API_BASE_URL \
+  --value "https://api.whereisvendor.com" \
+  --visibility plaintext
+
+# 一次推到 3 個 environment(production / preview / development)
+for ENV in production preview development; do
+  eas env:create --environment $ENV \
+    --name EXPO_PUBLIC_API_BASE_URL \
+    --value "https://api.whereisvendor.com" \
+    --visibility plaintext --force
+done
+
+# 列出某 environment 全部變數
+eas env:list --environment production
+
+# 刪除
+eas env:delete --environment production --name OLD_VAR
+```
+
 ### Cloud Run revision rollback
 
 ```bash
@@ -415,6 +472,116 @@ npx expo start --dev-client     # dev client mode
 # 第一次跑或原生模組改動需要重新 build dev client:
 # eas build -p android --profile preview-apk
 ```
+
+---
+
+## 9. 踩過的坑與教訓
+
+### 1. `EXPO_PUBLIC_*` 沒進 EAS env → AAB 註冊跳「伺服器內部錯誤」
+
+**症狀**
+
+- 首次上架到 Play Console 內部測試,使用者下載安裝後試註冊
+- App 跳 Alert:`操作失敗 / 伺服器內部錯誤,請稍後重試`
+- Backend Cloud Run log **完全看不到 register request**(只看得到健康檢查 ping)
+- curl 直接打 `https://api.whereisvendor.com/auth/register/user` 完美 201
+
+**根因**
+
+`services/api/util.ts` 的 `getApiBaseUrl()` 在 env 為空時會 throw 一個帶 `status: 500` 的 `ApiError`,
+然後 `showErrorAlert` 看到 status=500 翻譯成「伺服器內部錯誤」。所以這個訊息**並不是後端回的**,
+是 frontend 在送出 request 之前就先炸了。
+
+而為什麼 env 為空 — 因為 GitHub Actions runner 上 `EXPO_PUBLIC_API_BASE_URL` 有設,但
+**EAS build 在 Expo 雲端跑、不會吃 runner env**。EAS 有自己的 env 管理(`eas env`),要透過
+build profile 的 `environment` 欄位指定。
+
+**修法**
+
+```bash
+for ENV in production preview development; do
+  eas env:create --environment $ENV \
+    --name EXPO_PUBLIC_API_BASE_URL \
+    --value "https://api.whereisvendor.com" \
+    --visibility plaintext --force
+done
+# 4 個 EXPO_PUBLIC_* 都要做
+```
+
+設完重新 build AAB → 新 versionCode 上架 → 解決。
+
+**預防**
+
+任何 `EXPO_PUBLIC_*` 變數一律放 EAS env(不放 GitHub secret),三個 environment 都同步。
+未來新增變數時:
+
+1. 加進 `eas env:create --environment production / preview / development`
+2. 本機 dev 用 `.env.local`
+3. **不要**只設在 GitHub Actions runner
+
+**Debug checklist(下次卡同樣症狀時)**
+
+1. curl 模擬同樣的 POST 看 backend 是否真的回 5xx
+2. 如果 backend 正常 → frontend 端問題,看 `getApiBaseUrl()` / `ApiError` 是否有 status: 5xx 的本地 throw
+3. 看 `gcloud logging read` 確認 request 是否真的到達 Cloud Run
+4. 看 EAS 該次 build 的 env list(EAS dashboard 或 `eas env:list`)
+
+### 2. Reusable workflow 沒拿到 `id-token: write` → workflow 直接 reject
+
+**症狀**
+
+```
+The workflow is requesting 'id-token: write', but is only allowed 'id-token: none'.
+```
+
+**根因**
+
+`_android-build.yml` 用 OIDC 認證 GCP Workload Identity,需要 `id-token: write`。
+GitHub Actions 規則:**caller workflow 沒明確宣告權限,reusable 就拿不到**。
+
+**修法**
+
+在 caller workflow(`build-android-aab.yml` / `build-android-apk.yml`)加:
+
+```yaml
+permissions:
+  id-token: write
+  contents: read
+```
+
+### 3. `gh secret set` 在非 TTY 環境跑 → secret 被設成空字串
+
+**症狀**
+
+在 Claude Code 的 bash 內跑 `gh secret set EXPO_TOKEN --repo ...`,指令完成沒 error,但
+secret 實際是空的。
+
+**根因**
+
+`gh secret set` 沒給 `--body` 時讀 stdin。非 TTY(像 LLM 的 bash 子程序)立刻 EOF,
+gh 把空字串當值寫進去,不報錯。
+
+**修法**
+
+需要互動輸入的 secret **一定要在自己的 terminal 跑**(可以用 Claude Code 的 `!<command>` prefix,
+那會在你的 session 跑而非 LLM 內部 bash),或用 `--body-file <path>` 從本機檔讀。
+
+### 4. `eas init` 把 `projectId` hardcode 進 `app.config.js` → GitHub secret 失效
+
+**症狀**
+
+第一次 `eas init` 後,`app.config.js` 的 `extra.eas.projectId` 從 `process.env.EXPO_PROJECT_ID`
+被改成 hardcoded UUID。原本設的 GitHub secret 變沒在用。
+
+**修法**
+
+改成 env-first + hardcoded fallback:
+
+```js
+projectId: process.env.EXPO_PROJECT_ID || "a089b518-...",
+```
+
+env 有就用 env,沒設(本機 eas build 跑單機時)就用 hardcoded。
 
 ---
 
