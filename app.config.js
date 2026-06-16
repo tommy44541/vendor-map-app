@@ -71,7 +71,7 @@ module.exports = () => ({
   },
   extra: {
     eas: {
-      projectId: process.env.EXPO_PROJECT_ID,
+      projectId: "a089b518-9863-44a6-b959-14041e7a00ec",
     },
   },
 });
