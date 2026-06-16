@@ -71,7 +71,9 @@ module.exports = () => ({
   },
   extra: {
     eas: {
-      projectId: "a089b518-9863-44a6-b959-14041e7a00ec",
+      // env 優先,沒設時 fallback 到 hardcoded(本機 eas build 不需設 env 也能跑)。
+      projectId:
+        process.env.EXPO_PROJECT_ID || "a089b518-9863-44a6-b959-14041e7a00ec",
     },
   },
 });
