@@ -1,0 +1,2 @@
+Bump versionCode via EAS remote autoincrement.
+- Internal testing release pipeline now triggered automatically by git tag.

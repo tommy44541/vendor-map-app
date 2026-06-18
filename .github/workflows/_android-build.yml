@@ -48,6 +48,26 @@ on:
         required: false
         type: string
         default: ""
+      upload_to_play:
+        description: "If true, upload the built AAB to Play Console internal track."
+        required: false
+        type: boolean
+        default: false
+      play_package_name:
+        description: "Android package name to publish under."
+        required: false
+        type: string
+        default: "com.tomslighter.vendormapapp"
+      play_track:
+        description: "Play Console track to publish to (internal/alpha/beta/production)."
+        required: false
+        type: string
+        default: "internal"
+      play_whatsnew_dir:
+        description: "Path to release-notes directory containing whatsnew-<locale> files."
+        required: false
+        type: string
+        default: "release-notes/"
     secrets:
       EXPO_TOKEN:
         required: true
@@ -61,6 +81,9 @@ on:
         required: true
       EXPO_PUBLIC_GOOGLE_CLIENT_ID_ANDROID:
         required: true
+      PLAY_STORE_SA_JSON:
+        description: "Google Play service account JSON (only required when upload_to_play=true)."
+        required: false
 
 permissions:
   contents: read
@@ -317,10 +340,52 @@ jobs:
           path: dist/vendor-map-app.${{ inputs.artifact_extension }}
           if-no-files-found: error
 
+      # 只有當 caller 明確要求 (例如 push tag 觸發 AAB build) 才推到 Play Console。
+      # APK 跑 caller 不會啟用 upload_to_play。
+      - name: Validate Play Console upload prerequisites
+        if: inputs.upload_to_play
+        shell: bash
+        env:
+          PLAY_SA: ${{ secrets.PLAY_STORE_SA_JSON }}
+          WHATS_NEW_DIR: ${{ inputs.play_whatsnew_dir }}
+          ARTIFACT_EXT: ${{ inputs.artifact_extension }}
+        run: |
+          set -euo pipefail
+          missing=0
+          if [ -z "${PLAY_SA:-}" ]; then
+            echo "::error::PLAY_STORE_SA_JSON secret is required when upload_to_play=true."
+            missing=1
+          fi
+          if [ ! -d "$WHATS_NEW_DIR" ]; then
+            echo "::error::Release notes directory '$WHATS_NEW_DIR' does not exist."
+            missing=1
+          fi
+          if [ "$ARTIFACT_EXT" != "aab" ]; then
+            echo "::error::Play Console upload only supports AAB. Got: $ARTIFACT_EXT"
+            missing=1
+          fi
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
+      - name: Upload to Play Console
+        id: play_upload
+        if: inputs.upload_to_play
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_STORE_SA_JSON }}
+          packageName: ${{ inputs.play_package_name }}
+          releaseFiles: dist/vendor-map-app.${{ inputs.artifact_extension }}
+          track: ${{ inputs.play_track }}
+          status: completed
+          whatsNewDirectory: ${{ inputs.play_whatsnew_dir }}
+
       - name: Write job summary
         shell: bash
         env:
           SIGNED_URL_STATUS: ${{ steps.gcs_signed_url.outputs.status }}
+          UPLOAD_TO_PLAY: ${{ inputs.upload_to_play }}
+          PLAY_TRACK: ${{ inputs.play_track }}
         run: |
           {
             echo "## Android ${{ inputs.build_name }} build"
@@ -340,5 +405,11 @@ jobs:
               echo "- Signed URL: generation failed. Check the workflow log and verify \`roles/iam.serviceAccountTokenCreator\`."
             else
               echo "- Signed URL: not generated. Re-run the workflow with \`generate_signed_url=true\` if needed."
+            fi
+
+            if [ "$UPLOAD_TO_PLAY" = "true" ]; then
+              echo "- Play Console upload: pushed to track \`$PLAY_TRACK\`"
+            else
+              echo "- Play Console upload: skipped (manual download required)"
             fi
           } >> "$GITHUB_STEP_SUMMARY"

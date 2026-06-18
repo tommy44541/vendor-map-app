@@ -1,0 +1,2 @@
+由 EAS 雲端自動遞增 versionCode。
+- 內部測試版本現在由 git tag 自動觸發上架。

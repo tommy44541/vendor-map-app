@@ -1,6 +1,7 @@
 name: Build Android AAB
 
 on:
+  # 手動觸發,可選擇是否上架
   workflow_dispatch:
     inputs:
       ref:
@@ -12,6 +13,15 @@ on:
         required: false
         type: boolean
         default: false
+      upload_to_play:
+        description: "Upload the built AAB to Play Console internal track."
+        required: false
+        type: boolean
+        default: false
+  # push tag v*.*.* → 自動 build + 上架 Play Console 內部測試
+  push:
+    tags:
+      - "v*.*.*"
 
 # Reusable workflow _android-build.yml 需要 OIDC token 向 GCP Workload Identity
 # Federation 換 access token 才能上傳 GCS。caller 必須明確宣告權限上限,
@@ -29,7 +39,8 @@ jobs:
       build_profile: production-aab
       artifact_extension: aab
       artifact_subdir: aab
-      generate_signed_url: ${{ inputs.generate_signed_url }}
+      # tag push 時固定產 signed URL 方便分享,manual dispatch 看 input
+      generate_signed_url: ${{ github.event_name == 'push' || inputs.generate_signed_url }}
       gcs_bucket: ${{ vars.GCS_BUCKET }}
       gcs_prefix: ${{ vars.GCS_PREFIX }}
       gcs_signed_url_duration: ${{ vars.GCS_SIGNED_URL_DURATION }}
@@ -37,6 +48,8 @@ jobs:
       gcp_service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
       gcp_project_id: ${{ vars.GCP_PROJECT_ID }}
       expo_public_debug_logs: ${{ vars.EXPO_PUBLIC_DEBUG_LOGS }}
+      # tag push 一律上架;manual dispatch 看 input
+      upload_to_play: ${{ github.event_name == 'push' || inputs.upload_to_play }}
     secrets:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
       EXPO_PROJECT_ID: ${{ secrets.EXPO_PROJECT_ID }}
@@ -44,3 +57,4 @@ jobs:
       EXPO_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_CLIENT_ID }}
       EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS: ${{ secrets.EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS }}
       EXPO_PUBLIC_GOOGLE_CLIENT_ID_ANDROID: ${{ secrets.EXPO_PUBLIC_GOOGLE_CLIENT_ID_ANDROID }}
+      PLAY_STORE_SA_JSON: ${{ secrets.PLAY_STORE_SA_JSON }}
