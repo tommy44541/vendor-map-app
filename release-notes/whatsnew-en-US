@@ -1,4 +1,3 @@
-UI fixes:
-- Tab bar no longer overlaps with the Android system navigation bar
-- Vendor menu add/edit modal layout is more stable when the keyboard opens
-- Cleaned up vendor home: removed placeholder copy and the unimplemented order/follower/rating stats
+Fixes:
+- Map page no longer crashes the app (Google Maps API key now bundled correctly)
+- Includes 1.0.3 fixes: tab bar safe area, vendor menu modal keyboard, vendor home cleanup
