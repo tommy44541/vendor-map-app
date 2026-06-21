@@ -1,2 +1,4 @@
-Bump versionCode via EAS remote autoincrement.
-- Internal testing release pipeline now triggered automatically by git tag.
+UI fixes:
+- Tab bar no longer overlaps with the Android system navigation bar
+- Vendor menu add/edit modal layout is more stable when the keyboard opens
+- Cleaned up vendor home: removed placeholder copy and the unimplemented order/follower/rating stats
