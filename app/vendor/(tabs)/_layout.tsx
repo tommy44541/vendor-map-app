@@ -1,9 +1,12 @@
 import { pixelColors, pixelFont } from "@/theme/pixel";
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import VendorBroadcastTabButton from "../../../components/VendorBroadcastTabButton";
 
 const VendorLayout = () => {
+  const insets = useSafeAreaInsets();
+
   return (
     <Tabs
       screenOptions={{
@@ -11,13 +14,15 @@ const VendorLayout = () => {
         tabBarShowLabel: true,
         tabBarItemStyle: {
           width: "100%",
-          height: "100%",
+          height: 74,
           justifyContent: "center",
           alignItems: "center",
         },
         tabBarStyle: {
           backgroundColor: pixelColors.surface,
-          height: 74,
+          // 動態高度 = 內容 74px + 系統 navigation bar 的 safe area
+          height: 74 + insets.bottom,
+          paddingBottom: insets.bottom,
           position: "absolute",
           elevation: 0,
           overflow: "visible",

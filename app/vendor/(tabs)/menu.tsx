@@ -458,10 +458,11 @@ const VendorMenuScreen = () => {
         transparent
         onRequestClose={closeEditor}
       >
-        <View style={styles.modalWrap}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : undefined}
-          >
+        <KeyboardAvoidingView
+          style={styles.modalWrap}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
+          <View style={{ width: "100%" }}>
             <PixelCard
               title={editingId ? "EDIT  ITEM" : "NEW  ITEM"}
               titleTone={editingId ? "blue" : "gold"}
@@ -474,7 +475,7 @@ const VendorMenuScreen = () => {
                   paddingHorizontal: 14,
                   paddingTop: 12,
                   paddingBottom: insets.bottom + 12,
-                  maxHeight: "92%" as any,
+                  maxHeight: "85%" as any,
                 }}
               >
                 <ScrollView
@@ -590,8 +591,8 @@ const VendorMenuScreen = () => {
                 </View>
               </View>
             </PixelCard>
-          </KeyboardAvoidingView>
-        </View>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );

@@ -30,7 +30,6 @@ import { useAuth } from "../../../contexts/AuthContext";
 type QuickItem = {
   id: string;
   title: string;
-  description: string;
   icon: keyof typeof Ionicons.glyphMap;
   tone: "red" | "blue" | "gold" | "green";
   onPress: () => void;
@@ -97,7 +96,6 @@ export default function VendorHomeScreen() {
     {
       id: "profile",
       title: "個人資料",
-      description: "管理商家資訊",
       icon: "person",
       tone: "red",
       onPress: () => router.push("/vendor/profile"),
@@ -105,7 +103,6 @@ export default function VendorHomeScreen() {
     {
       id: "menu",
       title: "品項管理",
-      description: "編輯商品與價格",
       icon: "restaurant",
       tone: "blue",
       onPress: () => router.push("/vendor/menu"),
@@ -113,7 +110,6 @@ export default function VendorHomeScreen() {
     {
       id: "location",
       title: "位置設定",
-      description: "出攤地點與時間",
       icon: "location",
       tone: "gold",
       onPress: () => router.push("/vendor/location"),
@@ -138,13 +134,6 @@ export default function VendorHomeScreen() {
           </View>
           <PixelChip label="MENU" tone="paper" active display />
         </Pressable>
-
-        <View style={{ height: 12 }} />
-        <View style={styles.statRow}>
-          <StatBox label="訂單" value="-" tone="red" />
-          <StatBox label="追蹤" value="-" tone="gold" />
-          <StatBox label="評分" value="-" tone="blue" />
-        </View>
       </View>
 
       <ScrollView
@@ -190,14 +179,6 @@ export default function VendorHomeScreen() {
                   <View style={{ height: 8 }} />
                   <PixelText variant="bodyLg" style={{ textAlign: "center" }}>
                     {item.title}
-                  </PixelText>
-                  <View style={{ height: 4 }} />
-                  <PixelText
-                    variant="caption"
-                    tone="muted"
-                    style={{ textAlign: "center" }}
-                  >
-                    {item.description}
                   </PixelText>
                 </View>
               </Pressable>
