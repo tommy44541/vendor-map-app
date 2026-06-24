@@ -1,3 +1,4 @@
 Fixes:
-- Map page no longer crashes the app (Google Maps API key now bundled correctly)
-- Includes 1.0.3 fixes: tab bar safe area, vendor menu modal keyboard, vendor home cleanup
+- Vendor profile page load failure (corrected /user/profile path)
+- Clearer message when submitting merchant verification more than once
+- Location sheet handle is larger and now sits further from the bottom tab bar for easier dragging

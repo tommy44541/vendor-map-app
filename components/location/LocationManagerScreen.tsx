@@ -28,6 +28,7 @@ import {
   View,
 } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -121,8 +122,11 @@ export default function LocationManagerScreen<T extends LocationRecord>({
   const mapRef = useRef<UnifiedMapRef>(null);
 
   const { height: windowHeight } = useWindowDimensions();
-  const TAB_BAR_HEIGHT = 74;
-  const COLLAPSED_HEIGHT = 56;
+  const insets = useSafeAreaInsets();
+  // tab bar 的實際高度 = 內容 74 + 系統 nav bar safe area。sheet 要 anchor
+  // 在 tab bar 上方,加上額外 8px gap 讓 handle 不要緊貼 tab bar 不好點。
+  const TAB_BAR_HEIGHT = 74 + insets.bottom + 8;
+  const COLLAPSED_HEIGHT = 72; // 從 56 拉高,handle 區比較好用拇指拉
   const expandedHeight = Math.min(Math.round(windowHeight * 0.62), 560);
   const maxTranslate = Math.max(0, expandedHeight - COLLAPSED_HEIGHT);
   const translateY = useSharedValue(maxTranslate);
@@ -983,7 +987,9 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   handleWrap: {
-    paddingVertical: 10,
+    // 加大 hit area,讓拇指容易抓
+    paddingVertical: 14,
+    paddingHorizontal: 24,
     alignItems: "center",
   },
   pulseLine: {
@@ -994,9 +1000,10 @@ const styles = StyleSheet.create({
     height: 2,
   },
   handle: {
-    width: 48,
-    height: 6,
-    backgroundColor: pixelColors.gray500,
+    // 更顯眼:更寬、更厚、白色高對比
+    width: 64,
+    height: 5,
+    backgroundColor: pixelColors.gray100,
     borderRadius: 2,
   },
   switchRow: {

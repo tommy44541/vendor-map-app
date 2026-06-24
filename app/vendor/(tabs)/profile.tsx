@@ -251,9 +251,18 @@ const Profile = () => {
       await loadProfile();
     } catch (error: any) {
       console.error("商家驗證送出失敗:", error);
-      if (error instanceof ApiError && error.code === "TOKEN_EXPIRED") {
-        Alert.alert("登入已過期", "請重新登入後再試");
-        return;
+      if (error instanceof ApiError) {
+        if (error.code === "TOKEN_EXPIRED") {
+          Alert.alert("登入已過期", "請重新登入後再試");
+          return;
+        }
+        // 後端對「已驗證帳號再送一次」會回 409 CONFLICT。順手 reload
+        // 把驗證狀態 sync 回來,按鈕就會自動 disable。
+        if (error.status === 409) {
+          Alert.alert("已完成驗證", "這個帳號已經完成商家驗證,不需要重複送出。");
+          await loadProfile();
+          return;
+        }
       }
       Alert.alert("錯誤", error?.message || "商家驗證送出失敗");
     } finally {
