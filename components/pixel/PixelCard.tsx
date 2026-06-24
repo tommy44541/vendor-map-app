@@ -7,7 +7,7 @@ import { PixelText } from "./PixelText";
 
 export interface PixelCardProps extends ViewProps {
   title?: string;
-  titleTone?: "red" | "gold" | "blue" | "green" | "ink" | "purple";
+  titleTone?: "red" | "gold" | "blue" | "green" | "pink" | "ink" | "purple";
   titleDisplay?: boolean;
   background?: string;
   padding?: number;
@@ -20,6 +20,7 @@ const titleTones = {
   gold: { bg: pixelColors.gold, fg: pixelColors.ink },
   blue: { bg: pixelColors.blue, fg: pixelColors.white },
   green: { bg: pixelColors.green, fg: pixelColors.ink },
+  pink: { bg: pixelColors.pink, fg: pixelColors.ink },
   ink: { bg: pixelColors.ink, fg: pixelColors.white },
   purple: { bg: pixelColors.purple, fg: pixelColors.white },
 } as const;
@@ -34,7 +35,8 @@ export function PixelCard({
   children,
   ...rest
 }: PixelCardProps) {
-  const tone = titleTones[titleTone];
+  // 防呆:fallback 到 ink
+  const tone = titleTones[titleTone] ?? titleTones.ink;
 
   return (
     <View {...rest} style={[styles.wrap, style]}>

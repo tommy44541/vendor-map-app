@@ -1,4 +1,3 @@
 Fixes:
-- Vendor profile page load failure (corrected /user/profile path)
-- Clearer message when submitting merchant verification more than once
-- Location sheet handle is larger and now sits further from the bottom tab bar for easier dragging
+- Favorites tab no longer crashes the app
+- Internal: pixel components fall back gracefully on unknown tone values

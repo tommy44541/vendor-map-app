@@ -8,7 +8,15 @@ import { PixelText } from "./PixelText";
 
 export interface PixelChipProps {
   label: string;
-  tone?: "red" | "gold" | "blue" | "green" | "ink" | "paper" | "purple";
+  tone?:
+    | "red"
+    | "gold"
+    | "blue"
+    | "green"
+    | "pink"
+    | "ink"
+    | "paper"
+    | "purple";
   active?: boolean;
   display?: boolean;
   onPress?: () => void;
@@ -20,6 +28,7 @@ const toneToColors = {
   gold: { bg: pixelColors.gold, fg: pixelColors.ink },
   blue: { bg: pixelColors.blue, fg: pixelColors.white },
   green: { bg: pixelColors.green, fg: pixelColors.ink },
+  pink: { bg: pixelColors.pink, fg: pixelColors.ink },
   ink: { bg: pixelColors.ink, fg: pixelColors.white },
   paper: { bg: pixelColors.paper, fg: pixelColors.ink },
   purple: { bg: pixelColors.purple, fg: pixelColors.white },
@@ -33,7 +42,8 @@ export function PixelChip({
   onPress,
   style,
 }: PixelChipProps) {
-  const colors = toneToColors[tone];
+  // 防呆:fallback 到 paper,避免 typo 把整個畫面拖崩
+  const colors = toneToColors[tone] ?? toneToColors.paper;
   const inactiveStyle: ViewStyle = active
     ? {}
     : {

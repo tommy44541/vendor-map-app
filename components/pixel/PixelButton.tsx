@@ -9,13 +9,22 @@ import {
 import { pixelColors, pixelBorderWidth, pixelRadius } from "@/theme/pixel";
 import { PixelText } from "./PixelText";
 
-type PixelButtonTone = "red" | "gold" | "blue" | "green" | "purple" | "ink" | "paper";
+type PixelButtonTone =
+  | "red"
+  | "gold"
+  | "blue"
+  | "green"
+  | "pink"
+  | "purple"
+  | "ink"
+  | "paper";
 
 const toneToBg: Record<PixelButtonTone, string> = {
   red: pixelColors.red,
   gold: pixelColors.gold,
   blue: pixelColors.blue,
   green: pixelColors.green,
+  pink: pixelColors.pink,
   purple: pixelColors.purple,
   ink: pixelColors.ink,
   paper: pixelColors.paper,
@@ -26,6 +35,7 @@ const toneToFg: Record<PixelButtonTone, string> = {
   gold: pixelColors.ink,
   blue: pixelColors.white,
   green: pixelColors.ink,
+  pink: pixelColors.ink,
   purple: pixelColors.white,
   ink: pixelColors.white,
   paper: pixelColors.ink,
@@ -53,8 +63,10 @@ export function PixelButton({
   ...rest
 }: PixelButtonProps) {
   const [pressed, setPressed] = useState(false);
-  const bg = toneToBg[tone];
-  const fg = toneToFg[tone];
+  // 防呆:tone 不在表內(typo 或新加未補)時 fallback 到 ink,
+  // 避免整個 app 因為 .bg of undefined 直接 crash。
+  const bg = toneToBg[tone] ?? toneToBg.ink;
+  const fg = toneToFg[tone] ?? toneToFg.ink;
 
   // Press 時整個按鈕往下偏移 2px,模擬實體按下感
   const offset = pressed ? 2 : 0;
