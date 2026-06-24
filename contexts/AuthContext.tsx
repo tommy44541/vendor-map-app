@@ -10,7 +10,7 @@ import {
   isSuccessResponse,
   statusCodes,
 } from "@react-native-google-signin/google-signin";
-import React, { createContext, useContext, useEffect, useRef, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Platform } from "react-native";
 import {
   authApi,
@@ -605,8 +605,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  // 更新用戶訊息
-  const updateUser = async (userData: Partial<User>) => {
+  // 更新用戶訊息。useCallback 包起來避免每次 render 都是新 identity,
+  // 否則消費端把它放進 useCallback / useEffect 的 deps 會造成無限迴圈。
+  const updateUser = useCallback(async (userData: Partial<User>) => {
     setAuthState((prev) => {
       const updatedUser = prev.user ? { ...prev.user, ...userData } : null;
 
@@ -620,18 +621,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         user: updatedUser,
       };
     });
-  };
+  }, []);
 
   // 由 getProfile 等 API 拿到最新 apiUser 後,把 merchant_profile / user_profile
   // 同步回 context 與 AsyncStorage,讓其他畫面與下次 app 啟動都看到最新狀態。
-  const syncUserFromApi = (apiUser: UserData) => {
+  // 同樣 useCallback 包住,確保 identity 穩定 — 之前因為它每次 render 都新 identity,
+  // 導致 vendor profile 的 loadProfile useCallback 也跟著重建,形成 useEffect 迴圈。
+  const syncUserFromApi = useCallback((apiUser: UserData) => {
     setAuthState((prev) => {
       if (!prev.user) return prev;
       const updatedUser = mapApiUserToAuthUser(apiUser, prev.user.userType);
       saveUserInfo(updatedUser);
       return { ...prev, user: updatedUser };
     });
-  };
+  }, []);
 
   const value: AuthContextType = {
     ...authState,

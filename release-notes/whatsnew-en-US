@@ -1,3 +1,4 @@
 Fixes:
-- Favorites tab no longer crashes the app
-- Internal: pixel components fall back gracefully on unknown tone values
+- Vendor tabs no longer bounce back to home, and 403 log spam is gone
+  (root cause: unstable AuthContext callback identity triggered an
+  infinite useEffect loop)
