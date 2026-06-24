@@ -1,4 +1,4 @@
 Fixes:
-- Vendor tabs no longer bounce back to home, and 403 log spam is gone
-  (root cause: unstable AuthContext callback identity triggered an
-  infinite useEffect loop)
+- Push notification setup no longer gets stuck at "step:token" on
+  Android (root cause: google-services.json was missing from the
+  build, so the native FCM module could not initialize)

@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "193475500949",
+    "project_id": "radar-469510",
+    "storage_bucket": "radar-469510.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:193475500949:android:6369f7cc2b86a5e777b49c",
+        "android_client_info": {
+          "package_name": "com.tomslighter.vendormapapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "193475500949-ku42e1jl194fpjj3f20ruu410c5v37ck.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDHX5aYipp8ycysUiLR_vD63YbZGjHX0m4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "193475500949-ku42e1jl194fpjj3f20ruu410c5v37ck.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "193475500949-r14b0gln2vp6so5pkdcbda18c95a17pc.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.tomslighter.vendormapapp"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

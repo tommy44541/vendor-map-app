@@ -6,7 +6,7 @@ const androidGoogleMapsApiKey =
 module.exports = () => ({
   name: "vendor_map_app",
   slug: "vendor_map_app",
-  version: "1.0.7",
+  version: "1.0.8",
   orientation: "portrait",
   icon: "./assets/images/logo.png",
   scheme: "vendormapapp",
@@ -34,6 +34,7 @@ module.exports = () => ({
     },
     edgeToEdgeEnabled: true,
     package: "com.tomslighter.vendormapapp",
+    googleServicesFile: "./google-services.json",
     config: androidGoogleMapsApiKey
       ? {
           googleMaps: {
