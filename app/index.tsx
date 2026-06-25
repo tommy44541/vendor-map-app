@@ -1,7 +1,6 @@
 import { useRootNavigationState, useRouter } from "expo-router";
 import React, { useEffect } from "react";
 import {
-  ActivityIndicator,
   Image,
   Pressable,
   StyleSheet,
@@ -13,6 +12,7 @@ import {
   PixelButton,
   PixelCard,
   PixelChip,
+  PixelLoading,
   PixelText,
 } from "../components/pixel";
 import { useAuth } from "../contexts/AuthContext";
@@ -105,11 +105,7 @@ export default function IndexScreen() {
     return (
       <SafeAreaView style={styles.loadingWrap}>
         <PixelBorder variant="double" padding={20} style={styles.loadingBox}>
-          <PixelText variant="bodyLg" display>
-            LOADING...
-          </PixelText>
-          <View style={{ height: 12 }} />
-          <ActivityIndicator color={pixelColors.gold} />
+          <PixelLoading label="LOADING" tone="gold" />
           <View style={{ height: 8 }} />
           <PixelText variant="caption" tone="muted">
             正在讀取存檔
@@ -137,7 +133,7 @@ export default function IndexScreen() {
               : "傳送到探索地圖..."}
           </PixelText>
           <View style={{ height: 12 }} />
-          <ActivityIndicator color={pixelColors.gold} />
+          <PixelLoading label="" tone="gold" size="sm" />
         </PixelBorder>
       </SafeAreaView>
     );

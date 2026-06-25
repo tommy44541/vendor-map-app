@@ -4,7 +4,6 @@ import { useLocalSearchParams, useRootNavigationState, useRouter } from "expo-ro
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -19,6 +18,7 @@ import {
   PixelCard,
   PixelChip,
   PixelEyeToggle,
+  PixelLoading,
   PixelSegmentedControl,
   PixelText,
   PixelTextInput,
@@ -406,7 +406,7 @@ export default function RegisterScreen() {
               />
               {isLoading ? (
                 <View style={{ marginTop: 10, alignItems: "center" }}>
-                  <ActivityIndicator color={pixelColors.gold} />
+                  <PixelLoading label="" size="sm" tone="gold" />
                 </View>
               ) : null}
             </PixelCard>
@@ -598,7 +598,7 @@ export default function RegisterScreen() {
               />
               {isLoading ? (
                 <View style={{ marginTop: 10, alignItems: "center" }}>
-                  <ActivityIndicator color={pixelColors.gold} />
+                  <PixelLoading label="" size="sm" tone="gold" />
                 </View>
               ) : null}
 

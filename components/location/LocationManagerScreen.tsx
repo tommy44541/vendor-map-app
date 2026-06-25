@@ -3,6 +3,7 @@ import {
   PixelButton,
   PixelCard,
   PixelChip,
+  PixelLoading,
   PixelText,
   PixelTextInput,
 } from "@/components/pixel";
@@ -17,7 +18,7 @@ import { getLocationDisplayLabel } from "@/utils/location/getLocationDisplayLabe
 import * as Location from "expo-location";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
+
   Alert,
   Modal,
   Pressable,
@@ -810,7 +811,7 @@ export default function LocationManagerScreen<T extends LocationRecord>({
 
           {isListLoading && savedLocations.length === 0 ? (
             <View style={styles.emptyBox}>
-              <ActivityIndicator color={pixelColors.gold} />
+              <PixelLoading label="" size="sm" tone="gold" />
               <View style={{ height: 6 }} />
               <PixelText variant="caption" tone="muted">
                 加載中...

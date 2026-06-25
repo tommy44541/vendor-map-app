@@ -2,6 +2,7 @@ import {
   PixelButton,
   PixelCard,
   PixelChip,
+  PixelLoading,
   PixelText,
   PixelTextInput,
 } from "@/components/pixel";
@@ -11,7 +12,7 @@ import { pixelBorderWidth, pixelColors, pixelRadius } from "@/theme/pixel";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
+
   Alert,
   KeyboardAvoidingView,
   Modal,
@@ -334,7 +335,7 @@ const VendorMenuScreen = () => {
           {!initialLoaded && loading ? (
             <PixelCard padding={20}>
               <View style={{ alignItems: "center", gap: 10 }}>
-                <ActivityIndicator color={pixelColors.gold} />
+                <PixelLoading label="" size="sm" tone="gold" />
                 <PixelText variant="body" tone="muted">
                   載入品項中...
                 </PixelText>

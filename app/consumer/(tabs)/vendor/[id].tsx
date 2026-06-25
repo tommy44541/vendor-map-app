@@ -2,6 +2,7 @@ import {
   PixelButton,
   PixelCard,
   PixelChip,
+  PixelLoading,
   PixelText,
 } from "@/components/pixel";
 import { menuApi, MenuItem } from "@/services/api/menu";
@@ -17,7 +18,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
+
   Alert,
   Platform,
   Pressable,
@@ -485,7 +486,7 @@ export default function VendorDetailScreen() {
           <View style={styles.menuHeader}>
             {menuLoading ? (
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                <ActivityIndicator color={pixelColors.gold} />
+                <PixelLoading label="" size="sm" tone="gold" />
                 <PixelText variant="caption" tone="muted">
                   載入中…
                 </PixelText>

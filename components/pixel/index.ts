@@ -16,3 +16,5 @@ export type {
   PixelSegmentedControlProps,
 } from "./PixelSegmentedControl";
 export { PixelErrorBoundary } from "./PixelErrorBoundary";
+export { PixelLoading } from "./PixelLoading";
+export type { PixelLoadingProps } from "./PixelLoading";

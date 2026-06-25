@@ -11,6 +11,7 @@ import {
   PixelButton,
   PixelCard,
   PixelChip,
+  PixelLoading,
   PixelText,
   PixelTextInput,
 } from "@/components/pixel";
@@ -26,7 +27,6 @@ import * as Location from "expo-location";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Modal,
   Platform,
@@ -523,7 +523,7 @@ export default function ConsumerHomeScreen() {
           {discoveryLoading ? (
             <PixelCard padding={20} titleTone="ink">
               <View style={{ alignItems: "center", gap: 10 }}>
-                <ActivityIndicator color={pixelColors.gold} />
+                <PixelLoading label="" size="sm" tone="gold" />
                 <PixelText variant="body" tone="muted">
                   載入中…
                 </PixelText>
@@ -649,7 +649,7 @@ export default function ConsumerHomeScreen() {
           {subscriptionsLoading ? (
             <PixelCard padding={20}>
               <View style={{ alignItems: "center", gap: 10 }}>
-                <ActivityIndicator color={pixelColors.pink} />
+                <PixelLoading label="" size="sm" tone="pink" />
                 <PixelText variant="body" tone="muted">
                   讀取訂閱清單…
                 </PixelText>

@@ -8,6 +8,7 @@ import {
   PixelButton,
   PixelCard,
   PixelChip,
+  PixelLoading,
   PixelText,
 } from "@/components/pixel";
 import { pixelBorderWidth, pixelColors } from "@/theme/pixel";
@@ -15,7 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
+
   Alert,
   Platform,
   Pressable,
@@ -171,7 +172,7 @@ export default function ConsumerFavoritesScreen() {
 
           {loading && subs.length === 0 ? (
             <View style={{ alignItems: "center", marginTop: 16, gap: 8 }}>
-              <ActivityIndicator color={pixelColors.gold} />
+              <PixelLoading label="" size="sm" tone="gold" />
               <PixelText variant="body" tone="muted">
                 讀取中…
               </PixelText>

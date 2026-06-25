@@ -1,6 +1,7 @@
 import {
   PixelButton,
   PixelCard,
+  PixelLoading,
   PixelText,
 } from "@/components/pixel";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,7 +14,6 @@ import { router } from "expo-router";
 import * as Sharing from "expo-sharing";
 import React, { useCallback, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Image,
   Platform,
@@ -238,7 +238,7 @@ export default function VendorQrCodeScreen() {
                 <View style={styles.qrInner}>
                   {isQrLoading ? (
                     <View style={styles.qrBox}>
-                      <ActivityIndicator size="large" color={pixelColors.ink} />
+                      <PixelLoading label="" size="md" tone="purple" />
                       <View style={{ height: 8 }} />
                       <PixelText variant="caption" tone="inverse">
                         載入 QR Code 中...
