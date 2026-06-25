@@ -27,7 +27,6 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useAuth } from "../../../contexts/AuthContext";
 import { merchantApi, MerchantLocation } from "../../../services/api/merchant";
 import {
   notificationApi,
@@ -38,7 +37,6 @@ import { ApiError } from "../../../services/api/util";
 type PublishMode = "saved" | "temp";
 
 const Notifications = () => {
-  const { logout } = useAuth();
   const insets = useSafeAreaInsets();
 
   const [mode, setMode] = useState<PublishMode>("saved");
@@ -76,17 +74,6 @@ const Notifications = () => {
     return locations.find((l) => l.ID === selectedLocationId) || null;
   }, [locations, selectedLocationId]);
 
-  const handleAuthExpired = () => {
-    Alert.alert("登錄已過期", "請重新登入後再試", [
-      {
-        text: "確定",
-        onPress: async () => {
-          await logout();
-        },
-      },
-    ]);
-  };
-
   const loadLocations = async () => {
     try {
       setIsLoadingLocations(true);
@@ -102,7 +89,7 @@ const Notifications = () => {
     } catch (error: any) {
       console.error("獲取位置列表失敗:", error);
       if (error instanceof ApiError && error.code === "TOKEN_EXPIRED") {
-        handleAuthExpired();
+        return;
       } else {
         Alert.alert("錯誤", "獲取位置列表失敗,請重試");
       }
@@ -229,7 +216,7 @@ const Notifications = () => {
     } catch (error: any) {
       console.error("發布通知失敗:", error);
       if (error instanceof ApiError && error.code === "TOKEN_EXPIRED") {
-        handleAuthExpired();
+        return;
       } else {
         Alert.alert("錯誤", "發布通知失敗,請重試");
       }

@@ -88,7 +88,6 @@ export default function ConsumerFavoritesScreen() {
               await loadSubscriptions();
             } catch (e: any) {
               if (e instanceof ApiError && e.code === "TOKEN_EXPIRED") {
-                Alert.alert("登入已過期", "請重新登入後再試");
                 return;
               }
               Alert.alert("錯誤", e?.message || "取消訂閱失敗");

@@ -105,7 +105,6 @@ const VendorMenuScreen = () => {
   const handleApiError = useCallback(
     (error: unknown, fallbackMessage: string) => {
       if (error instanceof ApiError && error.code === "TOKEN_EXPIRED") {
-        Alert.alert("登入已過期", "請重新登入後再試");
         return;
       }
       const message =

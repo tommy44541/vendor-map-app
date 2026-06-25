@@ -163,7 +163,6 @@ const Profile = () => {
     } catch (error: any) {
       console.error("載入商家個人資料失敗:", error);
       if (error instanceof ApiError && error.code === "TOKEN_EXPIRED") {
-        Alert.alert("登入已過期", "請重新登入後再試");
         return;
       }
       Alert.alert("錯誤", error?.message || "載入商家資料失敗");
@@ -253,7 +252,6 @@ const Profile = () => {
       console.error("商家驗證送出失敗:", error);
       if (error instanceof ApiError) {
         if (error.code === "TOKEN_EXPIRED") {
-          Alert.alert("登入已過期", "請重新登入後再試");
           return;
         }
         // 後端對「已驗證帳號再送一次」會回 409 CONFLICT。順手 reload
@@ -294,7 +292,6 @@ const Profile = () => {
     } catch (error: any) {
       console.error("儲存探索設定失敗:", error);
       if (error instanceof ApiError && error.code === "TOKEN_EXPIRED") {
-        Alert.alert("登入已過期", "請重新登入後再試");
         return;
       }
       Alert.alert("錯誤", error?.message || "儲存探索設定失敗");

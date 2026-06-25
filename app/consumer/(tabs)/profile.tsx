@@ -70,9 +70,7 @@ const Profile = () => {
       setDevices(Array.isArray(res.data) ? res.data : []);
     } catch (error: any) {
       console.error("取得裝置列表失敗:", error);
-      if (error instanceof ApiError && error.code === "TOKEN_EXPIRED") {
-        Alert.alert("登入已過期", "請重新登入後再試");
-      } else {
+      if (!(error instanceof ApiError && error.code === "TOKEN_EXPIRED")) {
         Alert.alert("錯誤", "取得裝置列表失敗,請稍後重試");
       }
     } finally {

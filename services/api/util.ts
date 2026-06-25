@@ -1,6 +1,6 @@
 import { debugLog } from '@/utils/logger';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { emitAccessTokenRefreshed } from './authEvents';
+import { emitAccessTokenRefreshed, emitSessionExpired } from './authEvents';
 
 // API設定
 export interface API_SETTINGS {
@@ -286,6 +286,7 @@ export const requestRaw = async (
       return retryResponse;
     } else {
       console.error('❌ 無法刷新token，需要重新登入');
+      emitSessionExpired();
       throw new ApiError('登入已過期，請重新登入', {
         status: 401,
         code: 'TOKEN_EXPIRED',

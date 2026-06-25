@@ -19,4 +19,25 @@ export function emitAccessTokenRefreshed(newAccessToken: string) {
   });
 }
 
+type SessionExpiredHandler = () => void;
+
+const sessionExpiredHandlers = new Set<SessionExpiredHandler>();
+
+export function onSessionExpired(handler: SessionExpiredHandler) {
+  sessionExpiredHandlers.add(handler);
+  return () => {
+    sessionExpiredHandlers.delete(handler);
+  };
+}
+
+export function emitSessionExpired() {
+  sessionExpiredHandlers.forEach((h) => {
+    try {
+      h();
+    } catch (e) {
+      console.warn("session expired handler error:", e);
+    }
+  });
+}
+
 

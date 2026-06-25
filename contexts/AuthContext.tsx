@@ -17,7 +17,8 @@ import {
   type AuthResultData,
   type UserData,
 } from "../services/api/auth";
-import { onAccessTokenRefreshed } from "../services/api/authEvents";
+import { onAccessTokenRefreshed, onSessionExpired } from "../services/api/authEvents";
+import { Alert } from "react-native";
 import { debugLog } from "@/utils/logger";
 
 const USER_INFO_KEY = "userInfo";
@@ -232,6 +233,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         token: newToken,
         isAuthenticated: !!prev.user,
       }));
+    });
+    return off;
+  }, []);
+
+  // Refresh 失敗 → 集中清狀態 + 一次 Alert,Stack.Protected 之後會自動 route 到 login
+  // 用 setAuthState callback 內判 prev.isAuthenticated 來去重:並發 N 個 401 都會 emit,但只有第一個會真的處理。
+  useEffect(() => {
+    const off = onSessionExpired(() => {
+      setAuthState((prev) => {
+        if (!prev.isAuthenticated && !prev.token && !prev.user) {
+          return prev;
+        }
+        void clearAuthToken();
+        void clearRefreshToken();
+        void clearUserInfo();
+        Alert.alert("登入已過期", "請重新登入後再試");
+        return {
+          user: null,
+          token: null,
+          isLoading: false,
+          isAuthenticated: false,
+        };
+      });
     });
     return off;
   }, []);
