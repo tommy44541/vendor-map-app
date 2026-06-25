@@ -1,4 +1,5 @@
-修正:
-- 打開 app 經常被踢回登入頁(refresh token 並發競爭被
-  後端 re-use detection 廢掉整條 family)。改成 single-flight,
-  並發 401 共享同一個 refresh 結果。
+改善:
+- 登入過期不再每個畫面跳一次 alert;自動清狀態並導回登入頁
+- 畫面崩潰時顯示 GAME OVER 像素卡片可重新載入,不再白屏
+- 載入動畫換成像素 bar,取代系統圓圈轉圈
+- 內部:token 儲存集中到單一模組,降低 typo 漏洞

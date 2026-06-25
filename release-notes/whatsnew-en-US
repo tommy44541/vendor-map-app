@@ -1,5 +1,8 @@
-Fixes:
-- App often kicked users back to login on open (concurrent refresh
-  requests racing the rotating token, triggering backend re-use
-  detection that revoked the whole family). Refresh is now
-  single-flight so parallel 401s share one in-flight refresh.
+Improvements:
+- Session expiry no longer spams an alert from every screen; state is
+  cleared once and you are routed back to login automatically
+- Render crashes now show a GAME OVER pixel card with a reload button
+  instead of a blank white screen
+- System spinner replaced with a pixel-style loading bar everywhere
+- Internal: token storage centralized into one module to remove typo
+  drift risk between auth and request layers
