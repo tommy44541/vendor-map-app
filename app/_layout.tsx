@@ -6,6 +6,7 @@ import * as SplashScreen from "expo-splash-screen";
 import { View } from "react-native";
 import { AuthProvider, useAuth } from "../contexts/AuthContext";
 import { pixelColors } from "../theme/pixel";
+import { PixelErrorBoundary } from "../components/pixel";
 import "./globals.css";
 
 SplashScreen.preventAutoHideAsync().catch(() => {
@@ -71,9 +72,11 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: pixelColors.bg }}>
-      <AuthProvider>
-        <AuthRouter />
-      </AuthProvider>
+      <PixelErrorBoundary>
+        <AuthProvider>
+          <AuthRouter />
+        </AuthProvider>
+      </PixelErrorBoundary>
     </GestureHandlerRootView>
   );
 }

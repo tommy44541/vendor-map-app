@@ -15,3 +15,4 @@ export type {
   PixelSegmentedControlOption,
   PixelSegmentedControlProps,
 } from "./PixelSegmentedControl";
+export { PixelErrorBoundary } from "./PixelErrorBoundary";
