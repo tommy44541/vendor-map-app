@@ -18,61 +18,19 @@ import {
   type UserData,
 } from "../services/api/auth";
 import { onAccessTokenRefreshed, onSessionExpired } from "../services/api/authEvents";
+import { tokenStorage } from "../services/auth/tokenStorage";
 import { Alert } from "react-native";
 import { debugLog } from "@/utils/logger";
 
 const USER_INFO_KEY = "userInfo";
 const PUSH_REGISTER_MAX_RETRIES = 2;
 
-const setAuthToken = async (token: string): Promise<void> => {
-  try {
-    await AsyncStorage.setItem("authToken", token);
-  } catch (error) {
-    console.error("設置認證token失敗:", error);
-  }
-};
-
-const getAuthToken = async (): Promise<string | null> => {
-  try {
-    return await AsyncStorage.getItem("authToken");
-  } catch (error) {
-    console.error("獲取認證token失敗:", error);
-    return null;
-  }
-};
-
-const setRefreshToken = async (refreshToken: string): Promise<void> => {
-  try {
-    await AsyncStorage.setItem("refreshToken", refreshToken);
-  } catch (error) {
-    console.error("設置刷新token失敗:", error);
-  }
-};
-
-const getRefreshToken = async (): Promise<string | null> => {
-  try {
-    return await AsyncStorage.getItem("refreshToken");
-  } catch (error) {
-    console.error("獲取刷新token失敗:", error);
-    return null;
-  }
-};
-
-const clearAuthToken = async (): Promise<void> => {
-  try {
-    await AsyncStorage.removeItem("authToken");
-  } catch (error) {
-    console.error("清除認證token失敗:", error);
-  }
-};
-
-const clearRefreshToken = async (): Promise<void> => {
-  try {
-    await AsyncStorage.removeItem("refreshToken");
-  } catch (error) {
-    console.error("清除刷新token失敗:", error);
-  }
-};
+const setAuthToken = tokenStorage.setAccessToken;
+const getAuthToken = tokenStorage.getAccessToken;
+const setRefreshToken = tokenStorage.setRefreshToken;
+const getRefreshToken = tokenStorage.getRefreshToken;
+const clearAuthToken = tokenStorage.clearAccessToken;
+const clearRefreshToken = tokenStorage.clearRefreshToken;
 
 const saveUserInfo = async (user: any): Promise<void> => {
   try {

@@ -1,5 +1,5 @@
 import { debugLog } from '@/utils/logger';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { tokenStorage } from '@/services/auth/tokenStorage';
 import { emitAccessTokenRefreshed, emitSessionExpired } from './authEvents';
 
 // API設定
@@ -130,25 +130,8 @@ const extractError = (status: number, raw: any): ApiError => {
   return new ApiError(msg, { status, requestId, raw });
 };
 
-// 獲取認證token
-const getAuthToken = async (): Promise<string | null> => {
-  try {
-    return await AsyncStorage.getItem('authToken');
-  } catch (error) {
-    console.error('獲取認證token失敗:', error);
-    return null;
-  }
-};
-
-// 獲取刷新token
-const getRefreshToken = async (): Promise<string | null> => {
-  try {
-    return await AsyncStorage.getItem('refreshToken');
-  } catch (error) {
-    console.error('獲取刷新token失敗:', error);
-    return null;
-  }
-};
+const getAuthToken = tokenStorage.getAccessToken;
+const getRefreshToken = tokenStorage.getRefreshToken;
 
 // Single-flight: 同時間只允許一個 refresh in-flight,並發呼叫共享同一個 promise。
 // 避免多個 401 同時觸發多個 refresh,造成 backend re-use detection 把整個 token family 廢掉。
@@ -181,10 +164,10 @@ const doRefreshAuthToken = async (): Promise<string | null> => {
     const result = await parseBody(response);
     const accessToken = result?.data?.access_token;
     if (accessToken) {
-      await AsyncStorage.setItem('authToken', accessToken);
+      await tokenStorage.setAccessToken(accessToken);
       const refresh = result?.data?.refresh_token;
       if (refresh) {
-        await AsyncStorage.setItem('refreshToken', refresh);
+        await tokenStorage.setRefreshToken(refresh);
       }
       debugLog('✅ Token刷新成功');
       emitAccessTokenRefreshed(accessToken);
