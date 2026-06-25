@@ -66,6 +66,8 @@ export const PixelTextInput = forwardRef<TextInput, PixelTextInputProps>(
         >
           <TextInput
             ref={ref}
+            accessibilityLabel={label}
+            accessibilityHint={hint}
             {...rest}
             placeholder={placeholder}
             placeholderTextColor={placeholderTextColor || pixelColors.gray500}
@@ -98,7 +100,14 @@ export function PixelEyeToggle({
   onPress: () => void;
 }) {
   return (
-    <Pressable onPress={onPress} style={styles.eyeBtn} hitSlop={8}>
+    <Pressable
+      onPress={onPress}
+      style={styles.eyeBtn}
+      hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel={visible ? "隱藏密碼" : "顯示密碼"}
+      accessibilityState={{ selected: visible }}
+    >
       <PixelText
         variant="caption"
         display

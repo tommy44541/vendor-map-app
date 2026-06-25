@@ -74,7 +74,13 @@ export function PixelChip({
   }
 
   return (
-    <Pressable onPress={onPress} style={[styles.wrap, style]}>
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected: active }}
+      style={[styles.wrap, style]}
+    >
       {inner}
     </Pressable>
   );

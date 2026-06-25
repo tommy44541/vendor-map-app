@@ -85,6 +85,9 @@ export function PixelButton({
       ]}
     >
       <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        accessibilityState={{ disabled: !!disabled }}
         {...rest}
         disabled={disabled}
         onPressIn={(e) => {
