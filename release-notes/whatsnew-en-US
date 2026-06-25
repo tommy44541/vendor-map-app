@@ -1,4 +1,5 @@
 Fixes:
-- Push notification setup no longer gets stuck at "step:token" on
-  Android (root cause: google-services.json was missing from the
-  build, so the native FCM module could not initialize)
+- App often kicked users back to login on open (concurrent refresh
+  requests racing the rotating token, triggering backend re-use
+  detection that revoked the whole family). Refresh is now
+  single-flight so parallel 401s share one in-flight refresh.

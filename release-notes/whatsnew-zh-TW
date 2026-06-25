@@ -1,3 +1,4 @@
 修正:
-- Android 推播設定無法完成,卡在「未完成:token」
-  (原因:Firebase 設定檔未包進 build,FCM 初始化失敗)
+- 打開 app 經常被踢回登入頁(refresh token 並發競爭被
+  後端 re-use detection 廢掉整條 family)。改成 single-flight,
+  並發 401 共享同一個 refresh 結果。

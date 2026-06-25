@@ -150,8 +150,11 @@ const getRefreshToken = async (): Promise<string | null> => {
   }
 };
 
-// 刷新token
-const refreshAuthToken = async (): Promise<string | null> => {
+// Single-flight: 同時間只允許一個 refresh in-flight,並發呼叫共享同一個 promise。
+// 避免多個 401 同時觸發多個 refresh,造成 backend re-use detection 把整個 token family 廢掉。
+let refreshInFlight: Promise<string | null> | null = null;
+
+const doRefreshAuthToken = async (): Promise<string | null> => {
   try {
     const refreshToken = await getRefreshToken();
     if (!refreshToken) {
@@ -178,7 +181,6 @@ const refreshAuthToken = async (): Promise<string | null> => {
     const result = await parseBody(response);
     const accessToken = result?.data?.access_token;
     if (accessToken) {
-      // 保存新的access token
       await AsyncStorage.setItem('authToken', accessToken);
       const refresh = result?.data?.refresh_token;
       if (refresh) {
@@ -194,6 +196,16 @@ const refreshAuthToken = async (): Promise<string | null> => {
     console.error('❌ 刷新token時發生錯誤:', error);
     return null;
   }
+};
+
+const refreshAuthToken = async (): Promise<string | null> => {
+  if (refreshInFlight) {
+    return refreshInFlight;
+  }
+  refreshInFlight = doRefreshAuthToken().finally(() => {
+    refreshInFlight = null;
+  });
+  return refreshInFlight;
 };
 
 export const requestRaw = async (
