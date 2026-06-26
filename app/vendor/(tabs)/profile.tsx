@@ -14,6 +14,7 @@ import {
   type MerchantDiscoveryProfile,
 } from "@/services/api/discovery";
 import { ApiError } from "@/services/api/util";
+import { discoveryLabel as getDiscoveryLabel } from "@/utils/discovery/labels";
 import { pixelBorderWidth, pixelColors, pixelRadius } from "@/theme/pixel";
 import { Ionicons } from "@expo/vector-icons";
 import { Link, useRouter } from "expo-router";
@@ -44,40 +45,6 @@ const formatTime = (value?: string | null) => {
     hour: "2-digit",
     minute: "2-digit",
   });
-};
-
-const DISCOVERY_LABELS: Record<string, string> = {
-  food: "餐飲",
-  experience: "生活體驗",
-  other: "其他",
-  meal: "餐食",
-  snack: "小吃",
-  beverage: "飲品",
-  dessert: "甜點",
-  goods: "商品",
-  performance: "展演",
-  grill: "燒烤",
-  fried_food: "炸物",
-  bakery: "烘焙",
-  coffee: "咖啡",
-  tea: "茶飲",
-  handmade: "手作",
-  accessory: "配件",
-  workshop: "工作坊",
-  market: "市集",
-  event: "活動",
-  tourism_area: "觀光區",
-  transit_area: "交通節點",
-};
-
-const getDiscoveryLabel = (value?: { slug?: string; name?: string } | null) => {
-  if (!value) return "未設定";
-  return (
-    DISCOVERY_LABELS[value.slug || ""] ||
-    value.name ||
-    value.slug ||
-    "未設定"
-  );
 };
 
 const Profile = () => {

@@ -9,6 +9,7 @@ import {
 import { MenuCategory, MenuItem, menuApi } from "@/services/api/menu";
 import { discoveryApi } from "@/services/api/discovery";
 import { ApiError } from "@/services/api/util";
+import { discoverySubLabel } from "@/utils/discovery/labels";
 import { pixelBorderWidth, pixelColors, pixelRadius } from "@/theme/pixel";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -93,7 +94,10 @@ const VendorMenuScreen = () => {
         const active = subs
           .filter((s) => s.status !== "inactive")
           .sort((a, b) => a.display_order - b.display_order)
-          .map((s) => ({ id: s.slug as MenuCategory, label: s.name }));
+          .map((s) => ({
+            id: s.slug as MenuCategory,
+            label: discoverySubLabel({ slug: s.slug, name: s.name }),
+          }));
         if (active.length > 0) setCategoryOptions(active);
       })
       .catch(() => {

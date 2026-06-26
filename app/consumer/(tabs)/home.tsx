@@ -5,6 +5,7 @@ import {
   type PublicMerchantSearchItem,
 } from "@/services/api/discovery";
 import { ApiError } from "@/services/api/util";
+import { discoveryLabel } from "@/utils/discovery/labels";
 import { getFcmTokenOrNull, getStableDeviceId } from "@/utils/push";
 import { parseMerchantIdFromQrData } from "@/utils/qr/subscriptionQr";
 import {
@@ -51,25 +52,9 @@ type SubscriptionVendor = {
   statusLabel: string;
 };
 
-const DISCOVERY_LABELS: Record<string, string> = {
-  food: "餐飲",
-  experience: "生活體驗",
-  other: "其他",
-  meal: "正餐",
-  snack: "小吃",
-  beverage: "飲品",
-  goods: "手作選物",
-  performance: "展演",
-  market: "市集",
-  event: "活動",
-  tourism_area: "觀光區",
-  transit_area: "交通節點",
-};
-
-const getDiscoveryLabel = (value?: { slug?: string; name?: string } | null) => {
-  if (!value) return "精選商家";
-  return DISCOVERY_LABELS[value.slug || ""] || value.name || value.slug || "精選商家";
-};
+const getDiscoveryLabel = (
+  value?: { slug?: string | null; name?: string | null } | null
+) => discoveryLabel(value, "精選商家");
 
 const formatDistance = (meters?: number | null) => {
   if (typeof meters !== "number") return "距離未提供";
