@@ -236,11 +236,9 @@ const Profile = () => {
   }, [loadProfile, verificationInput]);
 
   const saveDiscoveryProfile = useCallback(async () => {
+    // UI 已在條件不齊時把 switch disable 掉,這邊只是後備防線
+    // (避免並發狀態變更時偷送 is_public=true)。
     if (isPublicSelected && !canBePublic) {
-      Alert.alert(
-        "尚未符合公開條件",
-        "公開前需要完成商家驗證、設定主要位置,並選擇主分類與子分類。"
-      );
       return;
     }
 
@@ -460,53 +458,71 @@ const Profile = () => {
             />
           </View>
 
-          {/* 條件達成度 */}
+          {/* 公開條件 checklist */}
           <View style={styles.divider} />
-          <View style={styles.miniRow}>
-            <PixelText variant="caption" tone="muted" display>
-              REQUIREMENTS
-            </PixelText>
-            <View style={{ flexDirection: "row", gap: 6 }}>
-              <PixelChip
-                label={discoveryProfile?.is_verified ? "驗證 OK" : "驗證 X"}
-                tone={discoveryProfile?.is_verified ? "green" : "red"}
-                active
-                display
-              />
-              <PixelChip
-                label={
-                  discoveryProfile?.has_active_primary_location
-                    ? "位置 OK"
-                    : "位置 X"
-                }
-                tone={
-                  discoveryProfile?.has_active_primary_location
-                    ? "green"
-                    : "red"
-                }
-                active
-                display
-              />
-            </View>
+          <PixelText variant="caption" tone="muted" display>
+            REQUIREMENTS
+          </PixelText>
+          <View style={{ height: 6 }} />
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+            <PixelChip
+              label={discoveryProfile?.is_verified ? "✓ 驗證" : "✗ 驗證"}
+              tone={discoveryProfile?.is_verified ? "green" : "red"}
+              active
+            />
+            <PixelChip
+              label={selectedCategoryId ? "✓ 主分類" : "✗ 主分類"}
+              tone={selectedCategoryId ? "green" : "red"}
+              active
+            />
+            <PixelChip
+              label={selectedSubcategoryId ? "✓ 子分類" : "✗ 子分類"}
+              tone={selectedSubcategoryId ? "green" : "red"}
+              active
+            />
+            <PixelChip
+              label={
+                discoveryProfile?.has_active_primary_location
+                  ? "✓ 主要地點"
+                  : "✗ 主要地點"
+              }
+              tone={
+                discoveryProfile?.has_active_primary_location ? "green" : "red"
+              }
+              active
+            />
           </View>
+          {!discoveryProfile?.has_active_primary_location ? (
+            <>
+              <View style={{ height: 8 }} />
+              <PixelButton
+                label="前往位置設定主要地點 →"
+                tone="gold"
+                size="sm"
+                onPress={() => router.push("/vendor/location" as any)}
+              />
+            </>
+          ) : null}
 
           {/* 展開 / 收合的編輯區 */}
           {discoveryEditing ? (
             <>
               <View style={styles.divider} />
 
-              {/* 公開顯示 switch */}
+              {/* 公開顯示 switch — 條件不齊時 disable */}
               <View style={styles.switchRow}>
                 <View style={{ flex: 1 }}>
                   <PixelText variant="bodyLg">公開顯示</PixelText>
                   <PixelText variant="caption" tone="muted">
-                    符合條件時,顧客可在公開探索找到這家店
+                    {canBePublic
+                      ? "顧客可在公開探索找到這家店"
+                      : "完成上方公開條件後即可開啟"}
                   </PixelText>
                 </View>
                 <Switch
                   value={isPublicSelected}
                   onValueChange={(v) => setIsPublicSelected(v)}
-                  disabled={isSavingDiscovery}
+                  disabled={isSavingDiscovery || !canBePublic}
                   trackColor={{
                     false: pixelColors.gray700,
                     true: pixelColors.green,
