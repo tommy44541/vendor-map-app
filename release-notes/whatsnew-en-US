@@ -1,8 +1,8 @@
 Improvements:
-- Session expiry no longer spams an alert from every screen; state is
-  cleared once and you are routed back to login automatically
-- Render crashes now show a GAME OVER pixel card with a reload button
-  instead of a blank white screen
-- System spinner replaced with a pixel-style loading bar everywhere
-- Internal: token storage centralized into one module to remove typo
-  drift risk between auth and request layers
+- Vendor menu categories no longer limited to the 4 food presets;
+  expanded to 19 options including handmade goods, lifestyle items,
+  on-site services, etc. (auto-synced from the backend taxonomy)
+- Category and subcategory labels now display in full Chinese instead
+  of mixed English
+- Accessibility: pixel buttons, chips, and segmented controls now
+  announce proper role / label / selected state to screen readers
