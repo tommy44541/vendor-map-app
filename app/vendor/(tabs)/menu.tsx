@@ -7,6 +7,7 @@ import {
   PixelTextInput,
 } from "@/components/pixel";
 import { MenuCategory, MenuItem, menuApi } from "@/services/api/menu";
+import { discoveryApi } from "@/services/api/discovery";
 import { ApiError } from "@/services/api/util";
 import { pixelBorderWidth, pixelColors, pixelRadius } from "@/theme/pixel";
 import { Ionicons } from "@expo/vector-icons";
@@ -37,22 +38,8 @@ type MenuFormState = {
   isAvailable: boolean;
 };
 
-const CATEGORY_OPTIONS: { id: CategoryId; label: string }[] = [
-  { id: "all", label: "全部" },
-  { id: "main", label: "主打" },
-  { id: "snack", label: "小品" },
-  { id: "drink", label: "飲品" },
-  { id: "dessert", label: "甜點" },
-];
-
-const CATEGORY_NAME: Record<MenuCategory, string> = {
-  main: "主打",
-  snack: "小品",
-  drink: "飲品",
-  dessert: "甜點",
-};
-
-const MENU_CATEGORY_OPTIONS: { id: MenuCategory; label: string }[] = [
+// Discovery 還沒拿到時用的 fallback。等 listSubcategories() 回來會被取代。
+const LEGACY_CATEGORY_OPTIONS: { id: MenuCategory; label: string }[] = [
   { id: "main", label: "主打" },
   { id: "snack", label: "小品" },
   { id: "drink", label: "飲品" },
@@ -76,6 +63,9 @@ const VendorMenuScreen = () => {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [initialLoaded, setInitialLoaded] = useState(false);
+  const [categoryOptions, setCategoryOptions] = useState<
+    { id: MenuCategory; label: string }[]
+  >(LEGACY_CATEGORY_OPTIONS);
 
   const [editorVisible, setEditorVisible] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -88,6 +78,45 @@ const VendorMenuScreen = () => {
       StatusBar.setTranslucent(true);
     }
   }, []);
+
+  // 從 discovery_subcategories 拿分類選項(filter active + sort by display_order)。
+  // 失敗保留 LEGACY 4 個,商家還是可以新增舊 enum 的品項。
+  useEffect(() => {
+    let cancelled = false;
+    discoveryApi
+      .listSubcategories()
+      .then((res) => {
+        if (cancelled) return;
+        const subs = Array.isArray(res.data?.subcategories)
+          ? res.data.subcategories
+          : [];
+        const active = subs
+          .filter((s) => s.status !== "inactive")
+          .sort((a, b) => a.display_order - b.display_order)
+          .map((s) => ({ id: s.slug as MenuCategory, label: s.name }));
+        if (active.length > 0) setCategoryOptions(active);
+      })
+      .catch(() => {
+        // discovery API 失敗 → 保留 fallback,UX 不中斷
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // 篩選列加「全部」在最前
+  const filterChips = useMemo(
+    () =>
+      [{ id: "all" as CategoryId, label: "全部" }, ...categoryOptions],
+    [categoryOptions]
+  );
+
+  // 顯示 item 上的 chip 用。slug 找不到對應(舊資料、被砍掉的 sub)就直接顯示 slug。
+  const categoryLabel = useCallback(
+    (slug: string) =>
+      categoryOptions.find((c) => c.id === slug)?.label ?? slug,
+    [categoryOptions]
+  );
 
   const filteredItems = useMemo(() => {
     if (selectedCategory === "all") return menuItems;
@@ -144,7 +173,11 @@ const VendorMenuScreen = () => {
 
   const openCreateEditor = () => {
     setEditingId(null);
-    setForm(DEFAULT_FORM);
+    // 用第一個可用 category 當預設,避免後端切到新 enum 時舊 "main" 被擋 422
+    setForm({
+      ...DEFAULT_FORM,
+      category: categoryOptions[0]?.id ?? DEFAULT_FORM.category,
+    });
     setEditorVisible(true);
   };
 
@@ -319,7 +352,7 @@ const VendorMenuScreen = () => {
             paddingTop: 14,
           }}
         >
-          {CATEGORY_OPTIONS.map((category) => (
+          {filterChips.map((category) => (
             <PixelChip
               key={category.id}
               label={category.label}
@@ -369,7 +402,7 @@ const VendorMenuScreen = () => {
                     <View style={styles.itemTitleRow}>
                       <PixelText variant="bodyLg">{item.name}</PixelText>
                       <PixelChip
-                        label={CATEGORY_NAME[item.category]}
+                        label={categoryLabel(item.category)}
                         tone="paper"
                         active
                       />
@@ -495,7 +528,7 @@ const VendorMenuScreen = () => {
                     </PixelText>
                     <View style={{ height: 6 }} />
                     <View style={styles.chipWrap}>
-                      {MENU_CATEGORY_OPTIONS.map((category) => (
+                      {categoryOptions.map((category) => (
                         <PixelChip
                           key={category.id}
                           label={category.label}

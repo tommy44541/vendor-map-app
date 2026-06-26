@@ -1,6 +1,9 @@
 import { ApiSuccessResponse, request } from "./util";
 
-export type MenuCategory = "main" | "snack" | "drink" | "dessert";
+// 原本是 4 值 union ("main"|"snack"|"drink"|"dessert")。
+// 後端 V3 正在改成沿用 discovery_subcategories.slug(18 個值,涵蓋餐食/小吃/飲品/手作/服務/其他)。
+// 廣化成 string 讓兩種值都能流經型別,等後端 MenuCategory.IsValid() 拿掉舊 enum 限制後立刻可用。
+export type MenuCategory = string;
 
 export interface MenuItem {
   id: string;
