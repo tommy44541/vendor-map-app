@@ -1,3 +1,4 @@
+import { consumerApi, type UserLocation } from "@/services/api/consumer";
 import { subscriptionsApi } from "@/services/api/subscriptions";
 import {
   discoveryApi,
@@ -47,7 +48,12 @@ import {
 } from "react-native-safe-area-context";
 import { getMerchantDisplayName } from "@/utils/merchant/getMerchantDisplayName";
 import { useAuth } from "../../../contexts/AuthContext";
-import { UnifiedMap, type UnifiedMapMarker } from "@/components/maps/UnifiedMap";
+import {
+  UnifiedMap,
+  type UnifiedMapMarker,
+  type UnifiedMapPressEvent,
+  type UnifiedMapRef,
+} from "@/components/maps/UnifiedMap";
 import { pixelMapStyle } from "@/theme/mapStylePixel";
 import BottomSheet, {
   BottomSheetBackdrop,
@@ -65,6 +71,7 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import ReanimatedSwipeable from "react-native-gesture-handler/ReanimatedSwipeable";
 
 // Phase 3 v4:tab 直向 icon+label 排列,peek 高度重算。
 // item = icon 20 + margin 2 + label ~15 + paddingV 6*2 = ~49
@@ -156,6 +163,20 @@ export default function ConsumerHomeScreen() {
   const [subscribedVendors, setSubscribedVendors] = useState<SubscriptionVendor[]>(
     []
   );
+  const [userLocations, setUserLocations] = useState<UserLocation[]>([]);
+  const [locationsLoading, setLocationsLoading] = useState(false);
+  const [locationModalOpen, setLocationModalOpen] = useState(false);
+  const [pendingPrimaryId, setPendingPrimaryId] = useState<string | null>(null);
+  const [locationActionLoading, setLocationActionLoading] = useState(false);
+  const [addLocationMode, setAddLocationMode] = useState(false);
+  const [addLocationPicked, setAddLocationPicked] = useState<{
+    latitude: number;
+    longitude: number;
+    address: string;
+  } | null>(null);
+  const [addLocationLabel, setAddLocationLabel] = useState("");
+  const [addLocationLoading, setAddLocationLoading] = useState(false);
+  const mapRef = useRef<UnifiedMapRef>(null);
   const [discoveryLoading, setDiscoveryLoading] = useState(false);
   const [discoveryError, setDiscoveryError] = useState<string | null>(null);
   const [discoveryCategories, setDiscoveryCategories] = useState<
@@ -297,6 +318,161 @@ export default function ConsumerHomeScreen() {
     setMerchantId("");
   };
 
+  const loadUserLocations = useCallback(async () => {
+    setLocationsLoading(true);
+    try {
+      const res = await consumerApi.getUserLocations();
+      setUserLocations(Array.isArray(res.data) ? res.data : []);
+    } catch {
+      setUserLocations([]);
+    } finally {
+      setLocationsLoading(false);
+    }
+  }, []);
+
+  const handleAddLocationMapPress = useCallback(async (e: UnifiedMapPressEvent) => {
+    try {
+      setAddLocationLoading(true);
+      const results = await Location.reverseGeocodeAsync({ latitude: e.latitude, longitude: e.longitude });
+      const a = results?.[0];
+      const addr = a
+        ? [a.street, a.streetNumber, a.city, a.region].filter(Boolean).join(" ")
+        : `${e.latitude.toFixed(5)}, ${e.longitude.toFixed(5)}`;
+      setAddLocationPicked({ latitude: e.latitude, longitude: e.longitude, address: addr });
+    } catch {
+      setAddLocationPicked({
+        latitude: e.latitude,
+        longitude: e.longitude,
+        address: `${e.latitude.toFixed(5)}, ${e.longitude.toFixed(5)}`,
+      });
+    } finally {
+      setAddLocationLoading(false);
+    }
+  }, []);
+
+  const handleAddLocationGPS = useCallback(async () => {
+    try {
+      setAddLocationLoading(true);
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") { Alert.alert("需要位置權限", "請允許存取位置後再試"); return; }
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const results = await Location.reverseGeocodeAsync({
+        latitude: loc.coords.latitude,
+        longitude: loc.coords.longitude,
+      });
+      const a = results?.[0];
+      const addr = a
+        ? [a.street, a.streetNumber, a.city, a.region].filter(Boolean).join(" ")
+        : `${loc.coords.latitude.toFixed(5)}, ${loc.coords.longitude.toFixed(5)}`;
+      setAddLocationPicked({ latitude: loc.coords.latitude, longitude: loc.coords.longitude, address: addr });
+      mapRef.current?.animateToRegion({
+        latitude: loc.coords.latitude,
+        longitude: loc.coords.longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      });
+    } catch {
+      Alert.alert("錯誤", "無法取得 GPS 位置");
+    } finally {
+      setAddLocationLoading(false);
+    }
+  }, []);
+
+  const saveAddLocation = useCallback(async () => {
+    if (!addLocationPicked) { Alert.alert("提示", "請先點選地圖或使用 GPS 選取位置"); return; }
+    const label = addLocationLabel.trim();
+    if (!label) { Alert.alert("提示", "請輸入位置名稱"); return; }
+    try {
+      setAddLocationLoading(true);
+      await consumerApi.createUserLocation({
+        label,
+        full_address: addLocationPicked.address,
+        latitude: addLocationPicked.latitude,
+        longitude: addLocationPicked.longitude,
+        is_primary: false,
+        is_active: true,
+      });
+      setAddLocationMode(false);
+      setAddLocationPicked(null);
+      setAddLocationLabel("");
+      await loadUserLocations();
+      setLocationModalOpen(true);
+    } catch (e: any) {
+      Alert.alert("錯誤", e?.message || "新增位置失敗");
+    } finally {
+      setAddLocationLoading(false);
+    }
+  }, [addLocationPicked, addLocationLabel, loadUserLocations]);
+
+  const cancelAddLocation = useCallback(() => {
+    setAddLocationMode(false);
+    setAddLocationPicked(null);
+    setAddLocationLabel("");
+    setLocationModalOpen(true);
+  }, []);
+
+  const confirmLocationChange = useCallback(async () => {
+    if (!pendingPrimaryId) return;
+    const loc = userLocations.find((l) => l.ID === pendingPrimaryId);
+    if (!loc) return;
+    try {
+      setLocationActionLoading(true);
+      await consumerApi.updateUserLocation(pendingPrimaryId, {
+        label: loc.Label,
+        is_active: true,
+        is_primary: true,
+      });
+      await loadUserLocations();
+      setPendingPrimaryId(null);
+      setLocationModalOpen(false);
+    } catch (e: any) {
+      Alert.alert("錯誤", e?.message || "更新失敗");
+    } finally {
+      setLocationActionLoading(false);
+    }
+  }, [pendingPrimaryId, userLocations, loadUserLocations]);
+
+  const disableLocation = useCallback(async (id: string) => {
+    const loc = userLocations.find((l) => l.ID === id);
+    if (!loc) return;
+    try {
+      setLocationActionLoading(true);
+      await consumerApi.updateUserLocation(id, {
+        label: loc.Label,
+        is_active: false,
+        is_primary: false,
+      });
+      if (pendingPrimaryId === id) setPendingPrimaryId(null);
+      await loadUserLocations();
+    } catch (e: any) {
+      Alert.alert("錯誤", e?.message || "停用失敗");
+    } finally {
+      setLocationActionLoading(false);
+    }
+  }, [userLocations, pendingPrimaryId, loadUserLocations]);
+
+  const deleteLocation = useCallback(async (id: string) => {
+    Alert.alert("刪除位置", "確定要刪除此位置嗎？", [
+      { text: "取消", style: "cancel" },
+      {
+        text: "刪除",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            setLocationActionLoading(true);
+            await consumerApi.deleteUserLocation(id);
+            if (pendingPrimaryId === id) setPendingPrimaryId(null);
+            await loadUserLocations();
+          } catch (e: any) {
+            Alert.alert("錯誤", e?.message || "刪除失敗");
+          } finally {
+            setLocationActionLoading(false);
+          }
+        },
+      },
+    ]);
+  }, [pendingPrimaryId, loadUserLocations]);
+
   const checkProfilePushStatus = useCallback(async () => {
     try {
       const [permission, token] = await Promise.all([
@@ -312,8 +488,11 @@ export default function ConsumerHomeScreen() {
   }, []);
 
   useEffect(() => {
-    if (activeTab === "profile") void checkProfilePushStatus();
-  }, [activeTab, checkProfilePushStatus]);
+    if (activeTab === "profile") {
+      void checkProfilePushStatus();
+      void loadUserLocations();
+    }
+  }, [activeTab, checkProfilePushStatus, loadUserLocations]);
 
   // 監聽 in-app 收到的推播,累積成通知歷史(最多 20 筆)
   useEffect(() => {
@@ -592,9 +771,9 @@ export default function ConsumerHomeScreen() {
     });
 
   // MID 時左右各的 gap(寬度差的一半)— bar 底部貼齊這個 gap,四邊等距
-  const midSideGap = (screenWidth - CAPSULE_MID_WIDTH) / 2;
+  const midSideGap = Math.max((screenWidth - CAPSULE_MID_WIDTH) / 2, insets.bottom + 8);
   // Tab bar 螢幕底部固定 Y — 一次調這裡,capsule MIN 位置 + tab bar 補償都同步
-  const TAB_BAR_FIXED_BOTTOM = 8;
+  const TAB_BAR_FIXED_BOTTOM = insets.bottom + 8;
 
   const capsuleAnimatedStyle = useAnimatedStyle(() => ({
     height: capsuleHeight.value,
@@ -750,11 +929,24 @@ export default function ConsumerHomeScreen() {
     <View style={styles.root}>
       {/* 全螢幕地圖底層 */}
       <UnifiedMap
+        ref={mapRef}
         region={mapRegion}
         style={StyleSheet.absoluteFill}
-        markers={mapMarkers}
+        markers={[
+          ...mapMarkers,
+          ...(addLocationMode && addLocationPicked
+            ? [{
+                id: "add-location-pick",
+                latitude: addLocationPicked.latitude,
+                longitude: addLocationPicked.longitude,
+                title: addLocationLabel || "新位置",
+                pinColor: pixelColors.blue,
+              }]
+            : []),
+        ]}
         customMapStyle={mapCustomStyle}
         showsUserLocation
+        onPress={addLocationMode ? handleAddLocationMapPress : undefined}
       />
 
       {/* 重寫中:整個膠囊是 drag surface,content 不 scroll,任何位置拖曳都控 sheet 高度 */}
@@ -771,7 +963,7 @@ export default function ConsumerHomeScreen() {
           </Animated.View>
 
           {/* content 區 — 純 View 不 scroll,單純 placeholder 顯示 */}
-          <View style={styles.capsuleContent}>
+          <View style={[styles.capsuleContent, { paddingBottom: CAPSULE_SNAP_MIN + insets.bottom }]}>
             {/* 共用 header:標題 + 齒輪(peek 時隱藏)*/}
             {capsuleSnapLevel > 0 && (
               <View style={styles.capsuleSectionHeader}>
@@ -990,46 +1182,51 @@ export default function ConsumerHomeScreen() {
               </View>
             )}
             {activeTab === "profile" && capsuleSnapLevel > 0 && (
-              <View style={{ gap: 12, flex: 1 }}>
-                {/* 帳號區塊 */}
-                <View style={styles.exploreMerchantRow}>
-                  <View style={styles.profileAvatar}>
-                    <PixelText variant="bodyLg" display tone="inverse">
-                      {(user?.name?.charAt(0) || "P").toUpperCase()}
-                    </PixelText>
+              <View style={{ flex: 1 }}>
+                {/* 主要位置描述列 */}
+                <PixelText variant="caption" tone="muted" numberOfLines={2} style={{ marginBottom: 6 }}>
+                  {locationsLoading
+                    ? "讀取位置中..."
+                    : (userLocations.find((l) => l.IsPrimary && l.IsActive)?.FullAddress ?? "尚未設定主要位置")}
+                </PixelText>
+
+                <View style={styles.profileDivider} />
+
+                {/* 我的位置 → 開位置管理 Modal */}
+                <Pressable
+                  onPress={() => { setLocationModalOpen(true); void loadUserLocations(); }}
+                  style={styles.profileLocationRow}
+                  accessibilityRole="button"
+                >
+                  <View style={styles.profileLocationIconBlue}>
+                    <Ionicons name="navigate" size={18} color={pixelColors.white} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <PixelText variant="bodyLg" numberOfLines={1}>
-                      {user?.name || "探索者"}
-                    </PixelText>
-                    <PixelText
-                      variant="caption"
-                      tone="muted"
-                      numberOfLines={1}
-                    >
-                      {user?.email || ""}
+                    <PixelText variant="bodyLg">我的位置</PixelText>
+                    <PixelText variant="caption" tone="muted">
+                      {locationStatus === "granted" ? "GPS 已啟用" : "點此管理儲存位置"}
                     </PixelText>
                   </View>
-                </View>
+                  <Ionicons name="chevron-forward" size={16} color={pixelColors.gray500} />
+                </Pressable>
 
-                {/* 推播狀態 */}
-                <View style={styles.exploreMerchantRow}>
-                  <Ionicons
-                    name="notifications"
-                    size={22}
-                    color={
-                      profilePushStatus === "ready"
-                        ? pixelColors.green
-                        : pixelColors.gold
-                    }
-                  />
+                <View style={styles.profileDivider} />
+
+                {/* 推播通知 */}
+                <View style={styles.profileLocationRow}>
+                  <View style={[
+                    styles.profileLocationIconBlue,
+                    { backgroundColor: profilePushStatus === "ready" ? pixelColors.green : pixelColors.gold },
+                  ]}>
+                    <Ionicons name="notifications" size={18} color={pixelColors.ink} />
+                  </View>
                   <View style={{ flex: 1 }}>
                     <PixelText variant="bodyLg">推播通知</PixelText>
                     <PixelText variant="caption" tone="muted">
                       {profilePushStatus === "ready"
                         ? "已完成綁定"
                         : profilePushStatus === "missing"
-                          ? "未完成,點右邊修復"
+                          ? "未完成，點修復完成設定"
                           : "檢查中..."}
                     </PixelText>
                   </View>
@@ -1044,7 +1241,7 @@ export default function ConsumerHomeScreen() {
                   )}
                 </View>
 
-                {/* MAX 才顯示登出按鈕(重要動作,別誤觸) */}
+                {/* MAX 才顯示登出（重要動作，避免誤觸） */}
                 {capsuleSnapLevel === 2 && (
                   <View style={{ marginTop: "auto" }}>
                     <PixelButton
@@ -1092,6 +1289,200 @@ export default function ConsumerHomeScreen() {
           </Animated.View>
         </Animated.View>
       </GestureDetector>
+
+      {/* 位置管理 Modal */}
+      <Modal
+        visible={locationModalOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => { setLocationModalOpen(false); setPendingPrimaryId(null); }}
+      >
+        <View style={styles.locationModalBackdrop}>
+          <View style={[styles.locationModalContainer, { height: CAPSULE_SNAP_MAX }]}>
+            {/* Header */}
+            <View style={styles.locationModalHeader}>
+              <Pressable
+                onPress={() => { setLocationModalOpen(false); setPendingPrimaryId(null); }}
+                hitSlop={10}
+                style={styles.locationModalHeaderBtn}
+              >
+                <Ionicons name="close" size={22} color={pixelColors.gray100} />
+              </Pressable>
+              <PixelText variant="title" style={{ flex: 1, textAlign: "center" }}>
+                位置管理
+              </PixelText>
+              <Pressable
+                onPress={confirmLocationChange}
+                hitSlop={10}
+                disabled={!pendingPrimaryId || locationActionLoading}
+                style={styles.locationModalHeaderBtn}
+              >
+                <Ionicons
+                  name="checkmark"
+                  size={22}
+                  color={
+                    pendingPrimaryId && !locationActionLoading
+                      ? pixelColors.blue
+                      : pixelColors.gray500
+                  }
+                />
+              </Pressable>
+            </View>
+
+            {/* 當前主要位置描述 */}
+            <View style={styles.locationModalDescription}>
+              <Ionicons name="location" size={14} color={pixelColors.blue} />
+              <PixelText variant="caption" tone="muted" numberOfLines={2} style={{ flex: 1 }}>
+                {(() => {
+                  const effectiveLoc = pendingPrimaryId
+                    ? userLocations.find((l) => l.ID === pendingPrimaryId)
+                    : userLocations.find((l) => l.IsPrimary && l.IsActive);
+                  return effectiveLoc?.FullAddress ?? "尚未設定主要位置";
+                })()}
+              </PixelText>
+            </View>
+
+            <View style={styles.profileDivider} />
+
+            {/* 位置清單 */}
+            <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
+              {locationsLoading ? (
+                <View style={{ alignItems: "center", paddingVertical: 24 }}>
+                  <PixelLoading label="" size="sm" tone="blue" />
+                </View>
+              ) : userLocations.filter((l) => l.IsActive).length === 0 ? (
+                <View style={{ paddingHorizontal: 20, paddingVertical: 16 }}>
+                  <PixelText variant="body" tone="muted">
+                    還沒有儲存的位置。點下方「新增位置」開始加入。
+                  </PixelText>
+                </View>
+              ) : (
+                userLocations.filter((l) => l.IsActive).map((loc) => {
+                  const currentPrimaryId = userLocations.find((l) => l.IsPrimary && l.IsActive)?.ID;
+                  const isPrimary = (pendingPrimaryId ?? currentPrimaryId) === loc.ID;
+                  return (
+                    <ReanimatedSwipeable
+                      key={loc.ID}
+                      friction={2}
+                      rightThreshold={40}
+                      containerStyle={styles.locationSwipeContainer}
+                      renderRightActions={() => (
+                        <View style={styles.locationSwipeActions}>
+                          <Pressable
+                            style={[styles.locationSwipeBtn, { backgroundColor: pixelColors.gray500 }]}
+                            onPress={() => disableLocation(loc.ID)}
+                            disabled={locationActionLoading}
+                          >
+                            <PixelText variant="caption" style={{ color: pixelColors.white }}>停用</PixelText>
+                          </Pressable>
+                          <Pressable
+                            style={[styles.locationSwipeBtn, { backgroundColor: pixelColors.red }]}
+                            onPress={() => deleteLocation(loc.ID)}
+                            disabled={locationActionLoading}
+                          >
+                            <PixelText variant="caption" style={{ color: pixelColors.white }}>刪除</PixelText>
+                          </Pressable>
+                        </View>
+                      )}
+                    >
+                      <Pressable
+                        onPress={() => setPendingPrimaryId(loc.ID)}
+                        style={styles.locationListItem}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <PixelText variant="bodyLg" numberOfLines={1}>{loc.Label}</PixelText>
+                          <PixelText variant="caption" tone="muted" numberOfLines={2}>
+                            {loc.FullAddress}
+                          </PixelText>
+                        </View>
+                        {isPrimary && (
+                          <Ionicons name="checkmark" size={22} color={pixelColors.blue} />
+                        )}
+                      </Pressable>
+                    </ReanimatedSwipeable>
+                  );
+                })
+              )}
+              <View style={{ height: 8 }} />
+            </ScrollView>
+
+            {/* 新增位置 footer 按鈕 */}
+            <View style={[styles.locationModalFooter, { paddingBottom: insets.bottom + 12 }]}>
+              <PixelButton
+                label="+ 新增位置"
+                tone="blue"
+                fullWidth
+                onPress={() => {
+                  setLocationModalOpen(false);
+                  setAddLocationMode(true);
+                  setAddLocationPicked(null);
+                  setAddLocationLabel("");
+                  capsuleHeight.value = withSpring(CAPSULE_SNAP_MIN, { damping: 20, stiffness: 180 });
+                  setCapsuleSnapLevel(0);
+                }}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 新增位置面板（覆蓋在背景地圖上） */}
+      {addLocationMode && (
+        <View style={[styles.addLocationPanel, { paddingBottom: insets.bottom + 16 }]}>
+          {/* 提示：未選點時顯示 */}
+          {!addLocationPicked && !addLocationLoading && (
+            <View style={styles.addLocationHint}>
+              <Ionicons name="finger-print" size={14} color={pixelColors.gray300} />
+              <PixelText variant="caption" tone="muted">點選地圖選取位置，或使用下方 GPS 按鈕</PixelText>
+            </View>
+          )}
+
+          {/* 已選地址預覽 */}
+          {(addLocationPicked || addLocationLoading) && (
+            <View style={styles.addLocationAddressBox}>
+              <Ionicons name="location" size={14} color={pixelColors.blue} />
+              <PixelText variant="caption" tone="muted" numberOfLines={2} style={{ flex: 1 }}>
+                {addLocationLoading ? "取得地址中..." : addLocationPicked?.address}
+              </PixelText>
+            </View>
+          )}
+
+          {/* 位置名稱輸入 */}
+          <PixelTextInput
+            placeholder="位置名稱（例如：家、公司）"
+            value={addLocationLabel}
+            onChangeText={setAddLocationLabel}
+            maxLength={30}
+            editable={!addLocationLoading}
+            returnKeyType="done"
+          />
+
+          {/* 操作按鈕列 */}
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <PixelButton
+              label="× 取消"
+              tone="paper"
+              onPress={cancelAddLocation}
+              disabled={addLocationLoading}
+            />
+            <PixelButton
+              label={addLocationLoading ? "..." : "GPS"}
+              tone="blue"
+              onPress={handleAddLocationGPS}
+              disabled={addLocationLoading}
+            />
+            <View style={{ flex: 1 }}>
+              <PixelButton
+                label={addLocationLoading ? "..." : "> 儲存"}
+                tone="gold"
+                fullWidth
+                onPress={saveAddLocation}
+                disabled={addLocationLoading || !addLocationPicked}
+              />
+            </View>
+          </View>
+        </View>
+      )}
 
       {/* Settings 選單 modal */}
       <Modal
@@ -1724,8 +2115,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     // paddingTop 給 header 一點呼吸空間,避開頂部 drag handle
     paddingTop: 18,
-    // tab bar 現在 absolute 貼底,content 要留 padding 不然會被蓋
-    paddingBottom: 90,
+    paddingBottom: 80,
     gap: 8,
   },
   capsuleSectionHeader: {
@@ -1779,6 +2169,151 @@ const styles = StyleSheet.create({
     backgroundColor: pixelColors.gold,
     alignItems: "center",
     justifyContent: "center",
+  },
+  profileHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+    marginBottom: 4,
+  },
+  profileAddBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: pixelColors.surfaceAlt,
+    borderWidth: pixelBorderWidth,
+    borderColor: pixelColors.ink,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  profileDivider: {
+    height: 1,
+    backgroundColor: pixelColors.borderSoft,
+    marginVertical: 6,
+  },
+  profileLocationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 7,
+  },
+  profileLocationIconBlue: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: pixelColors.blue,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  profileLocationIconAlt: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: pixelColors.surfaceAlt,
+    borderWidth: pixelBorderWidth,
+    borderColor: pixelColors.ink,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  locationModalBackdrop: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.45)",
+  },
+  locationModalContainer: {
+    backgroundColor: pixelColors.surface,
+    borderTopLeftRadius: 40,
+    borderTopRightRadius: 40,
+    borderWidth: pixelBorderWidth,
+    borderBottomWidth: 0,
+    borderColor: pixelColors.ink,
+    overflow: "hidden",
+  },
+  locationModalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: pixelColors.borderSoft,
+  },
+  locationModalHeaderBtn: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  locationModalDescription: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 6,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  locationSwipeContainer: {
+    marginHorizontal: 16,
+    marginVertical: 4,
+  },
+  locationListItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: pixelColors.surfaceAlt,
+    borderRadius: 12,
+  },
+  locationSwipeActions: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    marginVertical: 4,
+    gap: 4,
+  },
+  locationSwipeBtn: {
+    width: 68,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 12,
+  },
+  locationModalFooter: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: pixelColors.borderSoft,
+  },
+  addLocationPanel: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: pixelColors.surface,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderWidth: pixelBorderWidth,
+    borderBottomWidth: 0,
+    borderColor: pixelColors.ink,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    gap: 10,
+  },
+  addLocationHint: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: pixelColors.surfaceAlt,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  addLocationAddressBox: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 6,
+    backgroundColor: pixelColors.surfaceAlt,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   capsuleTabBar: {
     // 用 absolute 貼底,不依賴 flex 算高度,任何 sheet 高度下都固定在膠囊底部
