@@ -1,13 +1,7 @@
 Redesign:
-- Consumer side now uses a Find My-style floating capsule at the
-  bottom, drag up through three snap heights
-- Unified tab bar (Explore / Favorites / Notifications / Profile)
-  built into the capsule — switching tabs no longer collapses the
-  sheet or navigates away
-- All four sections live inside the same capsule, no page transitions
-- Vendor category menu simplified; search moved to the bottom of
-  explore
-- Long-press a favorite to unsubscribe; QR subscribe moved into
-  favorites
-- Gear icon in each section header opens a settings sheet
-  (notifications / feedback / privacy / about)
+- New floating capsule at the bottom; drag up through 3 snap heights
+- Unified tab bar (Explore / Favorites / Notifications / Profile) built into the capsule
+- All sections in one capsule, no page transitions
+- Vendor category menu simplified; search moved to bottom of Explore
+- Long-press a favorite to unsubscribe; QR subscribe moved into Favorites
+- Gear icon opens settings sheet (notifications / feedback / privacy / about)
