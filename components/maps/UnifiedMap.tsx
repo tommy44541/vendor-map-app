@@ -29,6 +29,8 @@ type Props = {
   onRegionChangeComplete?: (r: Region) => void;
   showsUserLocation?: boolean;
   showsMyLocationButton?: boolean;
+  // Google Maps custom style JSON。iOS (Apple Maps) 會忽略。
+  customMapStyle?: any[];
 };
 
 export const UnifiedMap = forwardRef<UnifiedMapRef, Props>(
@@ -41,6 +43,7 @@ export const UnifiedMap = forwardRef<UnifiedMapRef, Props>(
       onRegionChangeComplete,
       showsUserLocation,
       showsMyLocationButton,
+      customMapStyle,
     },
     ref
   ) => {
@@ -69,6 +72,7 @@ export const UnifiedMap = forwardRef<UnifiedMapRef, Props>(
         showsMyLocationButton={showsMyLocationButton}
         followsUserLocation={false}
         mapType="standard"
+        customMapStyle={customMapStyle}
       >
         {markers.map((m) => (
           <Marker

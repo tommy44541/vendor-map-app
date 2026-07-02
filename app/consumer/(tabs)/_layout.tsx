@@ -19,15 +19,10 @@ const ConsumerLayout = () => {
           alignItems: "center",
         },
         tabBarStyle: {
-          backgroundColor: pixelColors.surface,
-          // 動態高度 = 內容 74px + 系統 navigation bar 的 safe area
-          height: 74 + insets.bottom,
-          paddingBottom: insets.bottom,
-          position: "absolute",
-          elevation: 0,
-          overflow: "visible",
-          borderTopWidth: 2,
-          borderTopColor: pixelColors.ink,
+          // Phase 3 Find My 整合:隱藏 expo-router 底部 tab bar,
+          // home.tsx sheet handle 內的 tab pill 取代它的角色。
+          // 其他 tab 檔案保留為 stack screen 可程式 navigate,但 UI 不顯示。
+          display: "none",
         },
         tabBarLabelStyle: {
           fontFamily: pixelFont.body,

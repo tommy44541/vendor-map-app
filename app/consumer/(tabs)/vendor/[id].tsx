@@ -6,6 +6,8 @@ import {
   PixelText,
 } from "@/components/pixel";
 import { menuApi, MenuItem } from "@/services/api/menu";
+import { discoveryApi } from "@/services/api/discovery";
+import { discoverySubLabel } from "@/utils/discovery/labels";
 import {
   subscriptionsApi,
   UserMerchantSubscription,
@@ -60,12 +62,6 @@ const defaultMenu: MockMenuItem[] = [
   { name: "品牌明信片組", price: 120, category: "小品", prepMinutes: 3 },
 ];
 
-const categoryLabels: Record<MenuItem["category"], string> = {
-  main: "主打",
-  snack: "小品",
-  drink: "飲品",
-  dessert: "甜點",
-};
 
 const getMockVendorDetail = (merchantId: string): MockVendorDetail => {
   const samples: Record<string, MockVendorDetail> = {
@@ -177,6 +173,32 @@ export default function VendorDetailScreen() {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [menuUsingFallback, setMenuUsingFallback] = useState(false);
   const [menuError, setMenuError] = useState<string | null>(null);
+  // category_id (uuid) → 中文 label。後端 menu_items.category_id 是 FK 不帶 join,
+  // 所以前端要自己拉 discovery_subcategories 建 map。
+  const [categoryLabelMap, setCategoryLabelMap] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    discoveryApi
+      .listSubcategories()
+      .then((res) => {
+        if (cancelled) return;
+        const subs = Array.isArray(res.data?.subcategories)
+          ? res.data.subcategories
+          : [];
+        const map: Record<string, string> = {};
+        for (const s of subs) {
+          map[s.id] = discoverySubLabel({ slug: s.slug, name: s.name });
+        }
+        setCategoryLabelMap(map);
+      })
+      .catch(() => {
+        // 失敗就讓 label 退回「未分類」,不影響其他功能
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const detail = useMemo(() => getMockVendorDetail(merchantId), [merchantId]);
   const routeName = useMemo(() => String(name || "").trim(), [name]);
@@ -231,7 +253,9 @@ export default function VendorDetailScreen() {
         price: item.price,
         popular: item.is_popular,
         description: item.description ?? undefined,
-        category: categoryLabels[item.category],
+        category: item.category_id
+          ? categoryLabelMap[item.category_id] ?? "未分類"
+          : "未分類",
         prepMinutes: item.prep_minutes,
       }));
     }
@@ -245,7 +269,7 @@ export default function VendorDetailScreen() {
       category: item.category,
       prepMinutes: item.prepMinutes,
     }));
-  }, [detail.menu, menuItems, menuUsingFallback, merchantId]);
+  }, [detail.menu, menuItems, menuUsingFallback, merchantId, categoryLabelMap]);
 
   const isSubscribed = useMemo(() => {
     if (!merchantId) return false;

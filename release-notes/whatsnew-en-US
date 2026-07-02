@@ -1,8 +1,13 @@
-Improvements:
-- Vendor menu categories no longer limited to the 4 food presets;
-  expanded to 19 options including handmade goods, lifestyle items,
-  on-site services, etc. (auto-synced from the backend taxonomy)
-- Category and subcategory labels now display in full Chinese instead
-  of mixed English
-- Accessibility: pixel buttons, chips, and segmented controls now
-  announce proper role / label / selected state to screen readers
+Redesign:
+- Consumer side now uses a Find My-style floating capsule at the
+  bottom, drag up through three snap heights
+- Unified tab bar (Explore / Favorites / Notifications / Profile)
+  built into the capsule — switching tabs no longer collapses the
+  sheet or navigates away
+- All four sections live inside the same capsule, no page transitions
+- Vendor category menu simplified; search moved to the bottom of
+  explore
+- Long-press a favorite to unsubscribe; QR subscribe moved into
+  favorites
+- Gear icon in each section header opens a settings sheet
+  (notifications / feedback / privacy / about)

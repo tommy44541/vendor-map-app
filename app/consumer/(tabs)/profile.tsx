@@ -5,8 +5,10 @@ import {
   PixelText,
   PixelTextInput,
 } from "@/components/pixel";
+import { useAuth } from "@/contexts/AuthContext";
 import { deviceApi, GetDevicesData } from "@/services/api/device";
 import { ApiError } from "@/services/api/util";
+import { useRouter } from "expo-router";
 import { pixelBorderWidth, pixelColors, pixelRadius } from "@/theme/pixel";
 import {
   getFcmTokenOrNull,
@@ -46,6 +48,8 @@ type ChipTone = "green" | "red" | "gold" | "paper";
 
 const Profile = () => {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const { user, logout } = useAuth();
   const [permission, setPermission] = useState<string>("unknown");
   const [localDeviceId, setLocalDeviceId] = useState<string>("");
   const [fcmToken, setFcmToken] = useState<string>("");
@@ -623,6 +627,39 @@ const Profile = () => {
               ) : null}
             </>
           ) : null}
+        </PixelCard>
+
+        {/* 帳號 / 登出 */}
+        <PixelCard title="ACCOUNT" titleTone="red" titleDisplay padding={14}>
+          <View style={{ gap: 4 }}>
+            <PixelText variant="bodyLg">{user?.name || "探索者"}</PixelText>
+            <PixelText variant="caption" tone="muted">
+              {user?.email || ""}
+            </PixelText>
+          </View>
+          <View style={{ height: 12 }} />
+          <PixelButton
+            label="登出"
+            tone="red"
+            fullWidth
+            onPress={() => {
+              Alert.alert("登出", "確定要登出嗎?", [
+                { text: "取消", style: "cancel" },
+                {
+                  text: "登出",
+                  style: "destructive",
+                  onPress: async () => {
+                    try {
+                      await logout();
+                      router.replace("/");
+                    } catch (e: any) {
+                      Alert.alert("錯誤", e?.message || "登出失敗");
+                    }
+                  },
+                },
+              ]);
+            }}
+          />
         </PixelCard>
       </ScrollView>
     </View>

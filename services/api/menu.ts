@@ -1,16 +1,16 @@
 import { ApiSuccessResponse, request } from "./util";
 
-// 原本是 4 值 union ("main"|"snack"|"drink"|"dessert")。
-// 後端 V3 正在改成沿用 discovery_subcategories.slug(18 個值,涵蓋餐食/小吃/飲品/手作/服務/其他)。
-// 廣化成 string 讓兩種值都能流經型別,等後端 MenuCategory.IsValid() 拿掉舊 enum 限制後立刻可用。
-export type MenuCategory = string;
+// 後端 V3:menu_items.category (text enum) 已 DROP,改成 menu_items.category_id (uuid)
+// FK 到 discovery_subcategories.id。前端送 / 收的也是 uuid string。
+// 顯示中文 label 在前端 utils/discovery/labels.ts 透過 slug 翻譯。
 
 export interface MenuItem {
   id: string;
   merchant_id: string;
   name: string;
   description?: string | null;
-  category: MenuCategory;
+  // 舊資料 row 可能 null(category 欄位 DROP 時資料不會回填)。
+  category_id?: string | null;
   price: number;
   currency: string;
   prep_minutes: number;
@@ -35,7 +35,7 @@ export interface MerchantMenuListData {
 }
 
 export interface GetMerchantMenuItemsParams {
-  category?: MenuCategory;
+  category_id?: string;
   is_available?: boolean;
   keyword?: string;
   page?: number;
@@ -45,7 +45,7 @@ export interface GetMerchantMenuItemsParams {
 export interface UpsertMenuItemRequest {
   name: string;
   description?: string | null;
-  category: MenuCategory;
+  category_id: string;
   price: number;
   currency: string;
   prep_minutes: number;
@@ -58,7 +58,7 @@ export interface UpsertMenuItemRequest {
 export interface UpdateMenuItemRequest {
   name: string;
   description?: string | null;
-  category: MenuCategory;
+  category_id: string;
   price: number;
   currency: string;
   prep_minutes: number;
@@ -88,7 +88,7 @@ const buildQueryString = (params?: GetMerchantMenuItemsParams) => {
 
   const query = new URLSearchParams();
 
-  if (params.category) query.set("category", params.category);
+  if (params.category_id) query.set("category_id", params.category_id);
   if (typeof params.is_available === "boolean") {
     query.set("is_available", String(params.is_available));
   }

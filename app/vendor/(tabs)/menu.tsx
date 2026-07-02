@@ -6,16 +6,20 @@ import {
   PixelText,
   PixelTextInput,
 } from "@/components/pixel";
-import { MenuCategory, MenuItem, menuApi } from "@/services/api/menu";
+import { MenuItem, menuApi } from "@/services/api/menu";
 import { discoveryApi } from "@/services/api/discovery";
 import { ApiError } from "@/services/api/util";
 import { discoverySubLabel } from "@/utils/discovery/labels";
+
+// 分類選項用 uuid 對應後端,slug 保留供 label 翻譯,label 供 UI 顯示
+type CategoryOption = { id: string; slug: string; label: string };
 import { pixelBorderWidth, pixelColors, pixelRadius } from "@/theme/pixel";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
 
   Alert,
+  Dimensions,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -27,11 +31,12 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-type CategoryId = "all" | MenuCategory;
+// "all" = 篩選 chip 顯示全部;其他是 discovery_subcategories.id (uuid)
+type CategoryFilter = "all" | string;
 
 type MenuFormState = {
   name: string;
-  category: MenuCategory;
+  categoryId: string;  // discovery_subcategories.id (uuid)
   price: string;
   description: string;
   prepMinutes: string;
@@ -39,17 +44,9 @@ type MenuFormState = {
   isAvailable: boolean;
 };
 
-// Discovery 還沒拿到時用的 fallback。等 listSubcategories() 回來會被取代。
-const LEGACY_CATEGORY_OPTIONS: { id: MenuCategory; label: string }[] = [
-  { id: "main", label: "主打" },
-  { id: "snack", label: "小品" },
-  { id: "drink", label: "飲品" },
-  { id: "dessert", label: "甜點" },
-];
-
 const DEFAULT_FORM: MenuFormState = {
   name: "",
-  category: "main",
+  categoryId: "",
   price: "",
   description: "",
   prepMinutes: "5",
@@ -59,14 +56,13 @@ const DEFAULT_FORM: MenuFormState = {
 
 const VendorMenuScreen = () => {
   const insets = useSafeAreaInsets();
-  const [selectedCategory, setSelectedCategory] = useState<CategoryId>("all");
+  const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>("all");
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [initialLoaded, setInitialLoaded] = useState(false);
-  const [categoryOptions, setCategoryOptions] = useState<
-    { id: MenuCategory; label: string }[]
-  >(LEGACY_CATEGORY_OPTIONS);
+  const [categoryOptions, setCategoryOptions] = useState<CategoryOption[]>([]);
+  const [categoriesLoadError, setCategoriesLoadError] = useState(false);
 
   const [editorVisible, setEditorVisible] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -80,8 +76,8 @@ const VendorMenuScreen = () => {
     }
   }, []);
 
-  // 從 discovery_subcategories 拿分類選項(filter active + sort by display_order)。
-  // 失敗保留 LEGACY 4 個,商家還是可以新增舊 enum 的品項。
+  // 從 discovery_subcategories 拿分類選項。後端 menu_items.category_id 是 uuid FK,
+  // 失敗的話前端 UI 沒得選 → disable 新增按鈕,提示「分類載入失敗,請重試」。
   useEffect(() => {
     let cancelled = false;
     discoveryApi
@@ -95,13 +91,16 @@ const VendorMenuScreen = () => {
           .filter((s) => s.status !== "inactive")
           .sort((a, b) => a.display_order - b.display_order)
           .map((s) => ({
-            id: s.slug as MenuCategory,
+            id: s.id,
+            slug: s.slug,
             label: discoverySubLabel({ slug: s.slug, name: s.name }),
           }));
-        if (active.length > 0) setCategoryOptions(active);
+        setCategoryOptions(active);
+        setCategoriesLoadError(active.length === 0);
       })
       .catch(() => {
-        // discovery API 失敗 → 保留 fallback,UX 不中斷
+        if (cancelled) return;
+        setCategoriesLoadError(true);
       });
     return () => {
       cancelled = true;
@@ -111,20 +110,22 @@ const VendorMenuScreen = () => {
   // 篩選列加「全部」在最前
   const filterChips = useMemo(
     () =>
-      [{ id: "all" as CategoryId, label: "全部" }, ...categoryOptions],
+      [{ id: "all" as CategoryFilter, label: "全部" }, ...categoryOptions],
     [categoryOptions]
   );
 
-  // 顯示 item 上的 chip 用。slug 找不到對應(舊資料、被砍掉的 sub)就直接顯示 slug。
+  // item 上顯示 chip 用。category_id null(舊資料)/找不到對應的 fallback 標籤。
   const categoryLabel = useCallback(
-    (slug: string) =>
-      categoryOptions.find((c) => c.id === slug)?.label ?? slug,
+    (categoryId?: string | null) => {
+      if (!categoryId) return "未分類";
+      return categoryOptions.find((c) => c.id === categoryId)?.label ?? "未分類";
+    },
     [categoryOptions]
   );
 
   const filteredItems = useMemo(() => {
     if (selectedCategory === "all") return menuItems;
-    return menuItems.filter((item) => item.category === selectedCategory);
+    return menuItems.filter((item) => item.category_id === selectedCategory);
   }, [menuItems, selectedCategory]);
 
   const stats = useMemo(() => {
@@ -176,11 +177,15 @@ const VendorMenuScreen = () => {
   }, [loadMenuItems]);
 
   const openCreateEditor = () => {
+    if (categoryOptions.length === 0) {
+      Alert.alert("無法新增品項", "分類選項尚未載入,請稍後重試");
+      return;
+    }
     setEditingId(null);
-    // 用第一個可用 category 當預設,避免後端切到新 enum 時舊 "main" 被擋 422
+    // 用第一個可用 category 當預設
     setForm({
       ...DEFAULT_FORM,
-      category: categoryOptions[0]?.id ?? DEFAULT_FORM.category,
+      categoryId: categoryOptions[0].id,
     });
     setEditorVisible(true);
   };
@@ -189,7 +194,8 @@ const VendorMenuScreen = () => {
     setEditingId(item.id);
     setForm({
       name: item.name,
-      category: item.category,
+      // 舊資料 category_id 可能 null → 預設用第一個 option,商家編輯時要重新挑
+      categoryId: item.category_id ?? categoryOptions[0]?.id ?? "",
       price: String(item.price),
       description: item.description || "",
       prepMinutes: String(item.prep_minutes),
@@ -232,13 +238,18 @@ const VendorMenuScreen = () => {
       return;
     }
 
+    if (!form.categoryId) {
+      Alert.alert("請選擇分類");
+      return;
+    }
+
     try {
       setSubmitting(true);
 
       const payload = {
         name,
         description: description || null,
-        category: form.category,
+        category_id: form.categoryId,
         price: Math.round(price),
         currency: "TWD",
         prep_minutes: Math.round(prepMinutes),
@@ -406,7 +417,7 @@ const VendorMenuScreen = () => {
                     <View style={styles.itemTitleRow}>
                       <PixelText variant="bodyLg">{item.name}</PixelText>
                       <PixelChip
-                        label={categoryLabel(item.category)}
+                        label={categoryLabel(item.category_id)}
                         tone="paper"
                         active
                       />
@@ -512,7 +523,7 @@ const VendorMenuScreen = () => {
                   paddingHorizontal: 14,
                   paddingTop: 12,
                   paddingBottom: insets.bottom + 12,
-                  maxHeight: "85%" as any,
+                  maxHeight: Dimensions.get("window").height * 0.78,
                 }}
               >
                 <ScrollView
@@ -537,8 +548,8 @@ const VendorMenuScreen = () => {
                           key={category.id}
                           label={category.label}
                           tone="gold"
-                          active={form.category === category.id}
-                          onPress={() => updateForm("category", category.id)}
+                          active={form.categoryId === category.id}
+                          onPress={() => updateForm("categoryId", category.id)}
                         />
                       ))}
                     </View>
