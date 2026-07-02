@@ -70,7 +70,7 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
 import ReanimatedSwipeable from "react-native-gesture-handler/ReanimatedSwipeable";
 
 // Phase 3 v4:tab 直向 icon+label 排列,peek 高度重算。
@@ -417,6 +417,15 @@ export default function ConsumerHomeScreen() {
     if (!loc) return;
     try {
       setLocationActionLoading(true);
+      // Demote existing primary first to avoid backend unique constraint
+      const oldPrimary = userLocations.find((l) => l.IsPrimary && l.IsActive && l.ID !== pendingPrimaryId);
+      if (oldPrimary) {
+        await consumerApi.updateUserLocation(oldPrimary.ID, {
+          label: oldPrimary.Label,
+          is_active: true,
+          is_primary: false,
+        });
+      }
       await consumerApi.updateUserLocation(pendingPrimaryId, {
         label: loc.Label,
         is_active: true,
@@ -1297,6 +1306,7 @@ export default function ConsumerHomeScreen() {
         animationType="slide"
         onRequestClose={() => { setLocationModalOpen(false); setPendingPrimaryId(null); }}
       >
+        <GestureHandlerRootView style={{ flex: 1 }}>
         <View style={styles.locationModalBackdrop}>
           <View style={[styles.locationModalContainer, { height: CAPSULE_SNAP_MAX }]}>
             {/* Header */}
@@ -1424,6 +1434,7 @@ export default function ConsumerHomeScreen() {
             </View>
           </View>
         </View>
+        </GestureHandlerRootView>
       </Modal>
 
       {/* 新增位置面板（覆蓋在背景地圖上） */}
