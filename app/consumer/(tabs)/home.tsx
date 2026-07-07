@@ -800,15 +800,6 @@ export default function ConsumerHomeScreen() {
     ),
   }));
 
-  // 頂部 drag handle 只在展開時才顯示,peek 時淡出讓 tab bar 佔滿
-  const topHandleAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(
-      capsuleHeight.value,
-      [CAPSULE_SNAP_MIN, (CAPSULE_SNAP_MIN + CAPSULE_SNAP_MID) / 2],
-      [0, 1],
-      Extrapolation.CLAMP
-    ),
-  }));
 
   // Tab bar 螢幕位置固定在 TAB_BAR_FIXED_BOTTOM,補償 capsule 下移
   const tabBarAnimatedStyle = useAnimatedStyle(() => {
@@ -963,14 +954,6 @@ export default function ConsumerHomeScreen() {
         <Animated.View
           style={[styles.floatingCapsule, capsuleAnimatedStyle]}
         >
-          {/* 頂部 drag handle — peek 時淡出讓給 tab bar,展開時顯示 */}
-          <Animated.View
-            style={[styles.capsuleTopHandle, topHandleAnimatedStyle]}
-            pointerEvents="none"
-          >
-            <View style={styles.capsuleTopHandleBar} />
-          </Animated.View>
-
           {/* content 區 — 純 View 不 scroll,單純 placeholder 顯示 */}
           <View style={[styles.capsuleContent, { paddingBottom: CAPSULE_SNAP_MIN + insets.bottom }]}>
             {/* 共用 header:標題 + 齒輪(peek 時隱藏)*/}
@@ -1296,6 +1279,14 @@ export default function ConsumerHomeScreen() {
               );
             })}
           </Animated.View>
+
+          {/* drag handle — 最後渲染確保在 capsuleTabBar 上層 */}
+          <View
+            style={styles.capsuleTopHandle}
+            pointerEvents="none"
+          >
+            <View style={styles.capsuleTopHandleBar} />
+          </View>
         </Animated.View>
       </GestureDetector>
 
