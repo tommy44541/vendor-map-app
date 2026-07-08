@@ -23,9 +23,9 @@ type PixelTextTone =
   | "purple";
 
 const toneToColor: Record<PixelTextTone, string> = {
-  default: pixelColors.white,
-  muted: pixelColors.gray300,
-  inverse: pixelColors.ink,
+  default: pixelColors.ink,
+  muted: pixelColors.gray500,
+  inverse: pixelColors.white,
   red: pixelColors.red,
   gold: pixelColors.gold,
   blue: pixelColors.blue,

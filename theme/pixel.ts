@@ -3,13 +3,13 @@
 
 export const pixelColors = {
   // 底色
-  bg: "#2A2D43",           // 深 navy 紫,比純黑亮一階,仍保有夜晚復古感
-  surface: "#3A3D55",      // 卡片底
-  surfaceAlt: "#4A4D65",   // 次卡片底
-  ink: "#0B0B12",          // 文字/邊框黑
+  bg: "#E8DEC8",           // 暖羊皮紙,頁面最底層
+  surface: "#FAF4E8",      // 主卡片/膠囊底色,奶油白
+  surfaceAlt: "#F0E8D4",   // 次卡片,略深於 surface
+  ink: "#1A1520",          // 文字/邊框深墨,偏暖
 
   // 對比
-  white: "#F8F0E3",        // 偏暖的米白(不要純白,純白太「網頁感」)
+  white: "#F8F0E3",        // 用於彩色按鈕/標籤上的淺色文字
   paper: "#EDE3CC",        // 紙感淺米
 
   // NES accent
@@ -27,8 +27,8 @@ export const pixelColors = {
   gray700: "#3A3A48",
 
   // 狀態
-  border: "#0B0B12",       // 像素風永遠是黑色硬邊
-  borderSoft: "#3A3A48",
+  border: "#1A1520",       // 像素風硬邊
+  borderSoft: "#C8B89A",   // 淺色主題下的柔和分隔線
 } as const;
 
 export type PixelColor = keyof typeof pixelColors;
