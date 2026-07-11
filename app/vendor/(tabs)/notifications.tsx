@@ -17,7 +17,6 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -150,7 +149,7 @@ const Notifications = () => {
   const publish = async () => {
     const msg = hintMessage.trim();
     if (!msg) {
-      Alert.alert("提示", "請輸入提示訊息 (hint message)");
+      Alert.alert("提示", "請輸入提示訊息");
       return;
     }
 
@@ -166,19 +165,15 @@ const Notifications = () => {
       const lng = Number(tempLongitude);
 
       if (!name) {
-        Alert.alert("提示", "請輸入地點名稱 (LocationName)");
+        Alert.alert("提示", "請輸入地點名稱");
         return;
       }
       if (!addr) {
-        Alert.alert("提示", "請輸入完整地址 (FullAddress)");
+        Alert.alert("提示", "請輸入完整地址");
         return;
       }
-      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-        Alert.alert("提示", "請輸入正確的經緯度 (數字)");
-        return;
-      }
-      if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-        Alert.alert("提示", "經緯度範圍不正確 (lat -90~90, lng -180~180)");
+      if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+        Alert.alert("提示", "請先點擊「使用當前位置」取得定位資訊");
         return;
       }
     }
@@ -293,9 +288,6 @@ const Notifications = () => {
       {/* HUD */}
       <View style={[styles.hud, { paddingTop: insets.top + 8 }]}>
         <View style={{ flex: 1 }}>
-          <PixelText variant="caption" tone="red" display>
-            BROADCAST
-          </PixelText>
           <PixelText variant="display">發布位置通知</PixelText>
           <View style={{ height: 4 }} />
           <PixelText variant="caption" tone="muted">
@@ -314,7 +306,7 @@ const Notifications = () => {
           contentContainerStyle={{
             paddingHorizontal: 16,
             paddingTop: 14,
-            paddingBottom: 120,
+            paddingBottom: insets.bottom + 120,
             gap: 14,
           }}
           keyboardShouldPersistTaps="handled"
@@ -331,9 +323,8 @@ const Notifications = () => {
 
           {/* 位置 PixelCard */}
           <PixelCard
-            title="LOCATION"
+            title="位置"
             titleTone="gold"
-            titleDisplay
             padding={14}
           >
             <View style={styles.headerRow}>
@@ -449,37 +440,13 @@ const Notifications = () => {
               </View>
             )}
 
-            {mode === "saved" && selectedLocation ? (
-              <View style={styles.selectedSummary}>
-                <PixelText variant="caption" tone="gold" display>
-                  SELECTED
-                </PixelText>
-                <View style={{ height: 2 }} />
-                <PixelText variant="bodyLg">
-                  {getLocationDisplayLabel(selectedLocation.Label)}
-                </PixelText>
-                {selectedLocation.FullAddress ? (
-                  <>
-                    <View style={{ height: 4 }} />
-                    <PixelText
-                      variant="caption"
-                      tone="muted"
-                      numberOfLines={2}
-                    >
-                      {selectedLocation.FullAddress}
-                    </PixelText>
-                  </>
-                ) : null}
-              </View>
-            ) : null}
           </PixelCard>
 
           {/* 臨時地點 */}
           {mode === "temp" ? (
             <PixelCard
-              title="TEMP  LOCATION"
+              title="臨時地點"
               titleTone="purple"
-              titleDisplay
               padding={14}
             >
               <View style={styles.headerRow}>
@@ -529,37 +496,14 @@ const Notifications = () => {
                   editable={!isPublishing}
                   multiline
                 />
-                <View style={{ flexDirection: "row", gap: 8 }}>
-                  <View style={{ flex: 1 }}>
-                    <PixelTextInput
-                      label="緯度"
-                      placeholder="25.0478"
-                      value={tempLatitude}
-                      onChangeText={setTempLatitude}
-                      editable={!isPublishing}
-                      keyboardType="numeric"
-                    />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <PixelTextInput
-                      label="經度"
-                      placeholder="121.5170"
-                      value={tempLongitude}
-                      onChangeText={setTempLongitude}
-                      editable={!isPublishing}
-                      keyboardType="numeric"
-                    />
-                  </View>
-                </View>
               </View>
             </PixelCard>
           ) : null}
 
           {/* 提示訊息 */}
           <PixelCard
-            title="MESSAGE"
+            title="提示訊息"
             titleTone="red"
-            titleDisplay
             padding={14}
           >
             <View style={styles.headerRow}>
@@ -600,13 +544,7 @@ const Notifications = () => {
 
             <View style={{ height: 14 }} />
             <PixelButton
-              label={
-                isPublishing
-                  ? "..."
-                  : mode === "saved"
-                    ? ">> 發布通知 (已保存)"
-                    : ">> 發布通知 (臨時)"
-              }
+              label={isPublishing ? "..." : ">> 發布通知"}
               tone="red"
               size="lg"
               fullWidth
@@ -618,9 +556,8 @@ const Notifications = () => {
           {/* 最近一次發布結果 */}
           {lastPublished ? (
             <PixelCard
-              title="LAST  RESULT"
+              title="上次發布結果"
               titleTone="green"
-              titleDisplay
               padding={14}
             >
               <View style={styles.headerRow}>
@@ -666,7 +603,7 @@ const Notifications = () => {
               <View style={styles.timestampRow}>
                 <Ionicons name="time" size={14} color={pixelColors.gray300} />
                 <PixelText variant="caption" tone="muted">
-                  PublishedAt {lastPublished.PublishedAt}
+                  發布時間：{lastPublished.PublishedAt}
                 </PixelText>
               </View>
             </PixelCard>
@@ -778,14 +715,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexWrap: "wrap",
     gap: 6,
-  },
-  selectedSummary: {
-    marginTop: 12,
-    borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.gold,
-    borderRadius: pixelRadius,
-    backgroundColor: pixelColors.surfaceAlt,
-    padding: 10,
   },
   statBox: {
     flex: 1,

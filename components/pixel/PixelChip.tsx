@@ -49,7 +49,7 @@ export function PixelChip({
     : {
         backgroundColor: pixelColors.surfaceAlt,
       };
-  const inactiveFg = active ? colors.fg : pixelColors.gray100;
+  const inactiveFg = active ? colors.fg : pixelColors.gray500;
 
   const inner = (
     <View

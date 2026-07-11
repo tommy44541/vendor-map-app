@@ -60,7 +60,7 @@ function RoleBlock({
 }) {
   return (
     <View style={styles.roleWrap}>
-      <PixelCard padding={20} style={{ flex: 1 }}>
+      <PixelCard padding={20} bodyFlex style={{ flex: 1 }}>
         {/* 圖示 + badge */}
         <View style={styles.topRow}>
           <Image source={option.image} style={styles.roleIcon} resizeMode="contain" />

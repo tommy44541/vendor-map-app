@@ -1,23 +1,55 @@
-import LocationManagerScreen, {
-  LocationApi,
-} from "@/components/location/LocationManagerScreen";
-import { MerchantLocation, merchantApi } from "@/services/api/merchant";
-import { pixelColors } from "@/theme/pixel";
+import { UnifiedMap, type UnifiedMapRef } from "@/components/maps/UnifiedMap";
+import { locationMapBridge } from "@/utils/vendor/locationMapBridge";
+import React, { useEffect, useRef, useState } from "react";
+import { Platform, StatusBar, StyleSheet, View } from "react-native";
+import type { Region } from "react-native-maps";
 
-const locationApi: LocationApi<MerchantLocation> = {
-  list: merchantApi.getMerchantLocations,
-  create: merchantApi.createMerchantLocation,
-  update: merchantApi.updateMerchantLocation,
-  remove: merchantApi.deleteMerchantLocation,
-};
+export default function VendorLocationScreen() {
+  const mapRef = useRef<UnifiedMapRef>(null);
+  const [mapRegion, setMapRegion] = useState<Region>({
+    latitude: 25.033,
+    longitude: 121.5654,
+    latitudeDelta: 0.01,
+    longitudeDelta: 0.01,
+  });
 
-export default function VendorLocationPage() {
+  useEffect(() => {
+    StatusBar.setBarStyle("light-content");
+    if (Platform.OS === "android") {
+      StatusBar.setBackgroundColor("transparent");
+      StatusBar.setTranslucent(true);
+    }
+
+    locationMapBridge.register((lat, lng) => {
+      const region: Region = {
+        latitude: lat,
+        longitude: lng,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      };
+      mapRef.current?.animateToRegion(region, 1000);
+      setMapRegion(region);
+    });
+
+    return () => {
+      locationMapBridge.unregister();
+    };
+  }, []);
+
   return (
-    <LocationManagerScreen
-      api={locationApi}
-      accentColor={pixelColors.red}
-      createLabelPlaceholder="例如：附近地標名稱 / 店家名稱"
-      saveSuccessMessage="位置已保存到您的商家帳戶"
-    />
+    <View style={styles.root}>
+      <UnifiedMap
+        ref={mapRef}
+        style={StyleSheet.absoluteFill}
+        region={mapRegion}
+        onRegionChangeComplete={setMapRegion}
+        showsUserLocation
+        showsMyLocationButton
+      />
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+});

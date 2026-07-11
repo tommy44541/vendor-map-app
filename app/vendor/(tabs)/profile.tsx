@@ -50,7 +50,7 @@ const formatTime = (value?: string | null) => {
 const Profile = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { user, syncUserFromApi } = useAuth();
+  const { user, syncUserFromApi, logout } = useAuth();
   const [profile, setProfile] = useState<UserData | null>(null);
   const [discoveryProfile, setDiscoveryProfile] =
     useState<MerchantDiscoveryProfile | null>(null);
@@ -282,9 +282,6 @@ const Profile = () => {
       {/* HUD */}
       <View style={[styles.hud, { paddingTop: insets.top + 8 }]}>
         <View style={{ flex: 1 }}>
-          <PixelText variant="caption" tone="red" display>
-            VENDOR  ACCOUNT
-          </PixelText>
           <PixelText variant="display">個人</PixelText>
           <View style={{ height: 4 }} />
           <PixelText variant="caption" tone="muted">
@@ -305,15 +302,14 @@ const Profile = () => {
         contentContainerStyle={{
           paddingHorizontal: 16,
           paddingTop: 16,
-          paddingBottom: 120,
+          paddingBottom: insets.bottom + 120,
           gap: 14,
         }}
       >
         {/* 商家驗證 */}
         <PixelCard
-          title="VERIFICATION"
+          title="商家驗證"
           titleTone={isVerified ? "green" : "gold"}
-          titleDisplay
           padding={14}
         >
           <View style={styles.headerRow}>
@@ -353,8 +349,8 @@ const Profile = () => {
           <View style={styles.divider} />
 
           <View style={styles.miniRow}>
-            <PixelText variant="caption" tone="gold" display>
-              LAST  VERIFIED
+            <PixelText variant="caption" tone="gold">
+              上次驗證時間
             </PixelText>
             <PixelText variant="body">
               {formatTime(merchantProfile?.business_license_verified_at)}
@@ -390,9 +386,8 @@ const Profile = () => {
 
         {/* 公開探索設定 */}
         <PixelCard
-          title="DISCOVERY  PROFILE"
+          title="公開探索設定"
           titleTone={discoveryProfile?.is_public ? "green" : "blue"}
-          titleDisplay
           padding={14}
         >
           <View style={styles.headerRow}>
@@ -460,8 +455,8 @@ const Profile = () => {
 
           {/* 公開條件 checklist */}
           <View style={styles.divider} />
-          <PixelText variant="caption" tone="muted" display>
-            REQUIREMENTS
+          <PixelText variant="caption" tone="muted">
+            公開條件
           </PixelText>
           <View style={{ height: 6 }} />
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
@@ -544,8 +539,8 @@ const Profile = () => {
               {discoveryCategories.length > 0 ? (
                 <>
                   <View style={styles.divider} />
-                  <PixelText variant="caption" tone="gold" display>
-                    PICK  CATEGORY
+                  <PixelText variant="caption" tone="gold">
+                    選擇主分類
                   </PixelText>
                   <View style={{ height: 6 }} />
                   <ScrollView
@@ -572,8 +567,8 @@ const Profile = () => {
               {selectedSubcategories.length > 0 ? (
                 <>
                   <View style={{ height: 12 }} />
-                  <PixelText variant="caption" tone="blue" display>
-                    PICK  SUBCATEGORY
+                  <PixelText variant="caption" tone="blue">
+                    選擇子分類
                   </PixelText>
                   <View style={{ height: 6 }} />
                   <View style={styles.chipWrap}>
@@ -597,8 +592,8 @@ const Profile = () => {
               {discoveryHubs.length > 0 ? (
                 <>
                   <View style={{ height: 12 }} />
-                  <PixelText variant="caption" tone="purple" display>
-                    PICK  HUB
+                  <PixelText variant="caption" tone="purple">
+                    選擇聚集地
                   </PixelText>
                   <View style={{ height: 6 }} />
                   <View style={styles.chipWrap}>
@@ -662,7 +657,7 @@ const Profile = () => {
         </PixelCard>
 
         {/* QR Code */}
-        <PixelCard title="QR  CODE" titleTone="ink" titleDisplay padding={14}>
+        <PixelCard title="訂閱 QR Code" titleTone="ink" padding={14}>
           <View style={styles.headerRow}>
             <View
               style={[styles.headerIcon, { backgroundColor: pixelColors.gold }]}
@@ -694,9 +689,8 @@ const Profile = () => {
 
         {/* 帳號資訊 */}
         <PixelCard
-          title="ACCOUNT  INFO"
+          title="帳號資訊"
           titleTone="purple"
-          titleDisplay
           padding={14}
         >
           <InfoRow
@@ -739,6 +733,21 @@ const Profile = () => {
             </View>
           </View>
         </PixelCard>
+
+        {/* 登出 */}
+        <PixelButton
+          label="登出"
+          tone="red"
+          fullWidth
+          onPress={async () => {
+            try {
+              await logout();
+              router.replace("/");
+            } catch {
+              // ignore
+            }
+          }}
+        />
       </ScrollView>
     </View>
   );

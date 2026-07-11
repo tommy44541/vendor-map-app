@@ -11,6 +11,7 @@ export interface PixelCardProps extends ViewProps {
   titleDisplay?: boolean;
   background?: string;
   padding?: number;
+  bodyFlex?: boolean;
   style?: ViewStyle | ViewStyle[];
   children?: React.ReactNode;
 }
@@ -31,6 +32,7 @@ export function PixelCard({
   titleDisplay = false,
   background = pixelColors.surface,
   padding = 16,
+  bodyFlex = false,
   style,
   children,
   ...rest
@@ -55,6 +57,7 @@ export function PixelCard({
         style={[
           styles.body,
           { backgroundColor: background, padding },
+          bodyFlex ? styles.bodyFlexible : null,
         ]}
       >
         {children}
@@ -77,7 +80,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: pixelBorderWidth,
     borderBottomColor: pixelColors.ink,
   },
-  body: {
+  body: {},
+  bodyFlexible: {
     flex: 1,
   },
 });

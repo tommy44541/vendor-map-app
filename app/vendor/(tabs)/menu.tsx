@@ -17,7 +17,6 @@ import { pixelBorderWidth, pixelColors, pixelRadius } from "@/theme/pixel";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-
   Alert,
   Dimensions,
   KeyboardAvoidingView,
@@ -313,9 +312,6 @@ const VendorMenuScreen = () => {
       <View style={[styles.hud, { paddingTop: insets.top + 8 }]}>
         <View style={styles.hudTop}>
           <View style={{ flex: 1 }}>
-            <PixelText variant="caption" tone="blue" display>
-              MENU  MANAGER
-            </PixelText>
             <PixelText variant="display">品項管理</PixelText>
             <View style={{ height: 4 }} />
             <PixelText variant="caption" tone="muted">
@@ -334,7 +330,6 @@ const VendorMenuScreen = () => {
               label="+ 新增"
               tone="gold"
               size="sm"
-              display
               disabled={loading || submitting}
               onPress={openCreateEditor}
             />
@@ -355,7 +350,7 @@ const VendorMenuScreen = () => {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 120 }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 120 }}
       >
         {/* 分類 chip 列 */}
         <ScrollView
@@ -422,7 +417,7 @@ const VendorMenuScreen = () => {
                         active
                       />
                       {item.is_popular ? (
-                        <PixelChip label="HOT" tone="red" active display />
+                        <PixelChip label="熱門" tone="red" active />
                       ) : null}
                     </View>
                     <View style={{ height: 6 }} />
@@ -512,9 +507,8 @@ const VendorMenuScreen = () => {
         >
           <View style={{ width: "100%" }}>
             <PixelCard
-              title={editingId ? "EDIT  ITEM" : "NEW  ITEM"}
+              title={editingId ? "編輯品項" : "新增品項"}
               titleTone={editingId ? "blue" : "gold"}
-              titleDisplay
               padding={0}
               style={styles.modalCard}
             >
@@ -538,8 +532,8 @@ const VendorMenuScreen = () => {
                   />
 
                   <View>
-                    <PixelText variant="caption" tone="muted" display>
-                      CATEGORY
+                    <PixelText variant="caption" tone="muted">
+                      分類
                     </PixelText>
                     <View style={{ height: 6 }} />
                     <View style={styles.chipWrap}>
@@ -588,8 +582,8 @@ const VendorMenuScreen = () => {
                   />
 
                   <View>
-                    <PixelText variant="caption" tone="muted" display>
-                      TAGS
+                    <PixelText variant="caption" tone="muted">
+                      標籤
                     </PixelText>
                     <View style={{ height: 6 }} />
                     <View style={styles.chipWrap}>
@@ -611,7 +605,7 @@ const VendorMenuScreen = () => {
                   </View>
                 </ScrollView>
 
-                <View style={{ flexDirection: "row", gap: 8 }}>
+                <View style={{ flexDirection: "row", gap: 8, paddingTop: 8 }}>
                   <View style={{ flex: 1 }}>
                     <PixelButton
                       label="取消"
