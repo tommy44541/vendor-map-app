@@ -17,6 +17,7 @@ import {
   Alert,
   Image,
   Platform,
+  Pressable,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -185,13 +186,9 @@ export default function VendorQrCodeScreen() {
     <View style={styles.root}>
       {/* HUD */}
       <View style={[styles.hud, { paddingTop: insets.top + 8 }]}>
-        <PixelButton
-          label="<< BACK"
-          tone="ink"
-          size="sm"
-          display
-          onPress={() => router.back()}
-        />
+        <Pressable onPress={() => router.back()} hitSlop={12} style={{ padding: 4 }}>
+          <Ionicons name="chevron-back" size={24} color={pixelColors.ink} />
+        </Pressable>
         <View style={{ flex: 1 }}>
           <PixelText variant="caption" tone="gold" display>
             SHARE  QR

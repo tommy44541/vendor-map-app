@@ -59,7 +59,7 @@ export function PixelSegmentedControl<T extends string>({
               variant="bodyLg"
               display={display}
               style={{
-                color: active ? pixelColors.gold : pixelColors.gray100,
+                color: active ? pixelColors.gold : pixelColors.gray500,
                 letterSpacing: 1,
               }}
             >

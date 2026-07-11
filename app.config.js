@@ -8,7 +8,7 @@ module.exports = () => ({
   slug: "vendor_map_app",
   version: "1.0.16",
   orientation: "portrait",
-  icon: "./assets/images/logo.png",
+  icon: "./assets/images/app-icon-search-cart-pixel.png",
   scheme: "vendormapapp",
   userInterfaceStyle: "automatic",
   newArchEnabled: true,
@@ -29,8 +29,8 @@ module.exports = () => ({
   },
   android: {
     adaptiveIcon: {
-      foregroundImage: "./assets/images/logo.png",
-      backgroundColor: "#ffffff",
+      foregroundImage: "./assets/images/app-icon-search-cart-pixel.png",
+      backgroundColor: "#d9d9d9",
     },
     edgeToEdgeEnabled: true,
     package: "com.tomslighter.vendormapapp",

@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import React, { forwardRef } from "react";
 import {
   Pressable,
@@ -108,14 +109,11 @@ export function PixelEyeToggle({
       accessibilityLabel={visible ? "隱藏密碼" : "顯示密碼"}
       accessibilityState={{ selected: visible }}
     >
-      <PixelText
-        variant="caption"
-        display
-        tone={visible ? "gold" : "muted"}
-        style={{ letterSpacing: 1 }}
-      >
-        {visible ? "HIDE" : "SHOW"}
-      </PixelText>
+      <Ionicons
+        name={visible ? "eye-off-outline" : "eye-outline"}
+        size={20}
+        color={visible ? pixelColors.gold : pixelColors.gray500}
+      />
     </Pressable>
   );
 }

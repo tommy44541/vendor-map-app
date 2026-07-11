@@ -6,6 +6,7 @@ import { Controller, useForm } from "react-hook-form";
 import {
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StatusBar,
   View,
@@ -326,28 +327,14 @@ export default function RegisterScreen() {
           keyboardShouldPersistTaps="handled"
         >
           {/* 頂部 nav */}
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <PixelButton
-              label="<< BACK"
-              tone="ink"
-              size="sm"
-              display
-              onPress={() => router.back()}
-            />
-            <PixelChip label={`${roleLabel}  ${roleZh}`} tone={roleTone} active />
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <Pressable onPress={() => router.back()} hitSlop={12} style={{ padding: 4 }}>
+              <Ionicons name="chevron-back" size={24} color={pixelColors.ink} />
+            </Pressable>
           </View>
 
           {/* Hero */}
           <View style={{ gap: 6, marginTop: 4 }}>
-            <PixelText variant="caption" tone="muted" display>
-              {isLogin ? "AUTHENTICATE PLAYER" : "CREATE NEW PROFILE"}
-            </PixelText>
             <PixelText variant="display">
               {isLogin ? "登入雷達" : "加入雷達"}
             </PixelText>
@@ -415,9 +402,8 @@ export default function RegisterScreen() {
           {/* 一般註冊/登入表單 */}
           {showStandardAuthForm ? (
             <PixelCard
-              title={isLogin ? "LOGIN" : "REGISTER"}
+              title={isLogin ? "登入" : "註冊"}
               titleTone={isLogin ? "blue" : "red"}
-              titleDisplay
               padding={16}
             >
               <PixelSegmentedControl

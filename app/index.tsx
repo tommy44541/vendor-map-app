@@ -2,7 +2,6 @@ import { useRootNavigationState, useRouter } from "expo-router";
 import React, { useEffect } from "react";
 import {
   Image,
-  Pressable,
   StyleSheet,
   View,
 } from "react-native";
@@ -16,39 +15,39 @@ import {
   PixelText,
 } from "../components/pixel";
 import { useAuth } from "../contexts/AuthContext";
-import { pixelColors, pixelBorderWidth, pixelRadius } from "../theme/pixel";
+import { pixelColors } from "../theme/pixel";
 import { getPostAuthRoute } from "../utils/onboarding";
 
 type RoleKey = "vendor" | "consumer";
 
 interface RoleCardOption {
   key: RoleKey;
-  tag: string;
   title: string;
   description: string;
   callToAction: string;
   tone: "red" | "gold" | "blue";
   badge: string;
+  image: ReturnType<typeof require>;
 }
 
 const ROLE_OPTIONS: RoleCardOption[] = [
   {
     key: "vendor",
-    tag: "PLAYER 1",
     title: "我是商家",
     description: "管理店家、發送位置與通知,讓粉絲找得到你。",
     callToAction: "開始營業",
     tone: "red",
-    badge: "VENDOR",
+    badge: "商家",
+    image: require("../assets/images/role_vendor.png"),
   },
   {
     key: "consumer",
-    tag: "PLAYER 2",
     title: "我是吃貨",
     description: "追蹤喜歡的攤車,第一時間收到附近開賣通知。",
     callToAction: "開始探索",
     tone: "blue",
-    badge: "EXPLORER",
+    badge: "消費者",
+    image: require("../assets/images/role_consumer.png"),
   },
 ];
 
@@ -60,25 +59,30 @@ function RoleBlock({
   onPress: () => void;
 }) {
   return (
-    <Pressable onPress={onPress} style={styles.rolePressable}>
-      <PixelCard title={option.badge} titleTone={option.tone} titleDisplay padding={16}>
-        <View style={styles.roleHeader}>
-          <PixelChip label={option.tag} tone={option.tone} active display />
-          <PixelText variant="caption" tone="muted" display>
-            {"PRESS  >>"}
-          </PixelText>
+    <View style={styles.roleWrap}>
+      <PixelCard padding={20} style={{ flex: 1 }}>
+        {/* 圖示 + badge */}
+        <View style={styles.topRow}>
+          <Image source={option.image} style={styles.roleIcon} resizeMode="contain" />
+          <PixelChip label={option.badge} tone={option.tone} active />
         </View>
-        <PixelText variant="title" style={styles.roleTitle}>
+
+        {/* 標題 */}
+        <PixelText variant="display" style={styles.roleTitle}>
           {option.title}
         </PixelText>
+
+        {/* 說明 */}
         <PixelText variant="body" tone="muted" style={styles.roleDesc}>
           {option.description}
         </PixelText>
-        <View style={styles.roleCta}>
-          <PixelChip label={option.callToAction} tone="gold" active />
-        </View>
+
+        <View style={{ flex: 1 }} />
+
+        {/* CTA */}
+        <PixelButton label={`> ${option.callToAction}`} tone="gold" fullWidth onPress={onPress} />
       </PixelCard>
-    </Pressable>
+    </View>
   );
 }
 
@@ -105,7 +109,7 @@ export default function IndexScreen() {
     return (
       <SafeAreaView style={styles.loadingWrap}>
         <PixelBorder variant="double" padding={20} style={styles.loadingBox}>
-          <PixelLoading label="LOADING" tone="gold" />
+          <PixelLoading label="載入中" tone="gold" />
           <View style={{ height: 8 }} />
           <PixelText variant="caption" tone="muted">
             正在讀取存檔
@@ -119,8 +123,8 @@ export default function IndexScreen() {
     return (
       <SafeAreaView style={styles.loadingWrap}>
         <PixelBorder variant="double" padding={20} style={styles.loadingBox}>
-          <PixelText variant="caption" tone="muted" display>
-            WELCOME BACK
+          <PixelText variant="caption" tone="muted">
+            歡迎回來
           </PixelText>
           <View style={{ height: 6 }} />
           <PixelText variant="title">
@@ -142,21 +146,7 @@ export default function IndexScreen() {
   return (
     <SafeAreaView style={styles.root} edges={["top", "left", "right"]}>
       <View style={styles.header}>
-        <View style={styles.logoRow}>
-          <View style={styles.logoBadge}>
-            <Image
-              source={require("../assets/images/logo.png")}
-              style={styles.logoImg}
-              resizeMode="contain"
-            />
-          </View>
-          <View style={styles.logoText}>
-            <PixelText variant="caption" tone="muted" display>
-              VENDOR.MAP v.1
-            </PixelText>
-            <PixelText variant="display">攤位雷達</PixelText>
-          </View>
-        </View>
+        <PixelText variant="display">攤位雷達</PixelText>
         <PixelBorder
           variant="single"
           padding={10}
@@ -170,8 +160,8 @@ export default function IndexScreen() {
       </View>
 
       <View style={styles.cardsWrap}>
-        <PixelText variant="bodyLg" display style={styles.selectLabel}>
-          {"SELECT  PLAYER"}
+        <PixelText variant="bodyLg" style={styles.selectLabel}>
+          選擇角色
         </PixelText>
         {ROLE_OPTIONS.map((opt) => (
           <RoleBlock key={opt.key} option={opt} onPress={() => handleSelect(opt.key)} />
@@ -179,17 +169,8 @@ export default function IndexScreen() {
       </View>
 
       <View style={styles.footer}>
-        <PixelButton
-          label="START"
-          tone="gold"
-          size="lg"
-          display
-          fullWidth
-          onPress={() => handleSelect("consumer")}
-        />
-        <View style={{ height: 8 }} />
-        <PixelText variant="caption" tone="muted" display style={{ textAlign: "center" }}>
-          (C) 2026 PIXEL VENDOR MAP
+        <PixelText variant="caption" tone="muted" style={{ textAlign: "center" }}>
+          © 2026 攤位雷達
         </PixelText>
       </View>
     </SafeAreaView>
@@ -219,59 +200,36 @@ const styles = StyleSheet.create({
     marginTop: 4,
     marginBottom: 12,
   },
-  logoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 12,
-  },
-  logoBadge: {
-    width: 56,
-    height: 56,
-    backgroundColor: pixelColors.gold,
-    borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
-    borderRadius: pixelRadius,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  logoImg: {
-    width: 36,
-    height: 36,
-  },
-  logoText: {
-    flex: 1,
-  },
   tagline: {
     // 一條告示牌
   },
   cardsWrap: {
     flex: 1,
     gap: 12,
-    justifyContent: "center",
   },
   selectLabel: {
     textAlign: "center",
     marginBottom: 4,
     letterSpacing: 2,
   },
-  rolePressable: {
-    // pressable wrapper
+  roleWrap: {
+    flex: 1,
   },
-  roleHeader: {
+  topRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 10,
+    marginBottom: 16,
+  },
+  roleIcon: {
+    width: 64,
+    height: 64,
   },
   roleTitle: {
-    marginBottom: 4,
-  },
-  roleDesc: {
     marginBottom: 12,
   },
-  roleCta: {
-    flexDirection: "row",
+  roleDesc: {
+    marginBottom: 4,
   },
   footer: {
     marginTop: 12,

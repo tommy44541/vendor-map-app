@@ -78,6 +78,6 @@ const styles = StyleSheet.create({
     borderBottomColor: pixelColors.ink,
   },
   body: {
-    // padding by prop
+    flex: 1,
   },
 });
