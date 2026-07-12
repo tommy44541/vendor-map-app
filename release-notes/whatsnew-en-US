@@ -1,5 +1,4 @@
 Fixes:
-- New app icon
-- Fixed text getting clipped on some Android devices
-- Profile tab: first section now shows only "My Location"; other items appear when fully expanded
-- Darker close-button color in the location management modal for better visibility
+- Fixed some screens redirecting back to home on first visit
+- Vendor Location tab: easier drag gesture, content no longer overlaps the tab bar when fully expanded
+- Fixed Explore tab empty-state text getting clipped on small screens
