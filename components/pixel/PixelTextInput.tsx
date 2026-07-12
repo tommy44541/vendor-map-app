@@ -156,7 +156,6 @@ const styles = StyleSheet.create({
     fontSize: pixelTextSize.bodyLg,
     lineHeight: Math.round(pixelTextSize.bodyLg * 1.4),
     paddingVertical: 12,
-    includeFontPadding: false,
   },
   adornment: {
     paddingLeft: 8,

@@ -73,7 +73,5 @@ export function PixelText({
 }
 
 const styles = StyleSheet.create({
-  base: {
-    includeFontPadding: false,
-  },
+  base: {},
 });

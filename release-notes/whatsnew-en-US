@@ -1,7 +1,5 @@
-Redesign:
-- New floating capsule at the bottom; drag up through 3 snap heights
-- Unified tab bar (Explore / Favorites / Notifications / Profile) built into the capsule
-- All sections in one capsule, no page transitions
-- Vendor category menu simplified; search moved to bottom of Explore
-- Long-press a favorite to unsubscribe; QR subscribe moved into Favorites
-- Gear icon opens settings sheet (notifications / feedback / privacy / about)
+Fixes:
+- New app icon
+- Fixed text getting clipped on some Android devices
+- Profile tab: first section now shows only "My Location"; other items appear when fully expanded
+- Darker close-button color in the location management modal for better visibility

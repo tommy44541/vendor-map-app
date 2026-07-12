@@ -28,7 +28,6 @@ const ConsumerLayout = () => {
           fontFamily: pixelFont.body,
           fontSize: 11,
           letterSpacing: 0.5,
-          includeFontPadding: false,
           marginTop: 2,
         },
         tabBarActiveTintColor: pixelColors.gold,

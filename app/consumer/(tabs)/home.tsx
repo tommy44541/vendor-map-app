@@ -1243,20 +1243,25 @@ export default function ConsumerHomeScreen() {
             )}
             {activeTab === "profile" && capsuleSnapLevel > 0 && (
               <View style={{ flex: 1 }}>
-                {/* 主要位置描述列 */}
-                <PixelText
-                  variant="caption"
-                  tone="muted"
-                  numberOfLines={2}
-                  style={{ marginBottom: 6 }}
-                >
-                  {locationsLoading
-                    ? "讀取位置中..."
-                    : (userLocations.find((l) => l.IsPrimary && l.IsActive)
-                        ?.FullAddress ?? "尚未設定主要位置")}
-                </PixelText>
+                {/* 第一段(MID)只留「我的位置」;其餘拉到 MAX 才顯示 */}
+                {capsuleSnapLevel === 2 && (
+                  <>
+                    {/* 主要位置描述列 */}
+                    <PixelText
+                      variant="caption"
+                      tone="muted"
+                      numberOfLines={2}
+                      style={{ marginBottom: 6 }}
+                    >
+                      {locationsLoading
+                        ? "讀取位置中..."
+                        : (userLocations.find((l) => l.IsPrimary && l.IsActive)
+                            ?.FullAddress ?? "尚未設定主要位置")}
+                    </PixelText>
 
-                <View style={styles.profileDivider} />
+                    <View style={styles.profileDivider} />
+                  </>
+                )}
 
                 {/* 我的位置 → 開位置管理 Modal */}
                 <Pressable
@@ -1289,48 +1294,51 @@ export default function ConsumerHomeScreen() {
                   />
                 </Pressable>
 
-                <View style={styles.profileDivider} />
+                {capsuleSnapLevel === 2 && (
+                  <>
+                    <View style={styles.profileDivider} />
 
-                {/* 推播通知 */}
-                <View style={styles.profileLocationRow}>
-                  <View
-                    style={[
-                      styles.profileLocationIconBlue,
-                      {
-                        backgroundColor:
-                          profilePushStatus === "ready"
-                            ? pixelColors.green
-                            : pixelColors.gold,
-                      },
-                    ]}
-                  >
-                    <Ionicons
-                      name="notifications"
-                      size={18}
-                      color={pixelColors.ink}
-                    />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <PixelText variant="bodyLg">推播通知</PixelText>
-                    <PixelText variant="caption" tone="muted">
-                      {profilePushStatus === "ready"
-                        ? "已完成綁定"
-                        : profilePushStatus === "missing"
-                          ? "未完成，點修復完成設定"
-                          : "檢查中..."}
-                    </PixelText>
-                  </View>
-                  {profilePushStatus !== "ready" && (
-                    <PixelButton
-                      label={profilePushLoading ? "..." : "修復"}
-                      tone="gold"
-                      size="sm"
-                      disabled={profilePushLoading}
-                      onPress={setupProfilePush}
-                    />
-                  )}
-                </View>
-
+                    {/* 推播通知 */}
+                    <View style={styles.profileLocationRow}>
+                      <View
+                        style={[
+                          styles.profileLocationIconBlue,
+                          {
+                            backgroundColor:
+                              profilePushStatus === "ready"
+                                ? pixelColors.green
+                                : pixelColors.gold,
+                          },
+                        ]}
+                      >
+                        <Ionicons
+                          name="notifications"
+                          size={18}
+                          color={pixelColors.ink}
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <PixelText variant="bodyLg">推播通知</PixelText>
+                        <PixelText variant="caption" tone="muted">
+                          {profilePushStatus === "ready"
+                            ? "已完成綁定"
+                            : profilePushStatus === "missing"
+                              ? "未完成，點修復完成設定"
+                              : "檢查中..."}
+                        </PixelText>
+                      </View>
+                      {profilePushStatus !== "ready" && (
+                        <PixelButton
+                          label={profilePushLoading ? "..." : "修復"}
+                          tone="gold"
+                          size="sm"
+                          disabled={profilePushLoading}
+                          onPress={setupProfilePush}
+                        />
+                      )}
+                    </View>
+                  </>
+                )}
               </View>
             )}
           </View>
@@ -1405,7 +1413,7 @@ export default function ConsumerHomeScreen() {
                   <Ionicons
                     name="close"
                     size={22}
-                    color={pixelColors.gray100}
+                    color={pixelColors.ink}
                   />
                 </Pressable>
                 <PixelText

@@ -4,11 +4,11 @@ const androidGoogleMapsApiKey =
   process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
 
 module.exports = () => ({
-  name: "vendor_map_app",
+  name: "尋攤",
   slug: "vendor_map_app",
   version: "1.0.17",
   orientation: "portrait",
-  icon: "./assets/images/app-icon-search-cart-pixel.png",
+  icon: "./assets/images/app-icon-xuntan-line-search.png",
   scheme: "vendormapapp",
   userInterfaceStyle: "automatic",
   newArchEnabled: true,
@@ -29,8 +29,8 @@ module.exports = () => ({
   },
   android: {
     adaptiveIcon: {
-      foregroundImage: "./assets/images/app-icon-search-cart-pixel.png",
-      backgroundColor: "#d9d9d9",
+      foregroundImage: "./assets/images/app-icon-xuntan-line-search.png",
+      backgroundColor: "#fffaf0",
     },
     edgeToEdgeEnabled: true,
     package: "com.tomslighter.vendormapapp",
@@ -46,14 +46,14 @@ module.exports = () => ({
   web: {
     bundler: "metro",
     output: "static",
-    favicon: "./assets/images/logo.png",
+    favicon: "./assets/images/app-icon-xuntan-line-search.png",
   },
   plugins: [
     "expo-router",
     [
       "expo-splash-screen",
       {
-        image: "./assets/images/logo.png",
+        image: "./assets/images/app-icon-xuntan-line-search.png",
         imageWidth: 200,
         resizeMode: "contain",
         backgroundColor: "#ffffff",
