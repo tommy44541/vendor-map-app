@@ -1,4 +1,3 @@
-Fixes:
-- Fixed some screens redirecting back to home on first visit
-- Vendor Location tab: easier drag gesture, content no longer overlaps the tab bar when fully expanded
-- Fixed Explore tab empty-state text getting clipped on small screens
+New:
+- Tapping a push notification now opens the app straight to the Notifications tab
+- Works even when the app was fully closed
