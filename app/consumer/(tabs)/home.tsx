@@ -557,17 +557,23 @@ export default function ConsumerHomeScreen() {
         const Notifications = await import("expo-notifications");
         sub = Notifications.addNotificationReceivedListener((n) => {
           const content = n?.request?.content;
-          setReceivedNotifications((prev) =>
-            [
+          const identifier = n?.request?.identifier;
+          setReceivedNotifications((prev) => {
+            if (identifier && prev.some((item) => item.id === identifier)) {
+              return prev;
+            }
+            return [
               {
-                id: String(Date.now()) + Math.random().toString(36).slice(2, 6),
+                id:
+                  identifier ||
+                  String(Date.now()) + Math.random().toString(36).slice(2, 6),
                 title: content?.title ?? undefined,
                 body: content?.body ?? undefined,
                 receivedAt: new Date().toISOString(),
               },
               ...prev,
-            ].slice(0, 20),
-          );
+            ].slice(0, 20);
+          });
         });
       } catch (e) {
         console.warn("expo-notifications not available:", e);
@@ -783,6 +789,77 @@ export default function ConsumerHomeScreen() {
   const capsuleStartHeight = useSharedValue(CAPSULE_SNAP_MIN);
   // 0 = peek, 1 = mid, 2 = max。用來決定 render 多少內容
   const [capsuleSnapLevel, setCapsuleSnapLevel] = useState<0 | 1 | 2>(0);
+
+  // 點擊推播通知開啟 app(冷啟動或背景喚醒)→ 直接切到通知頁並展開膠囊,
+  // 同時把該則通知補進歷史(冷啟動時不會經過上面的 addNotificationReceivedListener)
+  useEffect(() => {
+    let sub: any = null;
+    const openNotificationsTab = (
+      content?: { title?: string | null; body?: string | null } | null,
+      identifier?: string,
+    ) => {
+      if (content) {
+        setReceivedNotifications((prev) => {
+          if (identifier && prev.some((item) => item.id === identifier)) {
+            return prev;
+          }
+          return [
+            {
+              id:
+                identifier ||
+                String(Date.now()) + Math.random().toString(36).slice(2, 6),
+              title: content.title ?? undefined,
+              body: content.body ?? undefined,
+              receivedAt: new Date().toISOString(),
+            },
+            ...prev,
+          ].slice(0, 20);
+        });
+      }
+      setActiveTab("notifications");
+      capsuleHeight.value = withSpring(CAPSULE_SNAP_MID, {
+        damping: 20,
+        stiffness: 180,
+      });
+      setCapsuleSnapLevel(1);
+    };
+
+    (async () => {
+      try {
+        const Notifications = await import("expo-notifications");
+
+        // 冷啟動:app 完全關閉時點通知打開,要補抓造成這次啟動的 response
+        const lastResponse =
+          await Notifications.getLastNotificationResponseAsync();
+        const lastContent = lastResponse?.notification?.request?.content;
+        if (lastContent) {
+          openNotificationsTab(
+            lastContent,
+            lastResponse?.notification?.request?.identifier,
+          );
+        }
+
+        // app 還在背景(未被殺)時點通知喚醒
+        sub = Notifications.addNotificationResponseReceivedListener(
+          (response) => {
+            openNotificationsTab(
+              response?.notification?.request?.content,
+              response?.notification?.request?.identifier,
+            );
+          },
+        );
+      } catch (e) {
+        console.warn("expo-notifications response listener not available:", e);
+      }
+    })();
+
+    return () => {
+      try {
+        sub?.remove?.();
+      } catch {}
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // worklet helper:找最接近當前值的 snap point
   const snapPointsShared = useSharedValue([
