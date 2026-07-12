@@ -1,5 +1,5 @@
 import { useRootNavigationState, useRouter } from "expo-router";
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import {
   Image,
   StyleSheet,
@@ -90,10 +90,16 @@ export default function IndexScreen() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const router = useRouter();
   const rootNavState = useRootNavigationState();
+  // 只導頁一次 — user object 之後(例如個人頁 loadProfile 呼叫 syncUserFromApi)
+  // 每次都會換新 reference,若不擋住會讓這個 effect 重跑,把使用者從深層頁面
+  // 硬導回首頁。
+  const hasRedirectedRef = useRef(false);
 
   useEffect(() => {
     if (!rootNavState?.key) return;
+    if (hasRedirectedRef.current) return;
     if (!isLoading && isAuthenticated && user) {
+      hasRedirectedRef.current = true;
       const run = async () => {
         const nextRoute = await getPostAuthRoute(user);
         router.replace(nextRoute);

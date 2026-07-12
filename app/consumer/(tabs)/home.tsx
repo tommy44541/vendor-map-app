@@ -1016,7 +1016,10 @@ export default function ConsumerHomeScreen() {
           <View
             style={[
               styles.capsuleContent,
-              { paddingBottom: CAPSULE_SNAP_MIN + insets.bottom + 24 },
+              // tab bar 實際高度約 73px,這裡抓 88 留一點緩衝就好 — 之前抓
+              // CAPSULE_SNAP_MIN(80)+24 過度保留,在螢幕較矮的手機上會把
+              // 中段可用高度壓縮到不夠放空狀態的 icon + 文字。
+              { paddingBottom: 88 + insets.bottom },
             ]}
           >
             {/* 共用 header:標題 + 齒輪(peek 時隱藏)*/}
@@ -1055,13 +1058,13 @@ export default function ConsumerHomeScreen() {
             {activeTab === "explore" && capsuleSnapLevel > 0 && (
               <View style={{ gap: 8, flex: 1 }}>
                 {discoveryLoading ? (
-                  <View style={{ alignItems: "center", paddingVertical: 24 }}>
+                  <View style={{ alignItems: "center", paddingVertical: 10 }}>
                     <PixelLoading label="" size="sm" tone="gold" />
                   </View>
                 ) : publicMerchants.length === 0 ? (
-                  <View style={{ alignItems: "center", paddingVertical: 24, gap: 8 }}>
-                    <Ionicons name="search-outline" size={32} color={pixelColors.gray300} />
-                    <PixelText variant="body" tone="muted">
+                  <View style={{ alignItems: "center", paddingVertical: 10, gap: 6 }}>
+                    <Ionicons name="search-outline" size={22} color={pixelColors.gray300} />
+                    <PixelText variant="caption" tone="muted">
                       {keywordDebounced ? `找不到「${keywordDebounced}」相關商家` : "附近目前沒有商家"}
                     </PixelText>
                   </View>

@@ -459,28 +459,35 @@ export function VendorCapsuleTabBar({ state, navigation }: BottomTabBarProps) {
     <>
       <Animated.View style={[styles.floatingCapsule, capsuleAnimatedStyle]}>
 
-          {/* 拖曳把手 — 排在最前確保 flex column 中永遠在頂部 */}
+          {/* 拖曳把手 + 標題 — 合併成同一塊拖曳區,不用精準按在把手上,
+              跟客戶端「整個膠囊都能拖」的手感看齊(但 ScrollView 內容區
+              本身不掛手勢,避免跟捲動手勢打架) */}
           {isLocationTab && (
             <GestureDetector gesture={panGesture}>
-              <View style={styles.capsuleTopHandle}>
-                <View style={styles.capsuleTopHandleBar} />
+              <View>
+                <View style={styles.capsuleTopHandle}>
+                  <View style={styles.capsuleTopHandleBar} />
+                </View>
+                {capsuleSnapLevel > 0 && (
+                  <PixelText variant="title" style={styles.capsuleHeaderTitle}>
+                    地點設定
+                  </PixelText>
+                )}
               </View>
             </GestureDetector>
           )}
 
           {/* 地點管理內容（地點 tab + 展開時） */}
           {isLocationTab && capsuleSnapLevel > 0 && (
-            <View style={styles.capsuleContent}>
+            <View
+              style={[styles.capsuleContent, { paddingBottom: 80 + insets.bottom }]}
+            >
               <ScrollView
                 style={{ flex: 1 }}
                 contentContainerStyle={styles.contentInner}
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}
               >
-                <PixelText variant="title" style={{ marginBottom: 12 }}>
-                  地點設定
-                </PixelText>
-
                 {/* 地址搜尋 */}
                 <PixelCard title="地址搜尋" titleTone="blue" padding={12}>
                   <PixelTextInput
@@ -860,8 +867,14 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: pixelColors.gray500,
   },
+  capsuleHeaderTitle: {
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
 
   // ── 內容區（地點 tab 展開時）─────────────────────────────────
+  // paddingBottom 用 insets.bottom 動態算(見 inline style),避免拉到最高時
+  // 內容被下方 tab icon 蓋住 — 這裡的 80 只是 fallback。
   capsuleContent: {
     flex: 1,
     paddingBottom: 80,

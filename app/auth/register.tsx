@@ -1,7 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocalSearchParams, useRootNavigationState, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   KeyboardAvoidingView,
@@ -110,6 +116,9 @@ export default function RegisterScreen() {
     isAuthenticated,
     user,
   } = useAuth();
+  // 只導頁一次 — user object 之後每次更新(例如個人頁 loadProfile 呼叫
+  // syncUserFromApi)都會換新 reference,若不擋住會讓這個 effect 重跑。
+  const hasRedirectedRef = useRef(false);
 
   const [authMode, setAuthMode] = useState<AuthMode>("register");
   const isLogin = authMode === "login";
@@ -168,7 +177,9 @@ export default function RegisterScreen() {
 
   useEffect(() => {
     if (!rootNavState?.key) return;
+    if (hasRedirectedRef.current) return;
     if (!isAuthenticated || !user) return;
+    hasRedirectedRef.current = true;
     const run = async () => {
       const nextRoute = await getPostAuthRoute(user);
       router.replace(nextRoute);
