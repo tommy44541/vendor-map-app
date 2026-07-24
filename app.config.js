@@ -6,7 +6,7 @@ const androidGoogleMapsApiKey =
 module.exports = () => ({
   name: "尋攤",
   slug: "vendor_map_app",
-  version: "1.0.20",
+  version: "1.0.21",
   orientation: "portrait",
   icon: "./assets/images/app-icon-xuntan-line-search.png",
   scheme: "vendormapapp",
@@ -66,6 +66,7 @@ module.exports = () => ({
           "com.googleusercontent.apps.193475500949-r14b0gln2vp6so5pkdcbda18c95a17pc",
       },
     ],
+    "./plugins/withAndroidSupportsScreens",
   ],
   experiments: {
     typedRoutes: true,
