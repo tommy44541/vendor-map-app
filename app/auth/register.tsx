@@ -143,8 +143,8 @@ export default function RegisterScreen() {
     resolver: zodResolver(validationSchema),
     defaultValues: {
       name: "",
-      email: "test@test.com",
-      password: "P@ssword123",
+      email: "",
+      password: "",
       confirmPassword: "",
       store_name: "",
       business_license: "",
@@ -156,8 +156,8 @@ export default function RegisterScreen() {
     form.clearErrors();
     form.reset({
       name: "",
-      email: "test@test.com",
-      password: "P@ssword123",
+      email: "",
+      password: "",
       confirmPassword: "",
       store_name: "",
       business_license: "",

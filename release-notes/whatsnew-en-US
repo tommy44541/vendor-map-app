@@ -1,2 +1,3 @@
 Changes:
-- Dropped tablet / large-screen support to keep the UI consistent with the phone design
+- App performance optimization to reduce memory usage
+- Removed leftover default credentials on the login/register screen
