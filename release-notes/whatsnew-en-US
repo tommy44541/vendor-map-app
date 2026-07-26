@@ -1,3 +1,2 @@
-Changes:
-- App performance optimization to reduce memory usage
-- Removed leftover default credentials on the login/register screen
+Fixes:
+- Improved session persistence after the app has been backgrounded for a while, reducing unnecessary re-logins

@@ -137,16 +137,24 @@ const getRefreshToken = tokenStorage.getRefreshToken;
 // 避免多個 401 同時觸發多個 refresh,造成 backend re-use detection 把整個 token family 廢掉。
 let refreshInFlight: Promise<string | null> | null = null;
 
-const doRefreshAuthToken = async (): Promise<string | null> => {
-  try {
-    const refreshToken = await getRefreshToken();
-    if (!refreshToken) {
-      console.error('❌ 沒有找到刷新token');
-      return null;
-    }
+// 只重試「無法判斷 refresh token 是否真的無效」的失敗(斷網、逾時、後端 5xx),
+// 401/403 代表後端已明確判定 refresh token 無效,重試沒有意義、只會浪費時間。
+const REFRESH_RETRY_DELAYS_MS = [500, 1500];
+const REFRESH_TIMEOUT_MS = 10000;
 
-    const baseUrl = getApiBaseUrl();
-    const url = `${baseUrl}/auth/refresh`;
+type RefreshAttemptResult =
+  | { ok: true; accessToken: string }
+  | { ok: false; retryable: boolean };
+
+const attemptRefreshRequest = async (
+  refreshToken: string
+): Promise<RefreshAttemptResult> => {
+  const baseUrl = getApiBaseUrl();
+  const url = `${baseUrl}/auth/refresh`;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REFRESH_TIMEOUT_MS);
+
+  try {
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -154,34 +162,61 @@ const doRefreshAuthToken = async (): Promise<string | null> => {
         'Accept': 'application/json',
       },
       body: JSON.stringify({ refresh_token: refreshToken }),
+      signal: controller.signal,
     });
 
     if (!response.ok) {
       console.error('❌ 刷新token失敗:', response.status);
-      return null;
+      return { ok: false, retryable: response.status >= 500 };
     }
 
     const result = await parseBody(response);
     const accessToken = result?.data?.access_token;
-    if (accessToken) {
-      await tokenStorage.setAccessToken(accessToken);
-      const refresh = result?.data?.refresh_token;
-      if (refresh) {
-        await tokenStorage.setRefreshToken(refresh);
-      }
-      debugLog('✅ Token刷新成功');
-      emitAccessTokenRefreshed(accessToken);
-      return accessToken;
+    if (!accessToken) {
+      return { ok: false, retryable: false };
     }
 
-    return null;
+    await tokenStorage.setAccessToken(accessToken);
+    const refresh = result?.data?.refresh_token;
+    if (refresh) {
+      await tokenStorage.setRefreshToken(refresh);
+    }
+    debugLog('✅ Token刷新成功');
+    emitAccessTokenRefreshed(accessToken);
+    return { ok: true, accessToken };
   } catch (error) {
+    // fetch 拋出例外(斷網、DNS 失敗、AbortController 逾時)不代表 refresh token 無效,可重試。
     console.error('❌ 刷新token時發生錯誤:', error);
-    return null;
+    return { ok: false, retryable: true };
+  } finally {
+    clearTimeout(timeoutId);
   }
 };
 
-const refreshAuthToken = async (): Promise<string | null> => {
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const doRefreshAuthToken = async (): Promise<string | null> => {
+  const refreshToken = await getRefreshToken();
+  if (!refreshToken) {
+    console.error('❌ 沒有找到刷新token');
+    return null;
+  }
+
+  for (let attempt = 0; ; attempt++) {
+    const result = await attemptRefreshRequest(refreshToken);
+    if (result.ok) {
+      return result.accessToken;
+    }
+    if (!result.retryable || attempt >= REFRESH_RETRY_DELAYS_MS.length) {
+      return null;
+    }
+    await sleep(REFRESH_RETRY_DELAYS_MS[attempt]);
+  }
+};
+
+// 匯出給 AuthContext 在 App 回到前景時主動呼叫,趁使用者還沒觸發任何請求前
+// 先把 access token 換新,降低「剛回前景、網路還沒穩」時被動刷新失敗的機率。
+export const refreshAuthToken = async (): Promise<string | null> => {
   if (refreshInFlight) {
     return refreshInFlight;
   }

@@ -11,19 +11,21 @@ import {
   statusCodes,
 } from "@react-native-google-signin/google-signin";
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { Platform } from "react-native";
+import { AppState, type AppStateStatus, Platform } from "react-native";
 import {
   authApi,
   type AuthResultData,
   type UserData,
 } from "../services/api/auth";
 import { onAccessTokenRefreshed, onSessionExpired } from "../services/api/authEvents";
+import { refreshAuthToken } from "../services/api/util";
 import { tokenStorage } from "../services/auth/tokenStorage";
 import { Alert } from "react-native";
 import { debugLog } from "@/utils/logger";
 
 const USER_INFO_KEY = "userInfo";
 const PUSH_REGISTER_MAX_RETRIES = 2;
+const FOREGROUND_REFRESH_MIN_INTERVAL_MS = 60_000;
 
 const setAuthToken = tokenStorage.setAccessToken;
 const getAuthToken = tokenStorage.getAccessToken;
@@ -217,6 +219,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     });
     return off;
   }, []);
+
+  // App 從背景回到前景時主動刷新 access token,趁使用者還沒觸發任何請求前先把 token 換新。
+  // access token 效期只有 15 分鐘,長時間放在背景很容易過期;若不主動刷新,只能等使用者操作
+  // 觸發 API 才會被動發現過期,而那個當下(剛回前景、網路可能還沒接上)刷新失敗率更高。
+  const lastForegroundRefreshRef = useRef<number>(0);
+
+  useEffect(() => {
+    if (!authState.isAuthenticated) return;
+
+    const handleAppStateChange = (nextState: AppStateStatus) => {
+      if (nextState !== "active") return;
+
+      const now = Date.now();
+      if (now - lastForegroundRefreshRef.current < FOREGROUND_REFRESH_MIN_INTERVAL_MS) {
+        return;
+      }
+      lastForegroundRefreshRef.current = now;
+
+      refreshAuthToken();
+    };
+
+    const subscription = AppState.addEventListener("change", handleAppStateChange);
+    return () => subscription.remove();
+  }, [authState.isAuthenticated]);
 
   // 依規格：Session restore success / Login success / Token refresh success 後觸發
   useEffect(() => {
