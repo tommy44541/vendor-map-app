@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocalSearchParams, useRootNavigationState, useRouter } from "expo-router";
 import React, {
@@ -45,7 +45,7 @@ import {
 import { getPostAuthRoute } from "../../utils/onboarding";
 import { pixelColors } from "../../theme/pixel";
 
-const createValidationSchema = (isLogin: boolean) => {
+const createValidationSchema = (isLogin: boolean, isVendor: boolean) => {
   if (isLogin) {
     return z.object({
       email: z.email("請輸入有效的電子郵件地址"),
@@ -87,9 +87,28 @@ const createValidationSchema = (isLogin: boolean) => {
       store_name: z.string().optional(),
       business_license: z.string().optional(),
     })
-    .refine((data) => data.password === data.confirmPassword, {
-      message: "密碼確認不匹配",
-      path: ["confirmPassword"],
+    .superRefine((data, ctx) => {
+      if (data.password !== data.confirmPassword) {
+        ctx.addIssue({
+          code: "custom",
+          message: "密碼確認不匹配",
+          path: ["confirmPassword"],
+        });
+      }
+      if (isVendor && !data.store_name?.trim()) {
+        ctx.addIssue({
+          code: "custom",
+          message: "請輸入店名",
+          path: ["store_name"],
+        });
+      }
+      if (isVendor && !data.business_license?.trim()) {
+        ctx.addIssue({
+          code: "custom",
+          message: "請輸入營業執照號碼",
+          path: ["business_license"],
+        });
+      }
     });
 };
 
@@ -135,8 +154,8 @@ export default function RegisterScreen() {
   });
 
   const validationSchema = useMemo(
-    () => createValidationSchema(isLogin),
-    [isLogin]
+    () => createValidationSchema(isLogin, isVendor),
+    [isLogin, isVendor]
   );
 
   const form = useForm<RegisterFormData>({
@@ -316,8 +335,6 @@ export default function RegisterScreen() {
   }, [completeMerchantOnboarding, merchantOnboarding, merchantOnboardingValues]);
 
   const showStandardAuthForm = !(merchantOnboarding && type === "vendor");
-  const roleTone = isVendor ? "red" : "blue";
-  const roleLabel = isVendor ? "VENDOR" : "EXPLORER";
   const roleZh = isVendor ? "商家" : "消費者";
 
   return (

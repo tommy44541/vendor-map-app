@@ -2,6 +2,8 @@ import { getRegistrationCache } from "./cache";
 import { registerDeviceIfNeeded } from "./registerDevice";
 
 let subscription: { remove: () => void } | null = null;
+let subscriptionUserId: string | null = null;
+let listenerGeneration = 0;
 
 async function getNotificationsModule(): Promise<any | null> {
   try {
@@ -17,15 +19,25 @@ async function getNotificationsModule(): Promise<any | null> {
  * 注意：需要在已登入且 permission granted 後啟動。
  */
 export function startPushTokenRefreshListener(
-  getDeviceId: () => Promise<string | null>
+  getDeviceId: () => Promise<string | null>,
+  userId: string
 ) {
-  // 避免重複註冊 listener
-  if (subscription) return;
+  if (subscriptionUserId === userId) return;
+
+  stopPushTokenRefreshListener();
+  subscriptionUserId = userId;
+  const generation = listenerGeneration;
 
   // 這裡不做 await，避免把啟動流程卡住；改用背景方式嘗試
   (async () => {
     const Notifications = await getNotificationsModule();
-    if (!Notifications) return;
+    if (
+      !Notifications ||
+      generation !== listenerGeneration ||
+      subscriptionUserId !== userId
+    ) {
+      return;
+    }
 
     const anyNotifications = Notifications as any;
     if (typeof anyNotifications.addPushTokenListener !== "function") {
@@ -36,6 +48,8 @@ export function startPushTokenRefreshListener(
     subscription = anyNotifications.addPushTokenListener(
       async (token: { type: string; data: string }) => {
         try {
+          if (subscriptionUserId !== userId) return;
+
           const newToken = token?.data;
           if (!newToken || typeof newToken !== "string" || !newToken.trim()) {
             return;
@@ -49,7 +63,11 @@ export function startPushTokenRefreshListener(
           const deviceId = await getDeviceId();
           if (!deviceId) return;
 
-          await registerDeviceIfNeeded({ deviceId, fcmToken: newToken.trim() });
+          await registerDeviceIfNeeded({
+            userId,
+            deviceId,
+            fcmToken: newToken.trim(),
+          });
         } catch (e) {
           // 依規格：token refresh 失敗可背景重試；這裡先吞掉避免影響主流程
           console.warn("推播 token refresh 處理失敗:", e);
@@ -60,13 +78,14 @@ export function startPushTokenRefreshListener(
 }
 
 export function stopPushTokenRefreshListener() {
+  listenerGeneration += 1;
   try {
     subscription?.remove();
   } catch {
     // ignore
   } finally {
     subscription = null;
+    subscriptionUserId = null;
   }
 }
-
 

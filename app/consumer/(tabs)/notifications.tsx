@@ -5,7 +5,7 @@ import {
   PixelText,
 } from "@/components/pixel";
 import { pixelBorderWidth, pixelColors, pixelRadius } from "@/theme/pixel";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Platform,

@@ -1,2 +1,3 @@
 Fixes:
-- Improved session persistence after the app has been backgrounded for a while, reducing unnecessary re-logins
+- Improved token storage security and fixed a role-detection edge case for vendor/consumer accounts
+- Simplified the consumer home screen interaction

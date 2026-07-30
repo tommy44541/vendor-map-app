@@ -14,7 +14,7 @@ SplashScreen.preventAutoHideAsync().catch(() => {
 });
 
 function AuthRouter() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
 
   return (
     <Stack
@@ -25,8 +25,14 @@ function AuthRouter() {
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="auth/register" options={{ headerShown: false }} />
-      <Stack.Protected guard={isAuthenticated}>
+      <Stack.Protected
+        guard={isAuthenticated && user?.userType === "vendor"}
+      >
         <Stack.Screen name="vendor" options={{ headerShown: false }} />
+      </Stack.Protected>
+      <Stack.Protected
+        guard={isAuthenticated && user?.userType === "consumer"}
+      >
         <Stack.Screen name="consumer" options={{ headerShown: false }} />
       </Stack.Protected>
     </Stack>

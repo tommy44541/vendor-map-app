@@ -3,6 +3,7 @@ import { deviceApi } from "../../services/api/device";
 import { getRegistrationCache, setRegistrationCache } from "./cache";
 
 export interface RegisterDeviceInput {
+  userId: string;
   deviceId: string;
   fcmToken: string;
 }
@@ -13,11 +14,12 @@ export interface RegisterDeviceInput {
  * - 若 token 變 -> 重新 POST /devices（後端 upsert）
  */
 export async function registerDeviceIfNeeded(input: RegisterDeviceInput) {
-  const { deviceId, fcmToken } = input;
+  const { userId, deviceId, fcmToken } = input;
 
   const cache = await getRegistrationCache();
   const shouldCall =
     !cache.device_registered ||
+    cache.user_id !== userId ||
     cache.device_id !== deviceId ||
     cache.last_fcm_token !== fcmToken;
 
@@ -33,12 +35,14 @@ export async function registerDeviceIfNeeded(input: RegisterDeviceInput) {
 
   await setRegistrationCache({
     device_registered: true,
+    user_id: userId,
     device_id: deviceId,
     last_fcm_token: fcmToken,
-    server_device_id: res.data?.ID || cache.server_device_id,
+    server_device_id:
+      res.data?.ID ||
+      (cache.user_id === userId ? cache.server_device_id : null),
     last_registered_at: new Date().toISOString(),
   });
 
   return { didRegister: true, reason: "registered" as const, data: res.data };
 }
-

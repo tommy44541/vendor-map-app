@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import React, { forwardRef } from "react";
 import {
   Pressable,
@@ -72,7 +72,6 @@ export const PixelTextInput = forwardRef<TextInput, PixelTextInputProps>(
             {...rest}
             placeholder={placeholder}
             placeholderTextColor={placeholderTextColor || pixelColors.gray500}
-            allowFontScaling={false}
             selectionColor={pixelColors.gold}
             cursorColor={pixelColors.gold}
             style={styles.input}

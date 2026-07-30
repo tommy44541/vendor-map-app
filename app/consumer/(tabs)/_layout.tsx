@@ -1,12 +1,9 @@
 import ConsumerNotificationsTabButton from "@/components/ConsumerNotificationsTabButton";
 import { pixelColors, pixelFont } from "@/theme/pixel";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { Tabs } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const ConsumerLayout = () => {
-  const insets = useSafeAreaInsets();
-
   return (
     <Tabs
       screenOptions={{

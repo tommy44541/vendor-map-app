@@ -3,6 +3,7 @@ import React, { useEffect, useRef } from "react";
 import {
   Image,
   StyleSheet,
+  type ImageSourcePropType,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -27,7 +28,7 @@ interface RoleCardOption {
   callToAction: string;
   tone: "red" | "gold" | "blue";
   badge: string;
-  image: ReturnType<typeof require>;
+  image: ImageSourcePropType;
 }
 
 const ROLE_OPTIONS: RoleCardOption[] = [

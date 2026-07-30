@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export interface DeviceRegistrationCache {
   device_registered: boolean;
+  user_id: string | null;
   device_id: string | null;
   last_fcm_token: string | null;
   server_device_id: string | null;
@@ -12,6 +13,7 @@ const CACHE_KEY = "push_device_registration_cache_v1";
 
 const DEFAULT_CACHE: DeviceRegistrationCache = {
   device_registered: false,
+  user_id: null,
   device_id: null,
   last_fcm_token: null,
   server_device_id: null,
@@ -53,5 +55,4 @@ export async function clearRegistrationCache(): Promise<void> {
     console.warn("清除 push cache 失敗:", e);
   }
 }
-
 

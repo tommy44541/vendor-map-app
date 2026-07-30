@@ -57,7 +57,6 @@ export function PixelText({
   return (
     <Text
       {...rest}
-      allowFontScaling={false}
       style={[
         styles.base,
         {

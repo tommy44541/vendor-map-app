@@ -16,7 +16,7 @@ import { ApiError } from "@/services/api/util";
 import { pixelBorderWidth, pixelColors, pixelRadius } from "@/theme/pixel";
 import { getMerchantDisplayName } from "@/utils/merchant/getMerchantDisplayName";
 import { getFcmTokenOrNull, getStableDeviceId } from "@/utils/push";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {

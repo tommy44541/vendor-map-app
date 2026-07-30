@@ -13,32 +13,30 @@ export async function deactivateCurrentDeviceOnLogout(): Promise<{
 }> {
   const cache = await getRegistrationCache();
   const serverId = cache.server_device_id;
-  if (!serverId) return { didDeactivate: false };
+  let didDeactivate = false;
 
   try {
-    await deviceApi.deleteDevice(serverId);
+    if (serverId) {
+      await deviceApi.deleteDevice(serverId);
+      didDeactivate = true;
+    }
+  } catch (e) {
+    const alreadyGone =
+      e instanceof ApiError &&
+      (e.code === "DEVICE_NOT_FOUND" || e.status === 404);
+    if (!alreadyGone) {
+      // 登出不應被卡住；讓流程繼續
+      console.warn("登出停用裝置失敗:", e);
+    }
+  } finally {
+    // 無論後端是否可用，都必須讓下一個登入帳號重新註冊。
     await setRegistrationCache({
       device_registered: false,
+      user_id: null,
       server_device_id: null,
       last_registered_at: new Date().toISOString(),
     });
-    return { didDeactivate: true };
-  } catch (e) {
-    if (
-      e instanceof ApiError &&
-      (e.code === "DEVICE_NOT_FOUND" || e.status === 404)
-    ) {
-      await setRegistrationCache({
-        device_registered: false,
-        server_device_id: null,
-        last_registered_at: new Date().toISOString(),
-      });
-      return { didDeactivate: false };
-    }
-
-    // 登出不應被卡住；讓流程繼續
-    console.warn("登出停用裝置失敗:", e);
-    return { didDeactivate: false };
   }
-}
 
+  return { didDeactivate };
+}

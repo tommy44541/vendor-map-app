@@ -133,18 +133,28 @@ const extractError = (status: number, raw: any): ApiError => {
 const getAuthToken = tokenStorage.getAccessToken;
 const getRefreshToken = tokenStorage.getRefreshToken;
 
-// Single-flight: 同時間只允許一個 refresh in-flight,並發呼叫共享同一個 promise。
-// 避免多個 401 同時觸發多個 refresh,造成 backend re-use detection 把整個 token family 廢掉。
-let refreshInFlight: Promise<string | null> | null = null;
-
 // 只重試「無法判斷 refresh token 是否真的無效」的失敗(斷網、逾時、後端 5xx),
 // 401/403 代表後端已明確判定 refresh token 無效,重試沒有意義、只會浪費時間。
 const REFRESH_RETRY_DELAYS_MS = [500, 1500];
 const REFRESH_TIMEOUT_MS = 10000;
+const DEFAULT_REQUEST_TIMEOUT_MS = 15000;
+
+export type RefreshAuthResult =
+  | { status: 'refreshed'; accessToken: string }
+  | { status: 'invalid' }
+  | { status: 'unavailable' };
+
+// Single-flight: 同時間只允許一個 refresh in-flight,並發呼叫共享同一個 promise。
+// 避免多個 401 同時觸發多個 refresh,造成 backend re-use detection 把整個 token family 廢掉。
+let refreshInFlight: Promise<RefreshAuthResult> | null = null;
 
 type RefreshAttemptResult =
   | { ok: true; accessToken: string }
-  | { ok: false; retryable: boolean };
+  | {
+      ok: false;
+      reason: 'invalid' | 'unavailable';
+      retryable: boolean;
+    };
 
 const attemptRefreshRequest = async (
   refreshToken: string
@@ -166,14 +176,23 @@ const attemptRefreshRequest = async (
     });
 
     if (!response.ok) {
-      console.error('❌ 刷新token失敗:', response.status);
-      return { ok: false, retryable: response.status >= 500 };
+      const isInvalid = response.status === 401 || response.status === 403;
+      console.warn('刷新 token 失敗:', response.status);
+      return {
+        ok: false,
+        reason: isInvalid ? 'invalid' : 'unavailable',
+        retryable:
+          !isInvalid &&
+          (response.status >= 500 ||
+            response.status === 408 ||
+            response.status === 429),
+      };
     }
 
     const result = await parseBody(response);
     const accessToken = result?.data?.access_token;
     if (!accessToken) {
-      return { ok: false, retryable: false };
+      return { ok: false, reason: 'unavailable', retryable: false };
     }
 
     await tokenStorage.setAccessToken(accessToken);
@@ -186,8 +205,8 @@ const attemptRefreshRequest = async (
     return { ok: true, accessToken };
   } catch (error) {
     // fetch 拋出例外(斷網、DNS 失敗、AbortController 逾時)不代表 refresh token 無效,可重試。
-    console.error('❌ 刷新token時發生錯誤:', error);
-    return { ok: false, retryable: true };
+    console.warn('刷新 token 時發生暫時性錯誤:', error);
+    return { ok: false, reason: 'unavailable', retryable: true };
   } finally {
     clearTimeout(timeoutId);
   }
@@ -195,20 +214,20 @@ const attemptRefreshRequest = async (
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const doRefreshAuthToken = async (): Promise<string | null> => {
+const doRefreshAuthToken = async (): Promise<RefreshAuthResult> => {
   const refreshToken = await getRefreshToken();
   if (!refreshToken) {
-    console.error('❌ 沒有找到刷新token');
-    return null;
+    console.warn('沒有找到 refresh token');
+    return { status: 'invalid' };
   }
 
   for (let attempt = 0; ; attempt++) {
     const result = await attemptRefreshRequest(refreshToken);
     if (result.ok) {
-      return result.accessToken;
+      return { status: 'refreshed', accessToken: result.accessToken };
     }
     if (!result.retryable || attempt >= REFRESH_RETRY_DELAYS_MS.length) {
-      return null;
+      return { status: result.reason };
     }
     await sleep(REFRESH_RETRY_DELAYS_MS[attempt]);
   }
@@ -216,7 +235,7 @@ const doRefreshAuthToken = async (): Promise<string | null> => {
 
 // 匯出給 AuthContext 在 App 回到前景時主動呼叫,趁使用者還沒觸發任何請求前
 // 先把 access token 換新,降低「剛回前景、網路還沒穩」時被動刷新失敗的機率。
-export const refreshAuthToken = async (): Promise<string | null> => {
+export const refreshAuthToken = async (): Promise<RefreshAuthResult> => {
   if (refreshInFlight) {
     return refreshInFlight;
   }
@@ -226,12 +245,44 @@ export const refreshAuthToken = async (): Promise<string | null> => {
   return refreshInFlight;
 };
 
+const fetchWithTimeout = async (
+  url: string,
+  config: RequestInit,
+  timeoutMs: number
+): Promise<Response> => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, { ...config, signal: controller.signal });
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new ApiError('連線逾時，請稍後再試', {
+        status: 408,
+        code: 'REQUEST_TIMEOUT',
+        raw: error,
+      });
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
+
 export const requestRaw = async (
   endpoint: string,
   config: RequestConfig
 ): Promise<Response> => {
-  const { method = 'POST', headers, body, requireAuth = false } = config;
+  const {
+    method = 'POST',
+    headers,
+    body,
+    requireAuth = false,
+    timeout = DEFAULT_REQUEST_TIMEOUT_MS,
+  } = config;
   const baseUrl = getApiBaseUrl();
+  const requestTimeout =
+    Number.isFinite(timeout) && timeout > 0 ? timeout : DEFAULT_REQUEST_TIMEOUT_MS;
 
   debugLog(`🌐 API 請求: ${method} ${endpoint}`);
   debugLog(`🔐 需要認證: ${requireAuth}`);
@@ -269,18 +320,18 @@ export const requestRaw = async (
     fetchConfig.body = JSON.stringify(body);
   }
 
-  const response = await fetch(url, fetchConfig);
+  const response = await fetchWithTimeout(url, fetchConfig, requestTimeout);
 
   // 如果是401錯誤且需要認證，嘗試刷新token
   if (response.status === 401 && requireAuth) {
     debugLog('🔄 Token已過期，嘗試刷新...');
-    const newToken = await refreshAuthToken();
+    const refreshResult = await refreshAuthToken();
     
-    if (newToken) {
+    if (refreshResult.status === 'refreshed') {
       // 使用新token重新發送請求
       const newHeaders = {
         ...requestHeaders,
-        Authorization: `Bearer ${newToken}`,
+        Authorization: `Bearer ${refreshResult.accessToken}`,
       };
       
       const newFetchConfig: RequestInit = {
@@ -292,7 +343,11 @@ export const requestRaw = async (
         newFetchConfig.body = JSON.stringify(body);
       }
       
-      const retryResponse = await fetch(url, newFetchConfig);
+      const retryResponse = await fetchWithTimeout(
+        url,
+        newFetchConfig,
+        requestTimeout
+      );
       
       if (!retryResponse.ok) {
         const raw = await parseBody(retryResponse);
@@ -302,14 +357,19 @@ export const requestRaw = async (
 
       debugLog(`✅ API 響應成功 (使用新token): ${method} ${endpoint}`);
       return retryResponse;
-    } else {
-      console.error('❌ 無法刷新token，需要重新登入');
+    } else if (refreshResult.status === 'invalid') {
+      console.warn('refresh token 已失效，需要重新登入');
       emitSessionExpired();
       throw new ApiError('登入已過期，請重新登入', {
         status: 401,
         code: 'TOKEN_EXPIRED',
       });
     }
+
+    throw new ApiError('暫時無法更新登入狀態，請稍後再試', {
+      status: 503,
+      code: 'TOKEN_REFRESH_UNAVAILABLE',
+    });
   }
 
   if (!response.ok) {

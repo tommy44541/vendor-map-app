@@ -6,7 +6,7 @@ const androidGoogleMapsApiKey =
 module.exports = () => ({
   name: "尋攤",
   slug: "vendor_map_app",
-  version: "1.0.23",
+  version: "1.0.24",
   orientation: "portrait",
   icon: "./assets/images/app-icon-xuntan-line-search.png",
   scheme: "vendormapapp",
@@ -50,6 +50,7 @@ module.exports = () => ({
   },
   plugins: [
     "expo-router",
+    "expo-secure-store",
     [
       "expo-splash-screen",
       {

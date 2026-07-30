@@ -73,7 +73,10 @@ export default function ConsumerOnboardingPage() {
       }}
       onFinish={async () => {
         await markOnboardingCompleted(user);
-        router.replace("/consumer/location");
+        router.replace({
+          pathname: "/consumer/home",
+          params: { openLocations: "1" },
+        });
       }}
     />
   );

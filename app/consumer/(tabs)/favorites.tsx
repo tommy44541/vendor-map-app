@@ -12,7 +12,7 @@ import {
   PixelText,
 } from "@/components/pixel";
 import { pixelBorderWidth, pixelColors } from "@/theme/pixel";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {

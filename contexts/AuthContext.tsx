@@ -119,30 +119,35 @@ interface AuthContextType extends AuthState {
 const resolveUserType = (
   apiUser: { user_profile?: unknown; merchant_profile?: unknown },
   preferredUserType: UserType
-): UserType => {
+): UserType | null => {
   const hasConsumerRole = !!apiUser?.user_profile;
   const hasVendorRole = !!apiUser?.merchant_profile;
 
   if (preferredUserType === "vendor" && hasVendorRole) return "vendor";
   if (preferredUserType === "consumer" && hasConsumerRole) return "consumer";
-
-  // 不要因為另一種 role 存在就靜默切換,
-  // 維持 caller 表達的意圖,讓下游能 surface「此帳號沒有對應角色」。
-  return preferredUserType;
+  return null;
 };
 
 const mapApiUserToAuthUser = (
   apiUser: UserData,
   preferredUserType: UserType
-): User => ({
-  id: apiUser.id,
-  email: apiUser.email,
-  name: apiUser.name,
-  userType: resolveUserType(apiUser, preferredUserType),
-  createdAt: apiUser.created_at,
-  merchantProfile: apiUser.merchant_profile,
-  userProfile: apiUser.user_profile,
-});
+): User => {
+  const userType = resolveUserType(apiUser, preferredUserType);
+  if (!userType) {
+    const roleName = preferredUserType === "vendor" ? "商家" : "消費者";
+    throw new Error(`此帳號尚未建立${roleName}身分`);
+  }
+
+  return {
+    id: apiUser.id,
+    email: apiUser.email,
+    name: apiUser.name,
+    userType,
+    createdAt: apiUser.created_at,
+    merchantProfile: apiUser.merchant_profile,
+    userProfile: apiUser.user_profile,
+  };
+};
 
 const roleToUserType = (role: string | undefined, fallback: UserType): UserType => {
   if (role === "merchant") return "vendor";
@@ -237,7 +242,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       }
       lastForegroundRefreshRef.current = now;
 
-      refreshAuthToken();
+      void refreshAuthToken();
     };
 
     const subscription = AppState.addEventListener("change", handleAppStateChange);
@@ -256,6 +261,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       return;
     }
 
+    const authenticatedUserId = authState.user.id;
     let cancelled = false;
     const run = async (attempt: number) => {
       if (cancelled || pushRegisterInFlightRef.current) return;
@@ -271,6 +277,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
         const res = await fn({
           requestPermissionIfNeeded: attempt === 0,
+          userId: authenticatedUserId,
         });
 
         // 權限拒絕不重試；token/device 等暫時性問題可有限重試
@@ -313,27 +320,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const initializeAuth = async () => {
     try {
-      const token = await getAuthToken();
-      if (token) {
-        const localUser = await getUserInfo();
-
-        if (localUser) {
-          setAuthState({
-            user: localUser,
-            token,
-            isLoading: false,
-            isAuthenticated: true,
-          });
-          return;
-        }
-      } else {
+      const [token, localUser] = await Promise.all([
+        getAuthToken(),
+        getUserInfo(),
+      ]);
+      if (token && localUser) {
         setAuthState({
-          user: null,
-          token: null,
+          user: localUser,
+          token,
           isLoading: false,
-          isAuthenticated: false,
+          isAuthenticated: true,
         });
+        return;
       }
+
+      await Promise.all([tokenStorage.clearAll(), clearUserInfo()]);
+      setAuthState({
+        user: null,
+        token: null,
+        isLoading: false,
+        isAuthenticated: false,
+      });
     } catch (error) {
       console.error("初始化認證失敗:", error);
       setAuthState({
@@ -353,12 +360,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       throw new Error("認證響應中缺少 access_token 或 user");
     }
 
-    await setAuthToken(result.access_token);
-    if (result.refresh_token) {
-      await setRefreshToken(result.refresh_token);
+    const user = mapApiUserToAuthUser(result.user, preferredUserType);
+
+    try {
+      await setAuthToken(result.access_token);
+      if (result.refresh_token) {
+        await setRefreshToken(result.refresh_token);
+      } else {
+        await clearRefreshToken();
+      }
+    } catch (error) {
+      await tokenStorage.clearAll();
+      throw error;
     }
 
-    const user = mapApiUserToAuthUser(result.user, preferredUserType);
     await saveUserInfo(user);
 
     setAuthState({
@@ -577,6 +592,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       // 依規格：登出時停用當前裝置，避免繼續收推播
       try {
         const mod = await import("../utils/push");
+        mod?.stopPushTokenRefreshListener?.();
         const fn = mod?.deactivateCurrentDeviceOnLogout;
         if (typeof fn === "function") {
           await fn();

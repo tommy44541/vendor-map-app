@@ -1,4 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as SecureStore from "expo-secure-store";
+import { Platform } from "react-native";
 
 // Single source of truth for token storage keys + IO。
 // 之前 util.ts 跟 AuthContext.tsx 各自直接 AsyncStorage.getItem("authToken"),
@@ -8,28 +10,44 @@ const ACCESS_TOKEN_KEY = "authToken";
 const REFRESH_TOKEN_KEY = "refreshToken";
 
 async function readSafe(key: string): Promise<string | null> {
-  try {
-    return await AsyncStorage.getItem(key);
-  } catch (e) {
-    console.error(`read ${key} failed:`, e);
-    return null;
+  if (Platform.OS === "web") {
+    return AsyncStorage.getItem(key);
   }
+
+  const secureValue = await SecureStore.getItemAsync(key);
+  if (secureValue) {
+    return secureValue;
+  }
+
+  // 從舊版 AsyncStorage 一次性遷移到原生安全儲存。
+  const legacyValue = await AsyncStorage.getItem(key);
+  if (legacyValue) {
+    await SecureStore.setItemAsync(key, legacyValue);
+    await AsyncStorage.removeItem(key);
+  }
+  return legacyValue;
 }
 
 async function writeSafe(key: string, value: string): Promise<void> {
-  try {
+  if (Platform.OS === "web") {
     await AsyncStorage.setItem(key, value);
-  } catch (e) {
-    console.error(`write ${key} failed:`, e);
+    return;
   }
+
+  await SecureStore.setItemAsync(key, value);
+  await AsyncStorage.removeItem(key);
 }
 
 async function removeSafe(key: string): Promise<void> {
-  try {
+  if (Platform.OS === "web") {
     await AsyncStorage.removeItem(key);
-  } catch (e) {
-    console.error(`remove ${key} failed:`, e);
+    return;
   }
+
+  await Promise.all([
+    SecureStore.deleteItemAsync(key),
+    AsyncStorage.removeItem(key),
+  ]);
 }
 
 export const tokenStorage = {

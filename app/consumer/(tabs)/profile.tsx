@@ -17,7 +17,7 @@ import {
   getStableDeviceId,
   onUserAuthenticated,
 } from "@/utils/push";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Device from "expo-device";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -355,8 +355,12 @@ const Profile = () => {
                 onPress={async () => {
                   try {
                     setIsLoading(true);
+                    if (!user?.id) {
+                      throw new Error("找不到登入中的使用者");
+                    }
                     const res = await onUserAuthenticated({
                       requestPermissionIfNeeded: true,
+                      userId: user.id,
                     });
                     const [p, id, t] = await Promise.all([
                       getPushPermissionStatus(),

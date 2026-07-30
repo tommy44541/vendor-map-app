@@ -10,7 +10,7 @@ import {
   clearRecentPublishedResult,
   getRecentPublishedResults,
 } from "@/utils/vendor/recentPublish";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
@@ -57,9 +57,13 @@ export default function VendorHomeScreen() {
   };
 
   const loadRecentPublish = useCallback(async () => {
-    const cached = await getRecentPublishedResults();
+    if (!user?.id) {
+      setRecentPublishes([]);
+      return;
+    }
+    const cached = await getRecentPublishedResults(user.id);
     setRecentPublishes(cached);
-  }, []);
+  }, [user?.id]);
 
   useFocusEffect(
     useCallback(() => {
@@ -74,7 +78,9 @@ export default function VendorHomeScreen() {
         text: "清除",
         style: "destructive",
         onPress: async () => {
-          await clearRecentPublishedResult();
+          if (user?.id) {
+            await clearRecentPublishedResult(user.id);
+          }
           setRecentPublishes([]);
         },
       },

@@ -16,7 +16,7 @@ import {
 import { ApiError } from "@/services/api/util";
 import { discoveryLabel as getDiscoveryLabel } from "@/utils/discovery/labels";
 import { pixelBorderWidth, pixelColors, pixelRadius } from "@/theme/pixel";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { Link, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {

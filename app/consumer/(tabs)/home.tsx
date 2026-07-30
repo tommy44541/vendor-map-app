@@ -15,7 +15,6 @@ import {
 import { consumerApi, type UserLocation } from "@/services/api/consumer";
 import {
   discoveryApi,
-  type DiscoveryCategory,
   type PublicMerchantSearchItem,
 } from "@/services/api/discovery";
 import { subscriptionsApi } from "@/services/api/subscriptions";
@@ -26,19 +25,12 @@ import { discoveryLabel } from "@/utils/discovery/labels";
 import { getMerchantDisplayName } from "@/utils/merchant/getMerchantDisplayName";
 import { getFcmTokenOrNull, getStableDeviceId } from "@/utils/push";
 import { parseMerchantIdFromQrData } from "@/utils/qr/subscriptionQr";
-import { Ionicons } from "@expo/vector-icons";
-import BottomSheet, {
-  BottomSheetBackdrop,
-  BottomSheetFooter,
-  BottomSheetScrollView,
-  type BottomSheetBackdropProps,
-  type BottomSheetFooterProps,
-} from "@gorhom/bottom-sheet";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect } from "@react-navigation/native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import Constants from "expo-constants";
 import * as Location from "expo-location";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, {
   useCallback,
   useEffect,
@@ -79,13 +71,6 @@ import {
 } from "react-native-safe-area-context";
 import { useAuth } from "../../../contexts/AuthContext";
 
-// Phase 3 v4:tab 直向 icon+label 排列,peek 高度重算。
-// item = icon 20 + margin 2 + label ~15 + paddingV 6*2 = ~49
-// footer = item 49 + paddingT/B 8*2 = 65,sheet border 2*2 = 69
-// 0 = 純 tab(70px)
-// 1 = 中段(40%)
-// 2 = 滿版(95%),backdrop 加深
-const SNAP_POINTS = [70, "40%", "95%"];
 const FALLBACK_REGION = {
   // 台中市中心 fallback,商家 test 位置剛好在這附近
   latitude: 24.1577,
@@ -148,6 +133,9 @@ const TAB_PILL_ITEMS: {
 
 export default function ConsumerHomeScreen() {
   const router = useRouter();
+  const { openLocations } = useLocalSearchParams<{
+    openLocations?: string;
+  }>();
   const { user, logout } = useAuth();
   const [profilePushStatus, setProfilePushStatus] = useState<
     "unknown" | "ready" | "missing"
@@ -158,6 +146,8 @@ export default function ConsumerHomeScreen() {
   >([]);
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<ConsumerTab>("explore");
+  const [profileOpenRequest, setProfileOpenRequest] = useState(0);
+  const handledOpenLocationsRef = useRef(false);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const gearIconRef = useRef<View>(null);
   const [settingsDropdownPos, setSettingsDropdownPos] = useState<{
@@ -166,8 +156,6 @@ export default function ConsumerHomeScreen() {
   } | null>(null);
   const [subLoading, setSubLoading] = useState(false);
   const [subscriptionsLoading, setSubscriptionsLoading] = useState(false);
-  const [manualMode, setManualMode] = useState(false);
-  const [merchantId, setMerchantId] = useState("");
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scanned, setScanned] = useState(false);
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
@@ -190,12 +178,6 @@ export default function ConsumerHomeScreen() {
   const mapRef = useRef<UnifiedMapRef>(null);
   const [discoveryLoading, setDiscoveryLoading] = useState(false);
   const [discoveryError, setDiscoveryError] = useState<string | null>(null);
-  const [discoveryCategories, setDiscoveryCategories] = useState<
-    DiscoveryCategory[]
-  >([]);
-  const [selectedCategorySlug, setSelectedCategorySlug] = useState<
-    string | null
-  >(null);
   const [publicMerchants, setPublicMerchants] = useState<
     PublicMerchantSearchItem[]
   >([]);
@@ -264,11 +246,11 @@ export default function ConsumerHomeScreen() {
     return { device_id: d, fcm_token: t, platform: Platform.OS };
   };
 
-  const subscribeWithQrData = async (rawQr: string) => {
+  const subscribeWithQrData = async (rawQr: string): Promise<boolean> => {
     const raw = String(rawQr || "").trim();
     if (!raw) {
       Alert.alert("無法訂閱", "掃描到的內容是空的，請重試");
-      return;
+      return false;
     }
 
     const deviceInfo = await getDeviceInfoOrNull();
@@ -278,10 +260,13 @@ export default function ConsumerHomeScreen() {
         "請先到「個人」頁面完成推播權限/註冊後再訂閱，才能收到通知。",
         [
           { text: "取消", style: "cancel" },
-          { text: "前往個人", onPress: () => router.push("/consumer/profile") },
+          {
+            text: "前往個人",
+            onPress: () => setProfileOpenRequest((value) => value + 1),
+          },
         ],
       );
-      return;
+      return false;
     }
 
     const merchantFromQr = parseMerchantIdFromQrData(raw);
@@ -294,39 +279,33 @@ export default function ConsumerHomeScreen() {
         merchant_id: merchant,
         device_info: deviceInfo,
       });
-      return;
+      return true;
     }
 
     await subscriptionsApi.processQRSubscription({
       qr_data: raw,
       device_info: deviceInfo,
     });
+    return true;
   };
 
-  const onScanSubscribe = async (rawQr: string) => {
+  const onScanSubscribe = async (rawQr: string): Promise<boolean> => {
     try {
       setSubLoading(true);
-      await subscribeWithQrData(rawQr);
+      const didSubscribe = await subscribeWithQrData(rawQr);
+      if (!didSubscribe) return false;
       await loadSubscribedVendors();
       Alert.alert("成功", "已完成訂閱");
+      return true;
     } catch (e: any) {
       if (e instanceof ApiError && e.code === "TOKEN_EXPIRED") {
-        return;
+        return false;
       }
       Alert.alert("錯誤", e?.message || "訂閱失敗");
+      return false;
     } finally {
       setSubLoading(false);
     }
-  };
-
-  const onManualSubscribe = async () => {
-    const mId = merchantId.trim();
-    if (!mId) {
-      Alert.alert("提示", "請輸入 merchant_id");
-      return;
-    }
-    await onScanSubscribe(mId);
-    setMerchantId("");
   };
 
   const loadUserLocations = useCallback(async () => {
@@ -588,10 +567,14 @@ export default function ConsumerHomeScreen() {
 
   const setupProfilePush = useCallback(async () => {
     try {
+      if (!user?.id) {
+        throw new Error("找不到登入中的使用者");
+      }
       setProfilePushLoading(true);
       const mod = await import("@/utils/push");
       const res = await mod.onUserAuthenticated({
         requestPermissionIfNeeded: true,
+        userId: user.id,
       });
       await checkProfilePushStatus();
       Alert.alert(
@@ -603,7 +586,7 @@ export default function ConsumerHomeScreen() {
     } finally {
       setProfilePushLoading(false);
     }
-  }, [checkProfilePushStatus]);
+  }, [checkProfilePushStatus, user?.id]);
 
   const handleProfileLogout = useCallback(() => {
     Alert.alert("登出", "確定要登出嗎?", [
@@ -685,31 +668,20 @@ export default function ConsumerHomeScreen() {
       setDiscoveryLoading(true);
       setDiscoveryError(null);
 
-      const [categoriesRes, merchantsRes] = await Promise.all([
-        discoveryApi.listCategories(),
-        discoveryApi.searchPublicMerchants({
-          ...(selectedCategorySlug
-            ? { category_slug: selectedCategorySlug }
-            : {}),
-          ...(keywordDebounced ? { keyword: keywordDebounced } : {}),
-          ...(userLocation
-            ? {
-                latitude: userLocation.latitude,
-                longitude: userLocation.longitude,
-              }
-            : {}),
-          page: 1,
-          page_size: 6,
-        }),
-      ]);
+      const merchantsRes = await discoveryApi.searchPublicMerchants({
+        ...(keywordDebounced ? { keyword: keywordDebounced } : {}),
+        ...(userLocation
+          ? {
+              latitude: userLocation.latitude,
+              longitude: userLocation.longitude,
+            }
+          : {}),
+        page: 1,
+        page_size: 6,
+      });
 
       if (!isLatest()) return;
 
-      setDiscoveryCategories(
-        Array.isArray(categoriesRes.data?.categories)
-          ? categoriesRes.data.categories
-          : [],
-      );
       setPublicMerchants(
         Array.isArray(merchantsRes.data?.merchants)
           ? merchantsRes.data.merchants
@@ -725,7 +697,7 @@ export default function ConsumerHomeScreen() {
         setDiscoveryLoading(false);
       }
     }
-  }, [selectedCategorySlug, keywordDebounced, userLocation]);
+  }, [keywordDebounced, userLocation]);
 
   useEffect(() => {
     void loadSubscribedVendors();
@@ -789,6 +761,41 @@ export default function ConsumerHomeScreen() {
   const capsuleStartHeight = useSharedValue(CAPSULE_SNAP_MIN);
   // 0 = peek, 1 = mid, 2 = max。用來決定 render 多少內容
   const [capsuleSnapLevel, setCapsuleSnapLevel] = useState<0 | 1 | 2>(0);
+
+  useEffect(() => {
+    if (profileOpenRequest === 0) return;
+
+    setActiveTab("profile");
+    capsuleHeight.value = withSpring(CAPSULE_SNAP_MID, {
+      damping: 20,
+      stiffness: 180,
+    });
+    setCapsuleSnapLevel(1);
+  }, [CAPSULE_SNAP_MID, capsuleHeight, profileOpenRequest]);
+
+  useEffect(() => {
+    if (
+      openLocations !== "1" ||
+      handledOpenLocationsRef.current
+    ) {
+      return;
+    }
+
+    handledOpenLocationsRef.current = true;
+    setActiveTab("profile");
+    setLocationModalOpen(true);
+    void loadUserLocations();
+    capsuleHeight.value = withSpring(CAPSULE_SNAP_MID, {
+      damping: 20,
+      stiffness: 180,
+    });
+    setCapsuleSnapLevel(1);
+  }, [
+    CAPSULE_SNAP_MID,
+    capsuleHeight,
+    loadUserLocations,
+    openLocations,
+  ]);
 
   // 點擊推播通知開啟 app(冷啟動或背景喚醒)→ 直接切到通知頁並展開膠囊,
   // 同時把該則通知補進歷史(冷啟動時不會經過上面的 addNotificationReceivedListener)
@@ -949,117 +956,6 @@ export default function ConsumerHomeScreen() {
     };
   });
 
-  // 滿版時(index 2)才出 backdrop,index 1 完全透明
-  const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
-        {...props}
-        appearsOnIndex={2}
-        disappearsOnIndex={1}
-        opacity={0.45}
-        pressBehavior="collapse"
-      />
-    ),
-    [],
-  );
-
-  const sheetAnimatedIndex = useSharedValue(1);
-
-  // outer 只做左右內縮的漸變。overflow/radius 掛在 containerStyle(gorhom 真正的
-  // outer wrapper) 才會 clip 到 bg + footer + handle 全部。
-  const sheetOuterStyle = useAnimatedStyle(() => ({
-    marginHorizontal: interpolate(
-      sheetAnimatedIndex.value,
-      [0, 1, 2],
-      [24, 16, 4],
-      Extrapolation.CLAMP,
-    ),
-  }));
-
-  // sheet bg static
-  const sheetBgStyle = {
-    backgroundColor: pixelColors.surface,
-    borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
-    borderRadius: 20,
-  } as const;
-
-  // Footer 透明疊在 sheet bg 上,sheet bg 顯露的 surface 色就是 tab bar 底色。
-  // Peek 時 sheet 高度 = footer 高度,整體看起來就是「一顆膠囊裡放 4 個 tab」
-  const renderFooter = useCallback(
-    (props: BottomSheetFooterProps) => (
-      <BottomSheetFooter {...props} bottomInset={0}>
-        <View style={styles.tabPillFooter}>
-          {TAB_PILL_ITEMS.map((item) => {
-            const isActive = activeTab === item.id;
-            return (
-              <Pressable
-                key={item.id}
-                style={[
-                  styles.tabPillItem,
-                  isActive ? styles.tabPillItemActive : null,
-                ]}
-                onPress={() => setActiveTab(item.id)}
-                accessibilityRole="button"
-                accessibilityLabel={item.label}
-                accessibilityState={{ selected: isActive }}
-              >
-                <Ionicons
-                  name={item.icon}
-                  size={20}
-                  color={isActive ? pixelColors.ink : pixelColors.gray300}
-                />
-                <PixelText
-                  variant="caption"
-                  style={{
-                    color: isActive ? pixelColors.ink : pixelColors.gray300,
-                    marginTop: 2,
-                  }}
-                >
-                  {item.label}
-                </PixelText>
-              </Pressable>
-            );
-          })}
-        </View>
-      </BottomSheetFooter>
-    ),
-    [activeTab],
-  );
-
-  // peek 時 handle 完全收起(高度 0、透明),sheet 高度才能精準 = footer
-  // 拖出 peek 後才漸漸出現 handle bar 作為展開狀態的拖拉提示
-  const handleWrapStyle = useAnimatedStyle(() => ({
-    height: interpolate(
-      sheetAnimatedIndex.value,
-      [0, 1],
-      [0, 22],
-      Extrapolation.CLAMP,
-    ),
-    opacity: interpolate(
-      sheetAnimatedIndex.value,
-      [0, 0.5],
-      [0, 1],
-      Extrapolation.CLAMP,
-    ),
-    overflow: "hidden",
-  }));
-
-  const handlePillStyle = useAnimatedStyle(() => ({
-    width: interpolate(
-      sheetAnimatedIndex.value,
-      [1, 2],
-      [56, 36],
-      Extrapolation.CLAMP,
-    ),
-    height: interpolate(
-      sheetAnimatedIndex.value,
-      [1, 2],
-      [5, 3],
-      Extrapolation.CLAMP,
-    ),
-  }));
-
   return (
     <View style={styles.root}>
       {/* 全螢幕地圖底層 */}
@@ -1137,6 +1033,12 @@ export default function ConsumerHomeScreen() {
                 {discoveryLoading ? (
                   <View style={{ alignItems: "center", paddingVertical: 10 }}>
                     <PixelLoading label="" size="sm" tone="gold" />
+                  </View>
+                ) : discoveryError ? (
+                  <View style={{ alignItems: "center", paddingVertical: 10 }}>
+                    <PixelText variant="caption" tone="red">
+                      {discoveryError}
+                    </PixelText>
                   </View>
                 ) : publicMerchants.length === 0 ? (
                   <View style={{ alignItems: "center", paddingVertical: 10, gap: 6 }}>
@@ -1217,7 +1119,11 @@ export default function ConsumerHomeScreen() {
             )}
             {activeTab === "favorites" && capsuleSnapLevel > 0 && (
               <View style={{ gap: 8, flex: 1 }}>
-                {subscribedVendors.length === 0 ? (
+                {subscriptionsLoading ? (
+                  <View style={{ alignItems: "center", paddingVertical: 10 }}>
+                    <PixelLoading label="" size="sm" tone="pink" />
+                  </View>
+                ) : subscribedVendors.length === 0 ? (
                   <PixelText variant="body" tone="muted">
                     還沒訂閱任何商家。展開後點下方「掃 QR 訂閱」加入第一家。
                   </PixelText>
@@ -1803,440 +1709,6 @@ export default function ConsumerHomeScreen() {
         </Pressable>
       </Modal>
 
-      {/* Phase 3 重做:tab pill 改 footer,handle 只剩細線 -- 暫時隱藏,不 render */}
-      {false && (
-        <BottomSheet
-          snapPoints={SNAP_POINTS}
-          index={0}
-          animatedIndex={sheetAnimatedIndex}
-          enablePanDownToClose={false}
-          enableHandlePanningGesture
-          enableContentPanningGesture
-          // gorhom v5 預設 true,會 auto-size sheet 到 content 高度,snap points 被忽略
-          // 關掉才會嚴格依 snap points,peek 才會真的 = 70px
-          enableDynamicSizing={false}
-          backdropComponent={renderBackdrop}
-          footerComponent={renderFooter}
-          bottomInset={insets.bottom + 8}
-          containerStyle={styles.sheetContainerClip}
-          style={sheetOuterStyle}
-          backgroundStyle={sheetBgStyle}
-          handleComponent={() => (
-            <Animated.View style={[styles.panelHandleWrap, handleWrapStyle]}>
-              <Animated.View style={[styles.panelHandle, handlePillStyle]} />
-            </Animated.View>
-          )}
-        >
-          <BottomSheetScrollView
-            style={{ backgroundColor: "transparent" }}
-            contentContainerStyle={{
-              paddingHorizontal: 16,
-              // paddingTop 大一點:避開 sheet 上緣 border,peek 時內容自然被 clip 到看不見
-              paddingTop: 16,
-              // 底部要避開 footer(~65px)不然 scroll 到底時內容被 tab bar 蓋住
-              paddingBottom: 80,
-              gap: 16,
-            }}
-            showsVerticalScrollIndicator={false}
-          >
-            {activeTab !== "explore" ? (
-              <PixelCard
-                title={
-                  TAB_PILL_ITEMS.find(
-                    (t) => t.id === activeTab,
-                  )?.label.toUpperCase() ?? ""
-                }
-                titleTone="purple"
-                titleDisplay
-                padding={20}
-              >
-                <View style={{ alignItems: "center", gap: 10 }}>
-                  <PixelText variant="bodyLg">敬請期待</PixelText>
-                  <PixelText variant="caption" tone="muted">
-                    這個分頁的內容正在整合進新的浮島介面,
-                    {"\n"}下個版本就會出現囉。
-                  </PixelText>
-                </View>
-              </PixelCard>
-            ) : (
-              <>
-                {/* QR 訂閱 */}
-                <PixelCard title="QR  訂閱通知" titleTone="green" padding={14}>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 10,
-                    }}
-                  >
-                    <View style={styles.qrIcon}>
-                      <Ionicons
-                        name="qr-code"
-                        size={22}
-                        color={pixelColors.ink}
-                      />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <PixelText variant="bodyLg">掃 QR 訂閱商家</PixelText>
-                      <PixelText variant="caption" tone="muted">
-                        掃描商家提供的 QR Code 即可加入通知
-                      </PixelText>
-                    </View>
-                  </View>
-
-                  <View style={{ height: 12 }} />
-                  <View style={{ flexDirection: "row", gap: 8 }}>
-                    <View style={{ flex: 1 }}>
-                      <PixelButton
-                        label={subLoading ? "..." : "> 掃碼訂閱"}
-                        tone="green"
-                        fullWidth
-                        disabled={subLoading}
-                        onPress={async () => {
-                          setScanned(false);
-                          setScannerOpen(true);
-                          if (!cameraPermission?.granted) {
-                            await requestCameraPermission();
-                          }
-                        }}
-                      />
-                    </View>
-                    <PixelButton
-                      label={manualMode ? "收起" : "手動"}
-                      tone="paper"
-                      onPress={() => setManualMode((v) => !v)}
-                      disabled={subLoading}
-                    />
-                  </View>
-
-                  {manualMode ? (
-                    <View style={{ marginTop: 12, gap: 10 }}>
-                      <PixelTextInput
-                        label="商家 ID"
-                        placeholder="merchant_id"
-                        value={merchantId}
-                        onChangeText={setMerchantId}
-                        autoCapitalize="none"
-                        editable={!subLoading}
-                      />
-                      <PixelButton
-                        label={subLoading ? "..." : "> 手動訂閱"}
-                        tone="blue"
-                        fullWidth
-                        disabled={subLoading}
-                        onPress={onManualSubscribe}
-                      />
-                    </View>
-                  ) : null}
-                </PixelCard>
-
-                {/* 公開探索 */}
-                <View>
-                  <View style={styles.capsuleSectionHeader}>
-                    <View>
-                      <PixelText variant="caption" tone="gold" display>
-                        EXPLORE
-                      </PixelText>
-                      <PixelText variant="title">公開探索</PixelText>
-                    </View>
-                    <Pressable onPress={() => void loadPublicMerchants()}>
-                      <PixelText variant="body" tone="blue" display>
-                        {">> RELOAD"}
-                      </PixelText>
-                    </Pressable>
-                  </View>
-
-                  {/* 關鍵字搜尋 */}
-                  <View style={{ marginBottom: 10 }}>
-                    <PixelTextInput
-                      placeholder="搜尋商家名稱 / 描述"
-                      value={keyword}
-                      onChangeText={setKeyword}
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      returnKeyType="search"
-                      rightAdornment={
-                        <Ionicons
-                          name="search"
-                          size={16}
-                          color={pixelColors.gray500}
-                        />
-                      }
-                    />
-                  </View>
-
-                  {/* GPS 狀態 chip */}
-                  <View
-                    style={{ flexDirection: "row", gap: 6, marginBottom: 10 }}
-                  >
-                    {locationStatus === "granted" ? (
-                      <PixelChip label="依距離排序" tone="green" active />
-                    ) : locationStatus === "asking" ? (
-                      <PixelChip label="取得位置中..." tone="paper" active />
-                    ) : (
-                      <PixelChip
-                        label="點此啟用 GPS"
-                        tone="paper"
-                        active
-                        onPress={() => void requestUserLocation()}
-                      />
-                    )}
-                    {keywordDebounced ? (
-                      <PixelChip
-                        label={`搜尋: ${keywordDebounced}`}
-                        tone="blue"
-                        active
-                      />
-                    ) : null}
-                  </View>
-
-                  {discoveryCategories.length > 0 ? (
-                    <ScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      contentContainerStyle={{ gap: 8, paddingVertical: 4 }}
-                      style={{ marginBottom: 12 }}
-                    >
-                      <PixelChip
-                        label="全部"
-                        tone="gold"
-                        active={selectedCategorySlug === null}
-                        onPress={() => setSelectedCategorySlug(null)}
-                      />
-                      {discoveryCategories.map((category) => (
-                        <PixelChip
-                          key={category.id}
-                          label={getDiscoveryLabel(category)}
-                          tone="gold"
-                          active={selectedCategorySlug === category.slug}
-                          onPress={() => setSelectedCategorySlug(category.slug)}
-                        />
-                      ))}
-                    </ScrollView>
-                  ) : null}
-
-                  {discoveryLoading ? (
-                    <PixelCard padding={20} titleTone="ink">
-                      <View style={{ alignItems: "center", gap: 10 }}>
-                        <PixelLoading label="" size="sm" tone="gold" />
-                        <PixelText variant="body" tone="muted">
-                          載入中…
-                        </PixelText>
-                      </View>
-                    </PixelCard>
-                  ) : discoveryError ? (
-                    <PixelCard
-                      title="ERROR"
-                      titleTone="red"
-                      titleDisplay
-                      padding={14}
-                      background={pixelColors.surfaceAlt}
-                    >
-                      <PixelText variant="body">{discoveryError}</PixelText>
-                    </PixelCard>
-                  ) : publicMerchants.length === 0 ? (
-                    <PixelCard padding={14}>
-                      <PixelText variant="bodyLg">
-                        目前沒有符合條件的商家
-                      </PixelText>
-                      <View style={{ height: 6 }} />
-                      <PixelText variant="body" tone="muted">
-                        需要商家完成驗證、設定主要位置與公開探索後,才會出現在這裡。
-                      </PixelText>
-                    </PixelCard>
-                  ) : (
-                    <View style={{ gap: 10 }}>
-                      {publicMerchants.map((merchant) => {
-                        const category = getDiscoveryLabel(
-                          merchant.discovery_subcategory ||
-                            merchant.discovery_category,
-                        );
-                        const address =
-                          merchant.primary_location?.full_address || "";
-                        return (
-                          <Pressable
-                            key={merchant.merchant_id}
-                            onPress={() =>
-                              router.push({
-                                pathname: "/consumer/vendor/[id]",
-                                params: {
-                                  id: merchant.merchant_id,
-                                  name: merchant.store_name,
-                                  cuisine: category,
-                                  description: merchant.store_description,
-                                  address,
-                                  distance: formatDistance(
-                                    merchant.distance_meters,
-                                  ),
-                                },
-                              })
-                            }
-                          >
-                            <PixelCard padding={12}>
-                              <View
-                                style={{
-                                  flexDirection: "row",
-                                  gap: 12,
-                                  alignItems: "flex-start",
-                                }}
-                              >
-                                <View style={{ flex: 1 }}>
-                                  <PixelText variant="bodyLg">
-                                    {merchant.store_name || "未命名商家"}
-                                  </PixelText>
-                                  <View style={{ height: 4 }} />
-                                  <PixelChip
-                                    label={category}
-                                    tone="purple"
-                                    active
-                                  />
-                                  {merchant.store_description ? (
-                                    <>
-                                      <View style={{ height: 6 }} />
-                                      <PixelText
-                                        variant="body"
-                                        tone="muted"
-                                        numberOfLines={2}
-                                      >
-                                        {merchant.store_description}
-                                      </PixelText>
-                                    </>
-                                  ) : null}
-                                  {address ? (
-                                    <>
-                                      <View style={{ height: 6 }} />
-                                      <PixelText
-                                        variant="caption"
-                                        tone="muted"
-                                        numberOfLines={1}
-                                      >
-                                        * {address}
-                                      </PixelText>
-                                    </>
-                                  ) : null}
-                                </View>
-                                <View
-                                  style={{ alignItems: "flex-end", gap: 6 }}
-                                >
-                                  <PixelChip
-                                    label={formatDistance(
-                                      merchant.distance_meters,
-                                    )}
-                                    tone="gold"
-                                    active
-                                    display
-                                  />
-                                  <PixelText
-                                    variant="title"
-                                    tone="gold"
-                                    display
-                                  >
-                                    {">"}
-                                  </PixelText>
-                                </View>
-                              </View>
-                            </PixelCard>
-                          </Pressable>
-                        );
-                      })}
-                    </View>
-                  )}
-                </View>
-
-                {/* 已訂閱 */}
-                <View>
-                  <View style={styles.capsuleSectionHeader}>
-                    <View>
-                      <PixelText variant="caption" tone="pink" display>
-                        SUBSCRIBED
-                      </PixelText>
-                      <PixelText variant="title">已訂閱商家</PixelText>
-                    </View>
-                    <Pressable
-                      onPress={() => router.push("/consumer/favorites")}
-                    >
-                      <PixelText variant="body" tone="pink" display>
-                        {"MORE >>"}
-                      </PixelText>
-                    </Pressable>
-                  </View>
-
-                  {subscriptionsLoading ? (
-                    <PixelCard padding={20}>
-                      <View style={{ alignItems: "center", gap: 10 }}>
-                        <PixelLoading label="" size="sm" tone="pink" />
-                        <PixelText variant="body" tone="muted">
-                          讀取訂閱清單…
-                        </PixelText>
-                      </View>
-                    </PixelCard>
-                  ) : subscribedVendors.length === 0 ? (
-                    <PixelCard padding={14}>
-                      <PixelText variant="bodyLg">還沒有訂閱任何商家</PixelText>
-                      <View style={{ height: 6 }} />
-                      <PixelText variant="body" tone="muted">
-                        用上方掃碼或手動輸入 ID 訂閱第一個商家。
-                      </PixelText>
-                    </PixelCard>
-                  ) : (
-                    <View style={{ gap: 10 }}>
-                      {subscribedVendors.map((vendor) => (
-                        <Pressable
-                          key={vendor.id}
-                          onPress={() =>
-                            router.push({
-                              pathname: "/consumer/vendor/[id]",
-                              params: {
-                                id: vendor.id,
-                                name: vendor.name,
-                                cuisine: vendor.cuisine,
-                                is_open: "true",
-                              },
-                            })
-                          }
-                        >
-                          <PixelCard padding={12}>
-                            <View
-                              style={{
-                                flexDirection: "row",
-                                justifyContent: "space-between",
-                                alignItems: "flex-start",
-                                gap: 10,
-                              }}
-                            >
-                              <View style={{ flex: 1 }}>
-                                <PixelText variant="bodyLg">
-                                  {vendor.name}
-                                </PixelText>
-                                <View style={{ height: 4 }} />
-                                <PixelText variant="caption" tone="muted">
-                                  {vendor.cuisine}
-                                </PixelText>
-                                <View style={{ height: 8 }} />
-                                <PixelChip
-                                  label={vendor.meta}
-                                  tone="paper"
-                                  active
-                                />
-                              </View>
-                              <PixelChip
-                                label={vendor.statusLabel}
-                                tone="green"
-                                active
-                              />
-                            </View>
-                          </PixelCard>
-                        </Pressable>
-                      ))}
-                    </View>
-                  )}
-                </View>
-              </>
-            )}
-          </BottomSheetScrollView>
-        </BottomSheet>
-      )}
-
       {/* 掃碼 Modal */}
       <Modal
         visible={scannerOpen}
@@ -2607,47 +2079,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     minWidth: 60,
-  },
-  // 收合時整個 sheet 高 80px,handleWrap 要塞下 handle bar + 一行字
-  panelHandleWrap: {
-    alignItems: "center",
-    paddingTop: 10,
-    paddingBottom: 6,
-    gap: 4,
-  },
-  panelHandle: {
-    backgroundColor: pixelColors.gray500,
-    borderRadius: 2,
-  },
-  // 掛在 gorhom containerStyle → 真正的 outer wrapper,四角一起圓 + clip 所有 sibling
-  sheetContainerClip: {
-    overflow: "hidden",
-    borderRadius: 20,
-  },
-  // tab pill 底部 footer:solid surface 底(擋 content 洩出)+ 底角自己圓化
-  // (不然矩形 footer 疊在圓底 sheet bg 上會蓋掉 sheet 的下方圓角)
-  // Footer 全透明 — sheet bg 就是「bar 的形狀」,tab 只是覆在上面的圖標
-  // 完全消除 footer/sheet 雙層 rounded corner 打架的問題
-  tabPillFooter: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-    paddingHorizontal: 8,
-    paddingTop: 8,
-    paddingBottom: 8,
-  },
-  // Find My 風:icon 上、label 下、垂直堆疊
-  tabPillItem: {
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: pixelRadius * 3,
-    minWidth: 60,
-  },
-  tabPillItemActive: {
-    backgroundColor: pixelColors.gold,
   },
   qrIcon: {
     width: 44,

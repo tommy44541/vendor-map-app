@@ -13,9 +13,9 @@ import {
   getRecentPublishedResults,
   saveRecentPublishedResult,
 } from "@/utils/vendor/recentPublish";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Location from "expo-location";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -33,11 +33,13 @@ import {
   PublishLocationNotificationData,
 } from "../../../services/api/notification";
 import { ApiError } from "../../../services/api/util";
+import { useAuth } from "../../../contexts/AuthContext";
 
 type PublishMode = "saved" | "temp";
 
 const Notifications = () => {
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
 
   const [mode, setMode] = useState<PublishMode>("saved");
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
@@ -68,11 +70,6 @@ const Notifications = () => {
       isMountedRef.current = false;
     };
   }, []);
-
-  const selectedLocation = useMemo(() => {
-    if (!selectedLocationId) return null;
-    return locations.find((l) => l.ID === selectedLocationId) || null;
-  }, [locations, selectedLocationId]);
 
   const loadLocations = async () => {
     try {
@@ -105,10 +102,11 @@ const Notifications = () => {
 
   useEffect(() => {
     (async () => {
-      const cached = await getRecentPublishedResults();
+      if (!user?.id) return;
+      const cached = await getRecentPublishedResults(user.id);
       setLastPublished(cached[0] ?? null);
     })();
-  }, []);
+  }, [user?.id]);
 
   const fillTempWithCurrentLocation = async () => {
     try {
@@ -197,7 +195,9 @@ const Notifications = () => {
             });
 
       setLastPublished(res.data);
-      await saveRecentPublishedResult(res.data);
+      if (user?.id) {
+        await saveRecentPublishedResult(user.id, res.data);
+      }
       autoRefreshPublishedStats(res.data).catch((e) => {
         console.warn("auto refresh published stats failed:", e);
       });
@@ -228,7 +228,9 @@ const Notifications = () => {
       const found = await findPublishedById(lastPublished.ID);
       if (found) {
         setLastPublished(found);
-        await saveRecentPublishedResult(found);
+        if (user?.id) {
+          await saveRecentPublishedResult(user.id, found);
+        }
       }
     } catch (e) {
       console.warn("refresh notification history failed:", e);
@@ -275,7 +277,9 @@ const Notifications = () => {
         if (changed) {
           latest = found;
           setLastPublished(found);
-          await saveRecentPublishedResult(found);
+          if (user?.id) {
+            await saveRecentPublishedResult(user.id, found);
+          }
         }
       } catch (error) {
         console.warn("auto refresh retry failed:", error);

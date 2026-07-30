@@ -9,12 +9,9 @@ import {
 import { MenuItem, menuApi } from "@/services/api/menu";
 import { discoveryApi } from "@/services/api/discovery";
 import { ApiError } from "@/services/api/util";
-import { discoverySubLabel } from "@/utils/discovery/labels";
-
-// 分類選項用 uuid 對應後端,slug 保留供 label 翻譯,label 供 UI 顯示
-type CategoryOption = { id: string; slug: string; label: string };
 import { pixelBorderWidth, pixelColors, pixelRadius } from "@/theme/pixel";
-import { Ionicons } from "@expo/vector-icons";
+import { discoverySubLabel } from "@/utils/discovery/labels";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
@@ -22,13 +19,15 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
-  Pressable,
   ScrollView,
   StatusBar,
   StyleSheet,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+// 分類選項用 uuid 對應後端,slug 保留供 label 翻譯,label 供 UI 顯示
+type CategoryOption = { id: string; slug: string; label: string };
 
 // "all" = 篩選 chip 顯示全部;其他是 discovery_subcategories.id (uuid)
 type CategoryFilter = "all" | string;
@@ -330,13 +329,19 @@ const VendorMenuScreen = () => {
               label="+ 新增"
               tone="gold"
               size="sm"
-              disabled={loading || submitting}
+              disabled={loading || submitting || categoriesLoadError}
               onPress={openCreateEditor}
             />
           </View>
         </View>
 
         <View style={{ height: 12 }} />
+        {categoriesLoadError ? (
+          <PixelText variant="caption" tone="red">
+            分類載入失敗，暫時無法新增品項
+          </PixelText>
+        ) : null}
+        {categoriesLoadError ? <View style={{ height: 8 }} /> : null}
         <View style={styles.statRow}>
           <StatBox label="總品項" value={String(stats.total)} tone="blue" />
           <StatBox

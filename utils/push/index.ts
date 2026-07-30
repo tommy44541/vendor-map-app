@@ -7,6 +7,7 @@ import { startPushTokenRefreshListener } from "./tokenRefresh";
 import { deactivateCurrentDeviceOnLogout } from "./deactivateOnLogout";
 
 export interface OnUserAuthenticatedOptions {
+  userId: string;
   /**
    * 是否在需要時主動 request permission。
    * 依規格：登入後可做 UX 引導並請求；此處預設 true。
@@ -22,9 +23,9 @@ export interface OnUserAuthenticatedOptions {
  * - 前端用 cache 避免重複註冊
  */
 export async function onUserAuthenticated(
-  options: OnUserAuthenticatedOptions = {}
+  options: OnUserAuthenticatedOptions
 ) {
-  const { requestPermissionIfNeeded = true } = options;
+  const { requestPermissionIfNeeded = true, userId } = options;
 
   // 1) permission
   const status = await getPushPermissionStatus();
@@ -43,16 +44,16 @@ export async function onUserAuthenticated(
   if (!deviceId) return { ok: false, step: "device_id" as const };
 
   // 4) register (idempotent)
-  const result = await registerDeviceIfNeeded({ deviceId, fcmToken });
+  const result = await registerDeviceIfNeeded({ userId, deviceId, fcmToken });
 
   // 5) cache extra
   const cache = await getRegistrationCache();
-  if (cache.device_id !== deviceId) {
-    await setRegistrationCache({ device_id: deviceId });
+  if (cache.device_id !== deviceId || cache.user_id !== userId) {
+    await setRegistrationCache({ device_id: deviceId, user_id: userId });
   }
 
   // 6) token refresh listener（最佳努力）
-  startPushTokenRefreshListener(getStableDeviceId);
+  startPushTokenRefreshListener(getStableDeviceId, userId);
 
   return { ok: true, result };
 }
@@ -64,5 +65,4 @@ export * from "./permission";
 export * from "./registerDevice";
 export * from "./tokenRefresh";
 export { deactivateCurrentDeviceOnLogout };
-
 
