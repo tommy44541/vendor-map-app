@@ -8,7 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { subscriptionsApi } from "@/services/api/subscriptions";
 import { pixelBorderWidth, pixelColors, pixelRadius } from "@/theme/pixel";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import * as Print from "expo-print";
 import { router } from "expo-router";
 import * as Sharing from "expo-sharing";

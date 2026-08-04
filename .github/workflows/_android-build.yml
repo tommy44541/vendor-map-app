@@ -164,15 +164,45 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Run release checks
+        run: |
+          npm run lint
+          npx tsc --noEmit
+          npm test
+
       - name: Resolve build context
         id: context
         shell: bash
+        env:
+          REQUESTED_REF: ${{ inputs.ref || github.ref_name }}
+          EVENT_NAME: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
           set -euo pipefail
+          app_version="$(node <<'NODE'
+          const loadConfig = require("./app.config.js");
+          const config = typeof loadConfig === "function" ? loadConfig() : loadConfig;
+          const version = config?.version;
+
+          if (typeof version !== "string" || !version.trim()) {
+            console.error("Expo config is missing a valid version.");
+            process.exit(1);
+          }
+
+          process.stdout.write(version.trim());
+          NODE
+          )"
+
+          if [ "$EVENT_NAME" = "push" ] && [ "$REF_TYPE" = "tag" ] && [ "$REF_NAME" != "v$app_version" ]; then
+            echo "::error::Release tag '$REF_NAME' must match Expo app version 'v$app_version'."
+            exit 1
+          fi
+
           echo "commit_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           echo "short_sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
-          echo "requested_ref=${{ inputs.ref || github.ref_name }}" >> "$GITHUB_OUTPUT"
-          echo "app_version=$(node -p "require('./app.json').expo.version")" >> "$GITHUB_OUTPUT"
+          echo "requested_ref=$REQUESTED_REF" >> "$GITHUB_OUTPUT"
+          echo "app_version=$app_version" >> "$GITHUB_OUTPUT"
           echo "build_timestamp=$(date -u +%Y%m%dT%H%M%SZ)" >> "$GITHUB_OUTPUT"
 
       - name: Validate Expo config for CI

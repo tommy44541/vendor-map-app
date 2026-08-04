@@ -1,3 +1,4 @@
-Fixes:
-- Improved token storage security and fixed a role-detection edge case for vendor/consumer accounts
-- Simplified the consumer home screen interaction
+Updates:
+- Targets Android 16 (API level 36) to meet the latest Google Play requirements
+- Upgraded to Expo SDK 54 and refreshed Android dependencies
+- Fixed QR code export compatibility with the updated Expo file system API
