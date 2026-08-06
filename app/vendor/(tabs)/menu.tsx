@@ -1,3 +1,4 @@
+import { styles } from "@/styles/vendor/menu.styles";
 import {
   PixelButton,
   PixelCard,
@@ -9,7 +10,7 @@ import {
 import { MenuItem, menuApi } from "@/services/api/menu";
 import { discoveryApi } from "@/services/api/discovery";
 import { ApiError } from "@/services/api/util";
-import { pixelBorderWidth, pixelColors, pixelRadius } from "@/theme/pixel";
+import { pixelColors } from "@/theme/pixel";
 import { discoverySubLabel } from "@/utils/discovery/labels";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -21,7 +22,6 @@ import {
   Platform,
   ScrollView,
   StatusBar,
-  StyleSheet,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -670,77 +670,5 @@ function StatBox({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: pixelColors.bg,
-  },
-  hud: {
-    backgroundColor: pixelColors.surface,
-    paddingHorizontal: 16,
-    paddingBottom: 14,
-    borderBottomWidth: pixelBorderWidth,
-    borderBottomColor: pixelColors.ink,
-  },
-  hudTop: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    gap: 12,
-  },
-  statRow: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  statBox: {
-    flex: 1,
-    borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
-    borderRadius: pixelRadius,
-    borderTopWidth: 6,
-    backgroundColor: pixelColors.surfaceAlt,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-  },
-  itemHeader: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 10,
-  },
-  itemTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: 6,
-  },
-  priceBox: {
-    borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
-    borderRadius: pixelRadius,
-    backgroundColor: pixelColors.ink,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  itemActionsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  chipWrap: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-  },
-  modalWrap: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.55)",
-    justifyContent: "flex-end",
-  },
-  modalCard: {
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
-  },
-});
 
 export default VendorMenuScreen;

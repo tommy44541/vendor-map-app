@@ -1,3 +1,4 @@
+import { styles } from "@/styles/consumer/home.styles";
 import {
   UnifiedMap,
   type UnifiedMapMarker,
@@ -20,10 +21,14 @@ import {
 import { subscriptionsApi } from "@/services/api/subscriptions";
 import { ApiError } from "@/services/api/util";
 import { pixelMapStyle } from "@/theme/mapStylePixel";
-import { pixelBorderWidth, pixelColors, pixelRadius } from "@/theme/pixel";
+import { pixelColors } from "@/theme/pixel";
 import { discoveryLabel } from "@/utils/discovery/labels";
 import { getMerchantDisplayName } from "@/utils/merchant/getMerchantDisplayName";
 import { getFcmTokenOrNull, getStableDeviceId } from "@/utils/push";
+import {
+  normalizePushNotificationContent,
+  type PushNotificationContentLike,
+} from "@/utils/push/notificationContent";
 import { parseMerchantIdFromQrData } from "@/utils/qr/subscriptionQr";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useFocusEffect } from "@react-navigation/native";
@@ -142,7 +147,7 @@ export default function ConsumerHomeScreen() {
   >("unknown");
   const [profilePushLoading, setProfilePushLoading] = useState(false);
   const [receivedNotifications, setReceivedNotifications] = useState<
-    { id: string; title?: string; body?: string; receivedAt: string }[]
+    { id: string; title: string; body: string; receivedAt: string }[]
   >([]);
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<ConsumerTab>("explore");
@@ -537,6 +542,7 @@ export default function ConsumerHomeScreen() {
         sub = Notifications.addNotificationReceivedListener((n) => {
           const content = n?.request?.content;
           const identifier = n?.request?.identifier;
+          const normalized = normalizePushNotificationContent(content);
           setReceivedNotifications((prev) => {
             if (identifier && prev.some((item) => item.id === identifier)) {
               return prev;
@@ -546,8 +552,8 @@ export default function ConsumerHomeScreen() {
                 id:
                   identifier ||
                   String(Date.now()) + Math.random().toString(36).slice(2, 6),
-                title: content?.title ?? undefined,
-                body: content?.body ?? undefined,
+                title: normalized.title,
+                body: normalized.body,
                 receivedAt: new Date().toISOString(),
               },
               ...prev,
@@ -751,7 +757,10 @@ export default function ConsumerHomeScreen() {
 
   // === 浮島膠囊拖曳 + 三段 snap ===
   const { height: screenHeight, width: screenWidth } = useWindowDimensions();
-  const CAPSULE_PEEK_WIDTH = 360;
+  // 360 是一般/大螢幕手機的舒適寬度上限;窄螢幕手機（寬度接近或小於 360）
+  // 改保留固定兩側邊距，避免膠囊邊緣跟螢幕邊緣相切。
+  const CAPSULE_SIDE_MARGIN = 16;
+  const CAPSULE_PEEK_WIDTH = Math.min(360, screenWidth - CAPSULE_SIDE_MARGIN * 2);
   const CAPSULE_MID_WIDTH = Math.round(screenWidth * 0.95);
   const CAPSULE_MAX_WIDTH = screenWidth;
   const CAPSULE_SNAP_MIN = 80;
@@ -802,10 +811,11 @@ export default function ConsumerHomeScreen() {
   useEffect(() => {
     let sub: any = null;
     const openNotificationsTab = (
-      content?: { title?: string | null; body?: string | null } | null,
+      content?: PushNotificationContentLike | null,
       identifier?: string,
     ) => {
       if (content) {
+        const normalized = normalizePushNotificationContent(content);
         setReceivedNotifications((prev) => {
           if (identifier && prev.some((item) => item.id === identifier)) {
             return prev;
@@ -815,8 +825,8 @@ export default function ConsumerHomeScreen() {
               id:
                 identifier ||
                 String(Date.now()) + Math.random().toString(36).slice(2, 6),
-              title: content.title ?? undefined,
-              body: content.body ?? undefined,
+              title: normalized.title,
+              body: normalized.body,
               receivedAt: new Date().toISOString(),
             },
             ...prev,
@@ -1204,20 +1214,16 @@ export default function ConsumerHomeScreen() {
                           color={pixelColors.gold}
                         />
                         <View style={{ flex: 1 }}>
-                          {n.title ? (
-                            <PixelText variant="bodyLg" numberOfLines={1}>
-                              {n.title}
-                            </PixelText>
-                          ) : null}
-                          {n.body ? (
-                            <PixelText
-                              variant="caption"
-                              tone="muted"
-                              numberOfLines={2}
-                            >
-                              {n.body}
-                            </PixelText>
-                          ) : null}
+                          <PixelText variant="bodyLg" numberOfLines={1}>
+                            {n.title}
+                          </PixelText>
+                          <PixelText
+                            variant="caption"
+                            tone="muted"
+                            numberOfLines={2}
+                          >
+                            {n.body}
+                          </PixelText>
                         </View>
                         <PixelText variant="caption" tone="muted">
                           {formatNotificationTime(n.receivedAt)}
@@ -1815,311 +1821,3 @@ function SettingsRow({
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: pixelColors.bg,
-  },
-  // 從零重寫的浮島膠囊 — 純視覺,沒 tab 沒拖曳
-  // borderRadius = height / 2 → 兩端呈完整半圓的膠囊形狀
-  floatingCapsule: {
-    position: "absolute",
-    alignSelf: "center",
-    // width + height 由 capsuleAnimatedStyle 動態控制,拖曳時 morph
-    backgroundColor: pixelColors.surface,
-    borderRadius: 40,
-    borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
-    overflow: "hidden",
-    flexDirection: "column",
-  },
-  capsuleTopHandle: {
-    // absolute → 不佔 flex 高度,只是視覺裝飾疊在膠囊頂部
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    alignItems: "center",
-    paddingTop: 8,
-    paddingBottom: 4,
-  },
-  capsuleTopHandleBar: {
-    width: 48,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: pixelColors.gray500,
-  },
-  capsuleContent: {
-    flex: 1,
-    paddingHorizontal: 20,
-    // paddingTop 給 header 一點呼吸空間,避開頂部 drag handle
-    paddingTop: 18,
-    paddingBottom: 80,
-    gap: 8,
-  },
-  capsuleSectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingBottom: 8,
-    marginBottom: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: pixelColors.borderSoft,
-  },
-  settingsBackdrop: {
-    flex: 1,
-  },
-  settingsCard: {
-    width: 200,
-    backgroundColor: pixelColors.surface,
-    borderRadius: 12,
-    borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
-    overflow: "hidden",
-    shadowColor: pixelColors.ink,
-    shadowOpacity: 0.12,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  settingsRow: {
-    height: 48,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 16,
-  },
-  settingsDivider: {
-    height: 1,
-    backgroundColor: pixelColors.borderSoft,
-    marginHorizontal: 8,
-  },
-  exploreMerchantRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 12,
-    backgroundColor: pixelColors.surfaceAlt,
-  },
-  profileAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: pixelColors.gold,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  profileHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 8,
-    marginBottom: 4,
-  },
-  profileAddBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: pixelColors.surfaceAlt,
-    borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  profileDivider: {
-    height: 1,
-    backgroundColor: pixelColors.borderSoft,
-    marginVertical: 6,
-  },
-  profileLocationRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingVertical: 7,
-  },
-  profileLocationIconBlue: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: pixelColors.blue,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  profileLocationIconAlt: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: pixelColors.surfaceAlt,
-    borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  locationModalBackdrop: {
-    flex: 1,
-    justifyContent: "flex-end",
-    backgroundColor: "rgba(0,0,0,0.45)",
-  },
-  locationModalContainer: {
-    backgroundColor: pixelColors.surface,
-    borderTopLeftRadius: 40,
-    borderTopRightRadius: 40,
-    borderWidth: pixelBorderWidth,
-    borderBottomWidth: 0,
-    borderColor: pixelColors.ink,
-    overflow: "hidden",
-  },
-  locationModalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: pixelColors.borderSoft,
-  },
-  locationModalHeaderBtn: {
-    width: 36,
-    height: 36,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  locationModalDescription: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 6,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-  },
-  locationSwipeContainer: {
-    marginHorizontal: 16,
-    marginVertical: 4,
-  },
-  locationListItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    backgroundColor: pixelColors.surfaceAlt,
-    borderRadius: 12,
-  },
-  locationSwipeActions: {
-    flexDirection: "row",
-    alignItems: "stretch",
-    marginVertical: 4,
-    gap: 4,
-  },
-  locationSwipeBtn: {
-    width: 68,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 12,
-  },
-  locationModalFooter: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderTopColor: pixelColors.borderSoft,
-  },
-  addLocationPanel: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: pixelColors.surface,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    borderWidth: pixelBorderWidth,
-    borderBottomWidth: 0,
-    borderColor: pixelColors.ink,
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    gap: 10,
-  },
-  addLocationHint: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: pixelColors.surfaceAlt,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  addLocationAddressBox: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 6,
-    backgroundColor: pixelColors.surfaceAlt,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  capsuleTabBar: {
-    // 用 absolute 貼底,不依賴 flex 算高度,任何 sheet 高度下都固定在膠囊底部
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 20,
-    paddingHorizontal: 8,
-    paddingVertical: 8,
-    // 給 opaque bg,避免拖曳時 content 短暫從 tab 列後方透出
-    backgroundColor: pixelColors.surface,
-  },
-  capsuleTabItem: {
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    minWidth: 60,
-  },
-  qrIcon: {
-    width: 44,
-    height: 44,
-    backgroundColor: pixelColors.paper,
-    borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
-    borderRadius: pixelRadius,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-end",
-    marginBottom: 10,
-  },
-  scannerRoot: {
-    flex: 1,
-    backgroundColor: pixelColors.ink,
-  },
-  scannerTop: {
-    position: "absolute",
-    left: 16,
-    right: 16,
-    zIndex: 20,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  scannerBottom: {
-    position: "absolute",
-    left: 16,
-    right: 16,
-    zIndex: 20,
-  },
-  permissionWrap: {
-    flex: 1,
-    backgroundColor: pixelColors.bg,
-    alignItems: "stretch",
-    justifyContent: "center",
-    padding: 16,
-  },
-});

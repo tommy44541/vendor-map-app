@@ -1,0 +1,111 @@
+import { pixelBorderWidth, pixelColors, pixelRadius } from "@/theme/pixel";
+import { StyleSheet } from "react-native";
+
+export const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: pixelColors.bg,
+  },
+  hud: {
+    backgroundColor: pixelColors.surface,
+    paddingHorizontal: 16,
+    paddingBottom: 14,
+    borderBottomWidth: pixelBorderWidth,
+    borderBottomColor: pixelColors.ink,
+  },
+  hudTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  backBtn: {
+    width: 36,
+    alignItems: "center",
+  },
+  hudTitleBlock: {
+    flex: 1,
+    alignItems: "center",
+    gap: 2,
+  },
+  statRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 12,
+  },
+  statBox: {
+    flex: 1,
+    borderWidth: pixelBorderWidth,
+    borderColor: pixelColors.ink,
+    borderRadius: pixelRadius,
+    borderTopWidth: 6,
+    backgroundColor: pixelColors.surfaceAlt,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  subRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  subDot: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  dot: {
+    width: 10,
+    height: 10,
+    borderWidth: 1,
+    borderColor: pixelColors.ink,
+    borderRadius: 2,
+  },
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+  },
+  menuHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    marginBottom: 8,
+  },
+  warnBox: {
+    borderWidth: pixelBorderWidth,
+    borderColor: pixelColors.gold,
+    borderRadius: pixelRadius,
+    backgroundColor: pixelColors.surfaceAlt,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginBottom: 8,
+  },
+  emptyMenu: {
+    borderWidth: pixelBorderWidth,
+    borderColor: pixelColors.borderSoft,
+    borderRadius: pixelRadius,
+    backgroundColor: pixelColors.surfaceAlt,
+    paddingHorizontal: 14,
+    paddingVertical: 16,
+    alignItems: "center",
+  },
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    borderWidth: pixelBorderWidth,
+    borderColor: pixelColors.ink,
+    borderRadius: pixelRadius,
+    backgroundColor: pixelColors.surface,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  priceBox: {
+    borderWidth: pixelBorderWidth,
+    borderColor: pixelColors.ink,
+    borderRadius: pixelRadius,
+    backgroundColor: pixelColors.ink,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});

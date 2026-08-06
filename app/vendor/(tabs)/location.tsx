@@ -1,3 +1,4 @@
+import { styles } from "@/styles/vendor/location.styles";
 import { UnifiedMap, type UnifiedMapRef } from "@/components/maps/UnifiedMap";
 import { locationMapBridge } from "@/utils/vendor/locationMapBridge";
 import React, { useEffect, useRef, useState } from "react";
@@ -49,7 +50,3 @@ export default function VendorLocationScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  root: { flex: 1 },
-});

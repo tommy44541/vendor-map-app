@@ -1,3 +1,4 @@
+import { styles } from "@/styles/vendor/profile.styles";
 import {
   PixelButton,
   PixelCard,
@@ -15,7 +16,7 @@ import {
 } from "@/services/api/discovery";
 import { ApiError } from "@/services/api/util";
 import { discoveryLabel as getDiscoveryLabel } from "@/utils/discovery/labels";
-import { pixelBorderWidth, pixelColors, pixelRadius } from "@/theme/pixel";
+import { pixelColors } from "@/theme/pixel";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Link, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -25,7 +26,6 @@ import {
   Pressable,
   ScrollView,
   StatusBar,
-  StyleSheet,
   Switch,
   View,
 } from "react-native";
@@ -770,63 +770,5 @@ function InfoRow({ label, value }: { label: string; value: string }) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: pixelColors.bg,
-  },
-  hud: {
-    backgroundColor: pixelColors.surface,
-    paddingHorizontal: 16,
-    paddingBottom: 14,
-    borderBottomWidth: pixelBorderWidth,
-    borderBottomColor: pixelColors.ink,
-    flexDirection: "row",
-    alignItems: "flex-end",
-    gap: 12,
-  },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  headerIcon: {
-    width: 36,
-    height: 36,
-    borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
-    borderRadius: pixelRadius,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  // 用一條 2px 黑線當區塊分隔,取代之前的雙層 inset box
-  divider: {
-    height: 2,
-    backgroundColor: pixelColors.ink,
-    marginVertical: 12,
-  },
-  miniRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 8,
-  },
-  switchRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  chipWrap: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-  },
-  infoRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    paddingVertical: 4,
-  },
-});
 
 export default Profile;

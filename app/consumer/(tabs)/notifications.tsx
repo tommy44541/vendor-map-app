@@ -1,27 +1,47 @@
+import { styles } from "@/styles/consumer/notifications.styles";
 import {
   PixelButton,
   PixelCard,
   PixelChip,
   PixelText,
 } from "@/components/pixel";
-import { pixelBorderWidth, pixelColors, pixelRadius } from "@/theme/pixel";
+import { pixelColors } from "@/theme/pixel";
+import {
+  normalizePushNotificationContent,
+  type PushNotificationContentLike,
+} from "@/utils/push/notificationContent";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Platform,
   ScrollView,
   StatusBar,
-  StyleSheet,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type ReceivedItem = {
   id: string;
-  title?: string;
-  body?: string;
-  data?: any;
+  title: string;
+  body: string;
+  data: Record<string, unknown>;
   receivedAt: string;
+};
+
+const toReceivedItem = (
+  content?: PushNotificationContentLike | null,
+  identifier?: string,
+): ReceivedItem => {
+  const normalized = normalizePushNotificationContent(content);
+  return {
+    id:
+      identifier ||
+      String(Date.now()) + Math.random().toString(36).slice(2, 6),
+    title: normalized.title,
+    body: normalized.body,
+    data: normalized.data,
+    receivedAt: new Date().toISOString(),
+  };
 };
 
 const formatTime = (iso: string) => {
@@ -47,28 +67,53 @@ export default function ConsumerNotificationsScreen() {
   }, []);
 
   useEffect(() => {
-    let sub: any = null;
+    let receivedSub: any = null;
+    let responseSub: any = null;
+    let active = true;
+
+    const addItem = (
+      content?: PushNotificationContentLike | null,
+      identifier?: string,
+    ) => {
+      if (!active) return;
+      const next = toReceivedItem(content, identifier);
+      setItems((prev) => {
+        if (prev.some((item) => item.id === next.id)) return prev;
+        return [next, ...prev].slice(0, 20);
+      });
+    };
+
     (async () => {
       try {
         const Notifications = await import("expo-notifications");
-        sub = Notifications.addNotificationReceivedListener((n) => {
-          const content = n?.request?.content;
-          const next: ReceivedItem = {
-            id: String(Date.now()),
-            title: content?.title ?? undefined,
-            body: content?.body ?? undefined,
-            data: content?.data,
-            receivedAt: new Date().toISOString(),
-          };
-          setItems((prev) => [next, ...prev].slice(0, 20));
+
+        const lastResponse =
+          await Notifications.getLastNotificationResponseAsync();
+        const lastRequest = lastResponse?.notification?.request;
+        if (lastRequest?.content) {
+          addItem(lastRequest.content, lastRequest.identifier);
+        }
+
+        receivedSub = Notifications.addNotificationReceivedListener((n) => {
+          addItem(n?.request?.content, n?.request?.identifier);
         });
+        responseSub = Notifications.addNotificationResponseReceivedListener(
+          (response) => {
+            addItem(
+              response?.notification?.request?.content,
+              response?.notification?.request?.identifier,
+            );
+          },
+        );
       } catch (e) {
         console.warn("expo-notifications not available:", e);
       }
     })();
     return () => {
+      active = false;
       try {
-        sub?.remove?.();
+        receivedSub?.remove?.();
+        responseSub?.remove?.();
       } catch {}
     };
   }, []);
@@ -85,7 +130,7 @@ export default function ConsumerNotificationsScreen() {
           <PixelText variant="display">通知</PixelText>
           <View style={{ height: 4 }} />
           <PixelText variant="caption" tone="muted">
-            僅顯示 App 在前台時收到的訊息
+            顯示最近開啟或收到的推播訊息
           </PixelText>
         </View>
         <PixelButton
@@ -118,7 +163,7 @@ export default function ConsumerNotificationsScreen() {
             <View style={{ flex: 1 }}>
               <PixelText variant="bodyLg">最近收到的通知</PixelText>
               <PixelText variant="caption" tone="muted">
-                後台通知請看系統通知中心
+                點擊系統通知後也會保留在這裡
               </PixelText>
             </View>
             <PixelChip
@@ -146,16 +191,12 @@ export default function ConsumerNotificationsScreen() {
                     <PixelChip label="NEW" tone="red" active display />
                     <View style={{ flex: 1 }}>
                       <PixelText variant="bodyLg" numberOfLines={1}>
-                        {it.title || "(無標題)"}
+                        {it.title}
                       </PixelText>
                     </View>
                   </View>
-                  {it.body ? (
-                    <>
-                      <View style={{ height: 8 }} />
-                      <PixelText variant="body">{it.body}</PixelText>
-                    </>
-                  ) : null}
+                  <View style={{ height: 8 }} />
+                  <PixelText variant="body">{it.body}</PixelText>
                   <View style={{ height: 8 }} />
                   <PixelText variant="caption" tone="muted">
                     {formatTime(it.receivedAt)}
@@ -169,55 +210,3 @@ export default function ConsumerNotificationsScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: pixelColors.bg,
-  },
-  hud: {
-    backgroundColor: pixelColors.surface,
-    paddingHorizontal: 16,
-    paddingBottom: 14,
-    borderBottomWidth: pixelBorderWidth,
-    borderBottomColor: pixelColors.ink,
-    flexDirection: "row",
-    alignItems: "flex-end",
-    gap: 12,
-  },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  headerIcon: {
-    width: 36,
-    height: 36,
-    backgroundColor: pixelColors.red,
-    borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
-    borderRadius: pixelRadius,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  emptyBox: {
-    marginTop: 12,
-    borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
-    borderRadius: pixelRadius,
-    backgroundColor: pixelColors.surfaceAlt,
-    padding: 12,
-  },
-  itemBox: {
-    borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
-    borderRadius: pixelRadius,
-    backgroundColor: pixelColors.surface,
-    padding: 12,
-  },
-  itemTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-});

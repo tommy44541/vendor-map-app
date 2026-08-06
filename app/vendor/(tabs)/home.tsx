@@ -1,3 +1,4 @@
+import { styles } from "@/styles/vendor/home.styles";
 import {
   PixelButton,
   PixelCard,
@@ -5,7 +6,7 @@ import {
   PixelText,
 } from "@/components/pixel";
 import type { PublishLocationNotificationData } from "@/services/api/notification";
-import { pixelBorderWidth, pixelColors, pixelRadius } from "@/theme/pixel";
+import { pixelColors } from "@/theme/pixel";
 import {
   clearRecentPublishedResult,
   getRecentPublishedResults,
@@ -20,7 +21,6 @@ import {
   Pressable,
   ScrollView,
   StatusBar,
-  StyleSheet,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -238,45 +238,3 @@ function toneToColor(tone: "red" | "gold" | "blue" | "green") {
       return pixelColors.green;
   }
 }
-
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: pixelColors.bg,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-end",
-    marginBottom: 10,
-  },
-  quickCard: {
-    borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
-    borderRadius: pixelRadius,
-    backgroundColor: pixelColors.surface,
-    padding: 12,
-    alignItems: "center",
-  },
-  quickIcon: {
-    width: 44,
-    height: 44,
-    borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
-    borderRadius: pixelRadius,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  publishBox: {
-    borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
-    borderRadius: pixelRadius,
-    backgroundColor: pixelColors.surfaceAlt,
-    padding: 10,
-  },
-  publishHead: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-});

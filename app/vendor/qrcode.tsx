@@ -1,3 +1,4 @@
+import { styles } from "@/styles/vendor/qrcode.styles";
 import {
   PixelButton,
   PixelCard,
@@ -6,7 +7,7 @@ import {
 } from "@/components/pixel";
 import { useAuth } from "@/contexts/AuthContext";
 import { subscriptionsApi } from "@/services/api/subscriptions";
-import { pixelBorderWidth, pixelColors, pixelRadius } from "@/theme/pixel";
+import { pixelColors } from "@/theme/pixel";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Print from "expo-print";
@@ -20,7 +21,6 @@ import {
   Pressable,
   ScrollView,
   StatusBar,
-  StyleSheet,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -340,64 +340,3 @@ export default function VendorQrCodeScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: pixelColors.bg,
-  },
-  hud: {
-    backgroundColor: pixelColors.surface,
-    paddingHorizontal: 16,
-    paddingBottom: 14,
-    borderBottomWidth: pixelBorderWidth,
-    borderBottomColor: pixelColors.ink,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  headerIcon: {
-    width: 36,
-    height: 36,
-    backgroundColor: pixelColors.gold,
-    borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
-    borderRadius: pixelRadius,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  shotWrap: {
-    alignItems: "center",
-  },
-  qrCard: {
-    backgroundColor: pixelColors.paper,
-    borderWidth: pixelBorderWidth * 2,
-    borderColor: pixelColors.ink,
-    borderRadius: pixelRadius,
-    padding: 14,
-    alignItems: "center",
-  },
-  qrInner: {
-    backgroundColor: pixelColors.white,
-    borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
-    borderRadius: pixelRadius,
-    padding: 10,
-  },
-  qrBox: {
-    width: 260,
-    height: 260,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  tipRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-  },
-});

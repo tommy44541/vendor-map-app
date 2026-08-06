@@ -1,3 +1,4 @@
+import { styles } from "@/styles/vendor/notifications.styles";
 import {
   PixelButton,
   PixelCard,
@@ -7,7 +8,7 @@ import {
   PixelText,
   PixelTextInput,
 } from "@/components/pixel";
-import { pixelBorderWidth, pixelColors, pixelRadius } from "@/theme/pixel";
+import { pixelColors } from "@/theme/pixel";
 import { getLocationDisplayLabel } from "@/utils/location/getLocationDisplayLabel";
 import {
   getRecentPublishedResults,
@@ -23,7 +24,6 @@ import {
   Pressable,
   ScrollView,
   StatusBar,
-  StyleSheet,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -647,94 +647,5 @@ function StatBox({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: pixelColors.bg,
-  },
-  hud: {
-    backgroundColor: pixelColors.surface,
-    paddingHorizontal: 16,
-    paddingBottom: 14,
-    borderBottomWidth: pixelBorderWidth,
-    borderBottomColor: pixelColors.ink,
-    flexDirection: "row",
-    alignItems: "flex-end",
-    gap: 12,
-  },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  headerIcon: {
-    width: 36,
-    height: 36,
-    backgroundColor: pixelColors.gold,
-    borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
-    borderRadius: pixelRadius,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  noticeBox: {
-    marginTop: 12,
-    borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
-    borderRadius: pixelRadius,
-    backgroundColor: pixelColors.surfaceAlt,
-    padding: 12,
-  },
-  centerBox: {
-    marginTop: 12,
-    alignItems: "center",
-    paddingVertical: 14,
-  },
-  locationItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
-    borderRadius: pixelRadius,
-    backgroundColor: pixelColors.surface,
-    padding: 10,
-  },
-  locationItemSelected: {
-    backgroundColor: pixelColors.surfaceAlt,
-    borderColor: pixelColors.gold,
-  },
-  locationIcon: {
-    width: 32,
-    height: 32,
-    borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
-    borderRadius: pixelRadius,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  locationTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: 6,
-  },
-  statBox: {
-    flex: 1,
-    borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
-    borderRadius: pixelRadius,
-    borderTopWidth: 6,
-    backgroundColor: pixelColors.surfaceAlt,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-  },
-  timestampRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-});
 
 export default Notifications;
