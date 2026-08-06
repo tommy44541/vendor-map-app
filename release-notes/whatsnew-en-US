@@ -1,4 +1,5 @@
 Updates:
-- Targets Android 16 (API level 36) to meet the latest Google Play requirements
-- Upgraded to Expo SDK 54 and refreshed Android dependencies
-- Fixed QR code export compatibility with the updated Expo file system API
+- Tap a vendor notification to locate its source on the map
+- Fixed blank push content after cold starts or background opens
+- Improved the consumer capsule layout on narrow screens
+- Added vendor name and description editing UI; saving awaits the backend API

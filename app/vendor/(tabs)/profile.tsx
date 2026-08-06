@@ -74,6 +74,9 @@ const Profile = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSavingDiscovery, setIsSavingDiscovery] = useState(false);
   const [discoveryEditing, setDiscoveryEditing] = useState(false);
+  const [merchantProfileEditing, setMerchantProfileEditing] = useState(false);
+  const [storeNameDraft, setStoreNameDraft] = useState("");
+  const [storeDescriptionDraft, setStoreDescriptionDraft] = useState("");
 
   useEffect(() => {
     StatusBar.setBarStyle("light-content");
@@ -276,6 +279,30 @@ const Profile = () => {
     applyDiscoveryProfileToLocalState(discoveryProfile);
     setDiscoveryEditing(false);
   }, [applyDiscoveryProfileToLocalState, discoveryProfile]);
+
+  const startMerchantProfileEdit = useCallback(() => {
+    setStoreNameDraft(merchantProfile?.store_name || "");
+    setStoreDescriptionDraft(merchantProfile?.store_description || "");
+    setMerchantProfileEditing(true);
+  }, [merchantProfile?.store_description, merchantProfile?.store_name]);
+
+  const cancelMerchantProfileEdit = useCallback(() => {
+    setStoreNameDraft(merchantProfile?.store_name || "");
+    setStoreDescriptionDraft(merchantProfile?.store_description || "");
+    setMerchantProfileEditing(false);
+  }, [merchantProfile?.store_description, merchantProfile?.store_name]);
+
+  const saveMerchantProfile = useCallback(() => {
+    if (!storeNameDraft.trim()) {
+      Alert.alert("提示", "店名不可為空白");
+      return;
+    }
+
+    Alert.alert(
+      "尚未儲存",
+      "商家資料更新 API 尚未開放。後端完成後即可從這裡儲存店名與店家描述。",
+    );
+  }, [storeNameDraft]);
 
   return (
     <View style={styles.root}>
@@ -712,6 +739,62 @@ const Profile = () => {
             label="店家描述"
             value={merchantProfile?.store_description || "尚未設定店家描述"}
           />
+
+          {merchantProfileEditing ? (
+            <>
+              <View style={styles.divider} />
+              <PixelTextInput
+                label="店名"
+                placeholder="請輸入店名"
+                value={storeNameDraft}
+                onChangeText={setStoreNameDraft}
+                maxLength={80}
+                autoCapitalize="none"
+              />
+              <View style={{ height: 12 }} />
+              <PixelTextInput
+                label="店家描述"
+                hint={`${storeDescriptionDraft.length}/500`}
+                placeholder="介紹店家特色、主要商品或營業風格"
+                value={storeDescriptionDraft}
+                onChangeText={setStoreDescriptionDraft}
+                maxLength={500}
+                multiline
+                numberOfLines={5}
+                textAlignVertical="top"
+                style={styles.descriptionInput}
+              />
+              <View style={{ height: 12 }} />
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                <View style={{ flex: 1 }}>
+                  <PixelButton
+                    label="取消"
+                    tone="paper"
+                    fullWidth
+                    onPress={cancelMerchantProfileEdit}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <PixelButton
+                    label="> 儲存"
+                    tone="green"
+                    fullWidth
+                    onPress={saveMerchantProfile}
+                  />
+                </View>
+              </View>
+            </>
+          ) : (
+            <>
+              <View style={{ height: 12 }} />
+              <PixelButton
+                label="> 編輯店家資料"
+                tone="purple"
+                fullWidth
+                onPress={startMerchantProfileEdit}
+              />
+            </>
+          )}
 
           <View style={{ height: 14 }} />
           <View style={{ flexDirection: "row", gap: 8 }}>

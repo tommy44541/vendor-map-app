@@ -10,6 +10,14 @@ export type NormalizedPushNotificationContent = {
   data: Record<string, unknown>;
 };
 
+export type PushNotificationLocation = {
+  latitude: number;
+  longitude: number;
+  merchantId?: string;
+  locationName?: string;
+  fullAddress?: string;
+};
+
 const asRecord = (value: unknown): Record<string, unknown> | null => {
   if (value && typeof value === "object" && !Array.isArray(value)) {
     return value as Record<string, unknown>;
@@ -46,10 +54,7 @@ const firstRecordText = (
   return undefined;
 };
 
-export const normalizePushNotificationContent = (
-  content?: PushNotificationContentLike | null,
-): NormalizedPushNotificationContent => {
-  const data = asRecord(content?.data) ?? {};
+const getDataRecords = (data: Record<string, unknown>) => {
   const nestedRecords = [
     asRecord(data.notification),
     asRecord(data.payload),
@@ -57,7 +62,76 @@ export const normalizePushNotificationContent = (
     asRecord(data.aps),
     asRecord(asRecord(data.aps)?.alert),
   ].filter((value): value is Record<string, unknown> => value !== null);
-  const records = [data, ...nestedRecords];
+
+  return [data, ...nestedRecords];
+};
+
+const firstRecordNumber = (
+  records: Record<string, unknown>[],
+  keys: string[],
+) => {
+  for (const record of records) {
+    for (const key of keys) {
+      const value = record[key];
+      if (typeof value !== "number" && typeof value !== "string") continue;
+
+      const text = typeof value === "string" ? value.trim() : null;
+      if (text === "") continue;
+
+      const parsed = typeof value === "number" ? value : Number(text);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+  }
+  return undefined;
+};
+
+export const getPushNotificationLocation = (
+  content?: PushNotificationContentLike | null,
+): PushNotificationLocation | null => {
+  const data = asRecord(content?.data) ?? {};
+  const records = getDataRecords(data);
+  const latitude = firstRecordNumber(records, [
+    "latitude",
+    "lat",
+    "merchant_latitude",
+    "merchantLatitude",
+  ]);
+  const longitude = firstRecordNumber(records, [
+    "longitude",
+    "lng",
+    "lon",
+    "merchant_longitude",
+    "merchantLongitude",
+  ]);
+
+  if (
+    latitude === undefined ||
+    longitude === undefined ||
+    latitude < -90 ||
+    latitude > 90 ||
+    longitude < -180 ||
+    longitude > 180
+  ) {
+    return null;
+  }
+
+  return {
+    latitude,
+    longitude,
+    merchantId: firstRecordText(records, ["merchant_id", "merchantId"]),
+    locationName: firstRecordText(records, [
+      "location_name",
+      "locationName",
+    ]),
+    fullAddress: firstRecordText(records, ["full_address", "fullAddress"]),
+  };
+};
+
+export const normalizePushNotificationContent = (
+  content?: PushNotificationContentLike | null,
+): NormalizedPushNotificationContent => {
+  const data = asRecord(content?.data) ?? {};
+  const records = getDataRecords(data);
 
   const title =
     asText(content?.title) ??

@@ -57,4 +57,8 @@ export const styles = StyleSheet.create({
     alignItems: "flex-start",
     paddingVertical: 4,
   },
+  descriptionInput: {
+    minHeight: 120,
+    alignItems: "stretch",
+  },
 });

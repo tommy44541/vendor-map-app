@@ -7,13 +7,18 @@ import {
 } from "@/components/pixel";
 import { pixelColors } from "@/theme/pixel";
 import {
+  getPushNotificationLocation,
   normalizePushNotificationContent,
+  type PushNotificationLocation,
   type PushNotificationContentLike,
 } from "@/utils/push/notificationContent";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  Alert,
   Platform,
+  Pressable,
   ScrollView,
   StatusBar,
   View,
@@ -26,6 +31,7 @@ type ReceivedItem = {
   body: string;
   data: Record<string, unknown>;
   receivedAt: string;
+  location: PushNotificationLocation | null;
 };
 
 const toReceivedItem = (
@@ -41,6 +47,7 @@ const toReceivedItem = (
     body: normalized.body,
     data: normalized.data,
     receivedAt: new Date().toISOString(),
+    location: getPushNotificationLocation(content),
   };
 };
 
@@ -55,8 +62,28 @@ const formatTime = (iso: string) => {
 };
 
 export default function ConsumerNotificationsScreen() {
+  const router = useRouter();
   const [items, setItems] = useState<ReceivedItem[]>([]);
   const insets = useSafeAreaInsets();
+
+  const focusNotificationOnMap = (item: ReceivedItem) => {
+    if (!item.location) {
+      Alert.alert("無法顯示位置", "這則通知沒有包含有效的攤商位置資料。");
+      return;
+    }
+
+    router.replace({
+      pathname: "/consumer/home",
+      params: {
+        focusRequest: `${Date.now()}-${item.id}`,
+        focusLatitude: String(item.location.latitude),
+        focusLongitude: String(item.location.longitude),
+        focusTitle: item.title,
+        focusLocationName: item.location.locationName || "",
+        focusAddress: item.location.fullAddress || item.body,
+      },
+    });
+  };
 
   useEffect(() => {
     StatusBar.setBarStyle("light-content");
@@ -186,7 +213,16 @@ export default function ConsumerNotificationsScreen() {
           ) : (
             <View style={{ marginTop: 12, gap: 10 }}>
               {items.map((it) => (
-                <View key={it.id} style={styles.itemBox}>
+                <Pressable
+                  key={it.id}
+                  onPress={() => focusNotificationOnMap(it)}
+                  style={({ pressed }) => [
+                    styles.itemBox,
+                    pressed && styles.itemBoxPressed,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${it.title}，在地圖查看位置`}
+                >
                   <View style={styles.itemTitleRow}>
                     <PixelChip label="NEW" tone="red" active display />
                     <View style={{ flex: 1 }}>
@@ -194,6 +230,13 @@ export default function ConsumerNotificationsScreen() {
                         {it.title}
                       </PixelText>
                     </View>
+                    <Ionicons
+                      name={it.location ? "location" : "notifications"}
+                      size={20}
+                      color={
+                        it.location ? pixelColors.red : pixelColors.gray500
+                      }
+                    />
                   </View>
                   <View style={{ height: 8 }} />
                   <PixelText variant="body">{it.body}</PixelText>
@@ -201,7 +244,7 @@ export default function ConsumerNotificationsScreen() {
                   <PixelText variant="caption" tone="muted">
                     {formatTime(it.receivedAt)}
                   </PixelText>
-                </View>
+                </Pressable>
               ))}
             </View>
           )}

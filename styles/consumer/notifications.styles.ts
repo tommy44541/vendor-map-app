@@ -46,6 +46,9 @@ export const styles = StyleSheet.create({
     backgroundColor: pixelColors.surface,
     padding: 12,
   },
+  itemBoxPressed: {
+    backgroundColor: pixelColors.borderSoft,
+  },
   itemTitleRow: {
     flexDirection: "row",
     alignItems: "center",

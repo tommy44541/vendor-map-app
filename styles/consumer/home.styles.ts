@@ -89,6 +89,12 @@ export const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: pixelColors.surfaceAlt,
   },
+  notificationRow: {
+    minHeight: 68,
+  },
+  notificationRowPressed: {
+    backgroundColor: pixelColors.borderSoft,
+  },
   profileAvatar: {
     width: 40,
     height: 40,

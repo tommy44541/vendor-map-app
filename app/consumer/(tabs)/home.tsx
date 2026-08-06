@@ -26,7 +26,9 @@ import { discoveryLabel } from "@/utils/discovery/labels";
 import { getMerchantDisplayName } from "@/utils/merchant/getMerchantDisplayName";
 import { getFcmTokenOrNull, getStableDeviceId } from "@/utils/push";
 import {
+  getPushNotificationLocation,
   normalizePushNotificationContent,
+  type PushNotificationLocation,
   type PushNotificationContentLike,
 } from "@/utils/push/notificationContent";
 import { parseMerchantIdFromQrData } from "@/utils/qr/subscriptionQr";
@@ -92,6 +94,31 @@ type SubscriptionVendor = {
   statusLabel: string;
 };
 
+type ReceivedNotification = {
+  id: string;
+  title: string;
+  body: string;
+  receivedAt: string;
+  location: PushNotificationLocation | null;
+};
+
+const toReceivedNotification = (
+  content?: PushNotificationContentLike | null,
+  identifier?: string,
+): ReceivedNotification => {
+  const normalized = normalizePushNotificationContent(content);
+
+  return {
+    id:
+      identifier ||
+      String(Date.now()) + Math.random().toString(36).slice(2, 6),
+    title: normalized.title,
+    body: normalized.body,
+    receivedAt: new Date().toISOString(),
+    location: getPushNotificationLocation(content),
+  };
+};
+
 const getDiscoveryLabel = (
   value?: { slug?: string | null; name?: string | null } | null,
 ) => discoveryLabel(value, "精選商家");
@@ -138,8 +165,22 @@ const TAB_PILL_ITEMS: {
 
 export default function ConsumerHomeScreen() {
   const router = useRouter();
-  const { openLocations } = useLocalSearchParams<{
+  const {
+    openLocations,
+    focusRequest,
+    focusLatitude,
+    focusLongitude,
+    focusTitle,
+    focusLocationName,
+    focusAddress,
+  } = useLocalSearchParams<{
     openLocations?: string;
+    focusRequest?: string;
+    focusLatitude?: string;
+    focusLongitude?: string;
+    focusTitle?: string;
+    focusLocationName?: string;
+    focusAddress?: string;
   }>();
   const { user, logout } = useAuth();
   const [profilePushStatus, setProfilePushStatus] = useState<
@@ -147,12 +188,15 @@ export default function ConsumerHomeScreen() {
   >("unknown");
   const [profilePushLoading, setProfilePushLoading] = useState(false);
   const [receivedNotifications, setReceivedNotifications] = useState<
-    { id: string; title: string; body: string; receivedAt: string }[]
+    ReceivedNotification[]
   >([]);
+  const [focusedNotification, setFocusedNotification] =
+    useState<ReceivedNotification | null>(null);
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<ConsumerTab>("explore");
   const [profileOpenRequest, setProfileOpenRequest] = useState(0);
   const handledOpenLocationsRef = useRef(false);
+  const handledFocusRequestRef = useRef<string | null>(null);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const gearIconRef = useRef<View>(null);
   const [settingsDropdownPos, setSettingsDropdownPos] = useState<{
@@ -542,22 +586,12 @@ export default function ConsumerHomeScreen() {
         sub = Notifications.addNotificationReceivedListener((n) => {
           const content = n?.request?.content;
           const identifier = n?.request?.identifier;
-          const normalized = normalizePushNotificationContent(content);
+          const next = toReceivedNotification(content, identifier);
           setReceivedNotifications((prev) => {
-            if (identifier && prev.some((item) => item.id === identifier)) {
+            if (prev.some((item) => item.id === next.id)) {
               return prev;
             }
-            return [
-              {
-                id:
-                  identifier ||
-                  String(Date.now()) + Math.random().toString(36).slice(2, 6),
-                title: normalized.title,
-                body: normalized.body,
-                receivedAt: new Date().toISOString(),
-              },
-              ...prev,
-            ].slice(0, 20);
+            return [next, ...prev].slice(0, 20);
           });
         });
       } catch (e) {
@@ -751,6 +785,20 @@ export default function ConsumerHomeScreen() {
     [publicMerchants],
   );
 
+  const focusedNotificationMarker: UnifiedMapMarker | null = useMemo(() => {
+    const location = focusedNotification?.location;
+    if (!location) return null;
+
+    return {
+      id: `notification-${focusedNotification.id}`,
+      latitude: location.latitude,
+      longitude: location.longitude,
+      title: location.locationName || focusedNotification.title,
+      description: location.fullAddress || focusedNotification.body,
+      pinColor: pixelColors.red,
+    };
+  }, [focusedNotification]);
+
   // 只在 dark mode 套像素 muted 配色;light mode 走系統預設(Google 彩色 / Apple 淡色)
   const colorScheme = useColorScheme();
   const mapCustomStyle = colorScheme === "dark" ? pixelMapStyle : undefined;
@@ -770,6 +818,76 @@ export default function ConsumerHomeScreen() {
   const capsuleStartHeight = useSharedValue(CAPSULE_SNAP_MIN);
   // 0 = peek, 1 = mid, 2 = max。用來決定 render 多少內容
   const [capsuleSnapLevel, setCapsuleSnapLevel] = useState<0 | 1 | 2>(0);
+
+  const focusNotificationOnMap = useCallback(
+    (notification: ReceivedNotification) => {
+      const location = notification.location;
+      if (!location) {
+        Alert.alert("無法顯示位置", "這則通知沒有包含有效的攤商位置資料。");
+        return;
+      }
+
+      setFocusedNotification(notification);
+      setActiveTab("explore");
+      capsuleHeight.value = withSpring(CAPSULE_SNAP_MIN, {
+        damping: 20,
+        stiffness: 180,
+      });
+      setCapsuleSnapLevel(0);
+
+      requestAnimationFrame(() => {
+        mapRef.current?.animateToRegion(
+          {
+            latitude: location.latitude,
+            longitude: location.longitude,
+            latitudeDelta: 0.008,
+            longitudeDelta: 0.008,
+          },
+          700,
+        );
+      });
+    },
+    [CAPSULE_SNAP_MIN, capsuleHeight],
+  );
+
+  useEffect(() => {
+    if (!focusRequest || handledFocusRequestRef.current === focusRequest) return;
+
+    const latitude = Number(focusLatitude);
+    const longitude = Number(focusLongitude);
+    if (
+      !Number.isFinite(latitude) ||
+      !Number.isFinite(longitude) ||
+      latitude < -90 ||
+      latitude > 90 ||
+      longitude < -180 ||
+      longitude > 180
+    ) {
+      return;
+    }
+
+    handledFocusRequestRef.current = focusRequest;
+    focusNotificationOnMap({
+      id: `route-${focusRequest}`,
+      title: focusTitle || "攤商通知",
+      body: focusAddress || focusLocationName || "攤商通知位置",
+      receivedAt: new Date().toISOString(),
+      location: {
+        latitude,
+        longitude,
+        locationName: focusLocationName,
+        fullAddress: focusAddress,
+      },
+    });
+  }, [
+    focusAddress,
+    focusLatitude,
+    focusLocationName,
+    focusLongitude,
+    focusNotificationOnMap,
+    focusRequest,
+    focusTitle,
+  ]);
 
   useEffect(() => {
     if (profileOpenRequest === 0) return;
@@ -815,22 +933,12 @@ export default function ConsumerHomeScreen() {
       identifier?: string,
     ) => {
       if (content) {
-        const normalized = normalizePushNotificationContent(content);
+        const next = toReceivedNotification(content, identifier);
         setReceivedNotifications((prev) => {
-          if (identifier && prev.some((item) => item.id === identifier)) {
+          if (prev.some((item) => item.id === next.id)) {
             return prev;
           }
-          return [
-            {
-              id:
-                identifier ||
-                String(Date.now()) + Math.random().toString(36).slice(2, 6),
-              title: normalized.title,
-              body: normalized.body,
-              receivedAt: new Date().toISOString(),
-            },
-            ...prev,
-          ].slice(0, 20);
+          return [next, ...prev].slice(0, 20);
         });
       }
       setActiveTab("notifications");
@@ -975,6 +1083,7 @@ export default function ConsumerHomeScreen() {
         style={StyleSheet.absoluteFill}
         markers={[
           ...mapMarkers,
+          ...(focusedNotificationMarker ? [focusedNotificationMarker] : []),
           ...(addLocationMode && addLocationPicked
             ? [
                 {
@@ -1207,11 +1316,22 @@ export default function ConsumerHomeScreen() {
                   receivedNotifications
                     .slice(0, capsuleSnapLevel === 1 ? 3 : 10)
                     .map((n) => (
-                      <View key={n.id} style={styles.exploreMerchantRow}>
+                      <Pressable
+                        key={n.id}
+                        onPress={() => focusNotificationOnMap(n)}
+                        style={({ pressed }) => [
+                          styles.exploreMerchantRow,
+                          styles.notificationRow,
+                          pressed && styles.notificationRowPressed,
+                        ]}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${n.title}，在地圖查看位置`}
+                        accessibilityHint="收起通知並將地圖移動到攤商發出通知的位置"
+                      >
                         <Ionicons
-                          name="notifications"
+                          name={n.location ? "location" : "notifications"}
                           size={20}
-                          color={pixelColors.gold}
+                          color={n.location ? pixelColors.red : pixelColors.gold}
                         />
                         <View style={{ flex: 1 }}>
                           <PixelText variant="bodyLg" numberOfLines={1}>
@@ -1228,7 +1348,12 @@ export default function ConsumerHomeScreen() {
                         <PixelText variant="caption" tone="muted">
                           {formatNotificationTime(n.receivedAt)}
                         </PixelText>
-                      </View>
+                        <Ionicons
+                          name="chevron-forward"
+                          size={18}
+                          color={pixelColors.gray500}
+                        />
+                      </Pressable>
                     ))
                 )}
               </View>

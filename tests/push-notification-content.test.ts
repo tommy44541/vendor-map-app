@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { normalizePushNotificationContent } from "../utils/push/notificationContent";
+import {
+  getPushNotificationLocation,
+  normalizePushNotificationContent,
+} from "../utils/push/notificationContent";
 
 test("normalizePushNotificationContent prefers visible notification fields", () => {
   assert.deepEqual(
@@ -59,4 +62,71 @@ test("normalizePushNotificationContent never returns an empty card", () => {
     body: "有新的攤商動態，請開啟 App 查看。",
     data: {},
   });
+});
+
+test("getPushNotificationLocation parses backend string coordinates", () => {
+  assert.deepEqual(
+    getPushNotificationLocation({
+      data: {
+        merchant_id: "merchant-123",
+        latitude: "24.157700",
+        longitude: "120.658000",
+        location_name: "草悟道攤位",
+        full_address: "台中市西區公益路",
+      },
+    }),
+    {
+      latitude: 24.1577,
+      longitude: 120.658,
+      merchantId: "merchant-123",
+      locationName: "草悟道攤位",
+      fullAddress: "台中市西區公益路",
+    },
+  );
+});
+
+test("getPushNotificationLocation supports nested JSON payloads", () => {
+  assert.deepEqual(
+    getPushNotificationLocation({
+      data: {
+        payload: JSON.stringify({
+          lat: 25.033,
+          lng: 121.5654,
+          locationName: "市政府站",
+        }),
+      },
+    }),
+    {
+      latitude: 25.033,
+      longitude: 121.5654,
+      merchantId: undefined,
+      locationName: "市政府站",
+      fullAddress: undefined,
+    },
+  );
+});
+
+test("getPushNotificationLocation rejects missing or invalid coordinates", () => {
+  assert.equal(
+    getPushNotificationLocation({ data: { latitude: "24.1" } }),
+    null,
+  );
+  assert.equal(
+    getPushNotificationLocation({
+      data: { latitude: "not-a-number", longitude: "120.6" },
+    }),
+    null,
+  );
+  assert.equal(
+    getPushNotificationLocation({
+      data: { latitude: "91", longitude: "120.6" },
+    }),
+    null,
+  );
+  assert.equal(
+    getPushNotificationLocation({
+      data: { latitude: " ", longitude: " " },
+    }),
+    null,
+  );
 });
