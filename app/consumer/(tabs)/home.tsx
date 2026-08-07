@@ -830,8 +830,9 @@ export default function ConsumerHomeScreen() {
       setFocusedNotification(notification);
       setActiveTab("explore");
       capsuleHeight.value = withSpring(CAPSULE_SNAP_MIN, {
-        damping: 20,
-        stiffness: 180,
+        damping: 28,
+        stiffness: 240,
+        overshootClamping: true,
       });
       setCapsuleSnapLevel(0);
 
@@ -894,8 +895,8 @@ export default function ConsumerHomeScreen() {
 
     setActiveTab("profile");
     capsuleHeight.value = withSpring(CAPSULE_SNAP_MID, {
-      damping: 20,
-      stiffness: 180,
+      damping: 28,
+      stiffness: 240,
     });
     setCapsuleSnapLevel(1);
   }, [CAPSULE_SNAP_MID, capsuleHeight, profileOpenRequest]);
@@ -913,8 +914,8 @@ export default function ConsumerHomeScreen() {
     setLocationModalOpen(true);
     void loadUserLocations();
     capsuleHeight.value = withSpring(CAPSULE_SNAP_MID, {
-      damping: 20,
-      stiffness: 180,
+      damping: 28,
+      stiffness: 240,
     });
     setCapsuleSnapLevel(1);
   }, [
@@ -943,8 +944,8 @@ export default function ConsumerHomeScreen() {
       }
       setActiveTab("notifications");
       capsuleHeight.value = withSpring(CAPSULE_SNAP_MID, {
-        damping: 20,
-        stiffness: 180,
+        damping: 28,
+        stiffness: 240,
       });
       setCapsuleSnapLevel(1);
     };
@@ -1024,9 +1025,10 @@ export default function ConsumerHomeScreen() {
         }
       }
       capsuleHeight.value = withSpring(closest, {
-        damping: 20,
-        stiffness: 180,
-        velocity: velocity,
+        damping: 28,
+        stiffness: 240,
+        velocity: velocity * 0.12,
+        overshootClamping: closestIdx === 0,
       });
       runOnJS(setCapsuleSnapLevel)(closestIdx as 0 | 1 | 2);
     });
@@ -1056,7 +1058,7 @@ export default function ConsumerHomeScreen() {
     opacity: interpolate(
       capsuleHeight.value,
       [CAPSULE_SNAP_MIN, CAPSULE_SNAP_MID, CAPSULE_SNAP_MAX],
-      [0.85, 0.85, 1],
+      [0.92, 0.92, 1],
       Extrapolation.CLAMP,
     ),
   }));
@@ -1690,8 +1692,9 @@ export default function ConsumerHomeScreen() {
                     setAddLocationPicked(null);
                     setAddLocationLabel("");
                     capsuleHeight.value = withSpring(CAPSULE_SNAP_MIN, {
-                      damping: 20,
-                      stiffness: 180,
+                      damping: 28,
+                      stiffness: 240,
+                      overshootClamping: true,
                     });
                     setCapsuleSnapLevel(0);
                   }}

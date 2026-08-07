@@ -73,6 +73,7 @@ const Profile = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSavingDiscovery, setIsSavingDiscovery] = useState(false);
+  const [isSavingMerchantProfile, setIsSavingMerchantProfile] = useState(false);
   const [discoveryEditing, setDiscoveryEditing] = useState(false);
   const [merchantProfileEditing, setMerchantProfileEditing] = useState(false);
   const [storeNameDraft, setStoreNameDraft] = useState("");
@@ -292,17 +293,32 @@ const Profile = () => {
     setMerchantProfileEditing(false);
   }, [merchantProfile?.store_description, merchantProfile?.store_name]);
 
-  const saveMerchantProfile = useCallback(() => {
-    if (!storeNameDraft.trim()) {
+  const saveMerchantProfile = useCallback(async () => {
+    const storeName = storeNameDraft.trim();
+    if (!storeName) {
       Alert.alert("提示", "店名不可為空白");
       return;
     }
 
-    Alert.alert(
-      "尚未儲存",
-      "商家資料更新 API 尚未開放。後端完成後即可從這裡儲存店名與店家描述。",
-    );
-  }, [storeNameDraft]);
+    try {
+      setIsSavingMerchantProfile(true);
+      await authApi.updateMerchantProfile({
+        store_name: storeName,
+        store_description: storeDescriptionDraft,
+      });
+      await loadProfile();
+      setMerchantProfileEditing(false);
+      Alert.alert("完成", "店家資料已更新");
+    } catch (error: any) {
+      console.error("儲存店家資料失敗:", error);
+      if (error instanceof ApiError && error.code === "TOKEN_EXPIRED") {
+        return;
+      }
+      Alert.alert("錯誤", error?.message || "儲存店家資料失敗");
+    } finally {
+      setIsSavingMerchantProfile(false);
+    }
+  }, [loadProfile, storeDescriptionDraft, storeNameDraft]);
 
   return (
     <View style={styles.root}>
@@ -748,8 +764,9 @@ const Profile = () => {
                 placeholder="請輸入店名"
                 value={storeNameDraft}
                 onChangeText={setStoreNameDraft}
-                maxLength={80}
+                maxLength={50}
                 autoCapitalize="none"
+                editable={!isSavingMerchantProfile}
               />
               <View style={{ height: 12 }} />
               <PixelTextInput
@@ -763,6 +780,7 @@ const Profile = () => {
                 numberOfLines={5}
                 textAlignVertical="top"
                 style={styles.descriptionInput}
+                editable={!isSavingMerchantProfile}
               />
               <View style={{ height: 12 }} />
               <View style={{ flexDirection: "row", gap: 8 }}>
@@ -771,15 +789,17 @@ const Profile = () => {
                     label="取消"
                     tone="paper"
                     fullWidth
+                    disabled={isSavingMerchantProfile}
                     onPress={cancelMerchantProfileEdit}
                   />
                 </View>
                 <View style={{ flex: 1 }}>
                   <PixelButton
-                    label="> 儲存"
+                    label={isSavingMerchantProfile ? "..." : "> 儲存"}
                     tone="green"
                     fullWidth
-                    onPress={saveMerchantProfile}
+                    disabled={isSavingMerchantProfile || isLoading}
+                    onPress={() => void saveMerchantProfile()}
                   />
                 </View>
               </View>

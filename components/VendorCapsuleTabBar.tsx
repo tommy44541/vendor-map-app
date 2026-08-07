@@ -94,8 +94,9 @@ export function VendorCapsuleTabBar({ state, navigation }: BottomTabBarProps) {
   useEffect(() => {
     if (!isLocationTab) {
       capsuleHeight.value = withSpring(CAPSULE_SNAP_MIN, {
-        damping: 22,
-        stiffness: 200,
+        damping: 28,
+        stiffness: 240,
+        overshootClamping: true,
       });
       setCapsuleSnapLevel(0);
     }
@@ -106,10 +107,12 @@ export function VendorCapsuleTabBar({ state, navigation }: BottomTabBarProps) {
     if (isLocationTab) loadLocations();
   }, [isLocationTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 拖曳手勢：只在地點 tab 啟用
-  const panGesture = useMemo(
-    () =>
+  const [collapsedPanGesture, expandedPanGesture] = useMemo(() => {
+    const createPanGesture = (enabled: boolean) =>
       Gesture.Pan()
+        .enabled(enabled)
+        .activeOffsetY([-5, 5])
+        .failOffsetX([-24, 24])
         .onBegin(() => {
           "worklet";
           capsuleStartHeight.value = capsuleHeight.value;
@@ -139,15 +142,20 @@ export function VendorCapsuleTabBar({ state, navigation }: BottomTabBarProps) {
             }
           }
           capsuleHeight.value = withSpring(closest, {
-            damping: 20,
-            stiffness: 180,
-            velocity,
+            damping: 28,
+            stiffness: 240,
+            velocity: velocity * 0.12,
+            overshootClamping: closestIdx === 0,
           });
           runOnJS(setCapsuleSnapLevel)(closestIdx as 0 | 1 | 2);
-        }),
+        });
+
+    return [
+      createPanGesture(isLocationTab && capsuleSnapLevel === 0),
+      createPanGesture(isLocationTab && capsuleSnapLevel > 0),
+    ];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
-  );
+  }, [capsuleSnapLevel, isLocationTab]);
 
   // 動畫樣式（直接複製客戶端）
   const capsuleAnimatedStyle = useAnimatedStyle(() => ({
@@ -168,7 +176,7 @@ export function VendorCapsuleTabBar({ state, navigation }: BottomTabBarProps) {
     backgroundColor: interpolateColor(
       capsuleHeight.value,
       [CAPSULE_SNAP_MIN, CAPSULE_SNAP_MID, CAPSULE_SNAP_MAX],
-      ["rgba(250,244,232,0.82)", "rgba(250,244,232,0.82)", "#FAF4E8"],
+      ["rgba(250,244,232,0.92)", "rgba(250,244,232,0.92)", "#FAF4E8"],
     ),
   }));
 
@@ -460,13 +468,12 @@ export function VendorCapsuleTabBar({ state, navigation }: BottomTabBarProps) {
   // ── Render ───────────────────────────────────────────────────
   return (
     <>
-      <Animated.View style={[styles.floatingCapsule, capsuleAnimatedStyle]}>
+      <GestureDetector gesture={collapsedPanGesture}>
+        <Animated.View style={[styles.floatingCapsule, capsuleAnimatedStyle]}>
 
-          {/* 拖曳把手 + 標題 — 合併成同一塊拖曳區,不用精準按在把手上,
-              跟客戶端「整個膠囊都能拖」的手感看齊(但 ScrollView 內容區
-              本身不掛手勢,避免跟捲動手勢打架) */}
+          {/* 收合時整顆膠囊可拖；展開後保留內容區的捲動手勢。 */}
           {isLocationTab && (
-            <GestureDetector gesture={panGesture}>
+            <GestureDetector gesture={expandedPanGesture}>
               <View>
                 <View style={styles.capsuleTopHandle}>
                   <View style={styles.capsuleTopHandleBar} />
@@ -706,8 +713,8 @@ export function VendorCapsuleTabBar({ state, navigation }: BottomTabBarProps) {
               );
             })}
           </Animated.View>
-
         </Animated.View>
+      </GestureDetector>
 
       {/* 候選地址 Modal */}
       <Modal

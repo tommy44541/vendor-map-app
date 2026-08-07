@@ -1,5 +1,4 @@
 Updates:
-- Tap a vendor notification to locate its source on the map
-- Fixed blank push content after cold starts or background opens
-- Improved the consumer capsule layout on narrow screens
-- Added vendor name and description editing UI; saving awaits the backend API
+- Vendors can now edit and save their store name and description
+- Improved capsule opacity, drag targets, and spring motion for both app modes
+- Fixed precise-handle dragging and brief compression when collapsing the vendor capsule

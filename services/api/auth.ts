@@ -79,6 +79,12 @@ export type RefreshTokenResponse = ApiSuccessResponse<TokenData>;
 export type GoogleLoginResponse = ApiSuccessResponse<AuthResultData>;
 export type CompleteMerchantOnboardingResponse = ApiSuccessResponse<AuthResultData>;
 export type SubmitMerchantVerificationResponse = ApiSuccessResponse<{ status: string }>;
+export type UpdateMerchantProfileResponse = ApiSuccessResponse<{ message: string }>;
+
+export interface UpdateMerchantProfileRequest {
+  store_name?: string;
+  store_description?: string;
+}
 
 export type LogoutResponse = ApiSuccessResponse<{ message: string }>;
 
@@ -152,6 +158,13 @@ export const authApi = {
       requireAuth: true,
       body: input,
     }) as Promise<SubmitMerchantVerificationResponse>,
+
+  updateMerchantProfile: (input: UpdateMerchantProfileRequest) =>
+    request<{ message: string }>('/api/v1/merchant/profile', {
+      method: 'PATCH',
+      requireAuth: true,
+      body: input,
+    }) as Promise<UpdateMerchantProfileResponse>,
   
 
   
