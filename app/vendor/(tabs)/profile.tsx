@@ -22,6 +22,7 @@ import { Link, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -836,6 +837,15 @@ const Profile = () => {
             </View>
           </View>
         </PixelCard>
+
+        <PixelButton
+          label="刪除帳號與資料"
+          tone="paper"
+          fullWidth
+          onPress={() =>
+            Linking.openURL("https://support.whereisvendor.com/delete")
+          }
+        />
 
         {/* 登出 */}
         <PixelButton

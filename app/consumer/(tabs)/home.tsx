@@ -1822,6 +1822,14 @@ export default function ConsumerHomeScreen() {
             />
             <View style={styles.settingsDivider} />
             <SettingsRow
+              label="刪除帳號與資料"
+              onPress={() => {
+                setSettingsMenuOpen(false);
+                Linking.openURL("https://support.whereisvendor.com/delete");
+              }}
+            />
+            <View style={styles.settingsDivider} />
+            <SettingsRow
               label={`關於  v${Constants.expoConfig?.version ?? "?"}`}
               onPress={() => {
                 setSettingsMenuOpen(false);

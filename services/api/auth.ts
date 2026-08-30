@@ -147,7 +147,7 @@ export const authApi = {
     }),
 
   getProfile: () =>
-    request<UserData>('/user/profile', {
+    request<UserData>('/api/v1/user/profile', {
       method: 'GET',
       requireAuth: true,
     }) as Promise<GetUserInfoResponse>,
