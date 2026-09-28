@@ -15,7 +15,7 @@ export default function VendorLocationScreen() {
   });
 
   useEffect(() => {
-    StatusBar.setBarStyle("light-content");
+    StatusBar.setBarStyle("dark-content");
     if (Platform.OS === "android") {
       StatusBar.setBackgroundColor("transparent");
       StatusBar.setTranslucent(true);

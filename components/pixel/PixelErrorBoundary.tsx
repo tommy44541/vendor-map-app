@@ -38,15 +38,15 @@ export class PixelErrorBoundary extends React.Component<Props, State> {
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
         >
-          <PixelCard title="GAME OVER" titleTone="red" titleDisplay padding={20}>
-            <PixelText variant="bodyLg" tone="inverse">
+          <PixelCard title="畫面發生問題" titleTone="red" padding={20}>
+            <PixelText variant="bodyLg">
               畫面意外當掉了。可以再試一次重新進入。
             </PixelText>
 
             <View style={styles.gap} />
 
             <PixelCard background={pixelColors.gray100} padding={12}>
-              <PixelText variant="caption" tone="inverse">
+              <PixelText variant="caption" tone="muted">
                 {error.message || String(error)}
               </PixelText>
             </PixelCard>

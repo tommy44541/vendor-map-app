@@ -7,7 +7,11 @@ import {
   PixelTextInput,
 } from "@/components/pixel";
 import { useAuth } from "@/contexts/AuthContext";
-import { deviceApi, GetDevicesData } from "@/services/api/device";
+import {
+  deviceApi,
+  type DeviceHealthData,
+  type GetDevicesData,
+} from "@/services/api/device";
 import { ApiError } from "@/services/api/util";
 import { useRouter } from "expo-router";
 import { pixelColors } from "@/theme/pixel";
@@ -55,6 +59,7 @@ const Profile = () => {
   const [fcmToken, setFcmToken] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [devices, setDevices] = useState<GetDevicesData[]>([]);
+  const [deviceHealth, setDeviceHealth] = useState<DeviceHealthData[]>([]);
   const [cacheSummary, setCacheSummary] = useState<string>("");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showDebugTools, setShowDebugTools] = useState(false);
@@ -70,8 +75,12 @@ const Profile = () => {
   const loadDevices = useCallback(async () => {
     try {
       setIsLoading(true);
-      const res = await deviceApi.getDevices();
-      setDevices(Array.isArray(res.data) ? res.data : []);
+      const [devicesRes, healthRes] = await Promise.all([
+        deviceApi.getDevices(),
+        deviceApi.getDeviceHealth(),
+      ]);
+      setDevices(Array.isArray(devicesRes.data) ? devicesRes.data : []);
+      setDeviceHealth(Array.isArray(healthRes.data) ? healthRes.data : []);
     } catch (error: any) {
       console.error("取得裝置列表失敗:", error);
       if (!(error instanceof ApiError && error.code === "TOKEN_EXPIRED")) {
@@ -83,7 +92,7 @@ const Profile = () => {
   }, []);
 
   useEffect(() => {
-    StatusBar.setBarStyle("light-content");
+    StatusBar.setBarStyle("dark-content");
     if (Platform.OS === "android") {
       StatusBar.setBackgroundColor("transparent");
       StatusBar.setTranslucent(true);
@@ -209,7 +218,7 @@ const Profile = () => {
         label: "已完成",
         tone: "green",
         description: "這台裝置可以接收已追蹤商家的通知。",
-        actionLabel: ">> 重新檢查通知設定",
+        actionLabel: "重新檢查通知設定",
         actionTone: "blue",
       };
     }
@@ -219,7 +228,7 @@ const Profile = () => {
         label: "未啟用",
         tone: "red",
         description: "你已拒絕通知權限,可能收不到商家提醒。",
-        actionLabel: "> 重新設定通知",
+        actionLabel: "重新設定通知",
         actionTone: "red",
       };
     }
@@ -229,7 +238,7 @@ const Profile = () => {
         label: "處理中",
         tone: "gold",
         description: "通知權限已開啟,但這台裝置尚未完成綁定。",
-        actionLabel: "> 完成通知設定",
+        actionLabel: "完成通知設定",
         actionTone: "gold",
       };
     }
@@ -238,7 +247,7 @@ const Profile = () => {
       label: "未設定",
       tone: "paper",
       description: "完成通知設定後,才會在商家發布營業訊息時收到提醒。",
-      actionLabel: "> 開啟通知",
+      actionLabel: "開啟通知",
       actionTone: "blue",
     };
   }, [currentDevice?.IsActive, fcmToken, permission]);
@@ -248,17 +257,15 @@ const Profile = () => {
       {/* HUD */}
       <View style={[styles.hud, { paddingTop: insets.top + 8 }]}>
         <View style={{ flex: 1 }}>
-          <PixelText variant="caption" tone="purple" display>
-            ACCOUNT
-          </PixelText>
-          <PixelText variant="display">個人</PixelText>
+          <PixelText variant="titleLg">個人設定</PixelText>
           <View style={{ height: 4 }} />
           <PixelText variant="caption" tone="muted">
             通知設定與帳號資訊
           </PixelText>
         </View>
         <PixelButton
-          label={isLoading ? "..." : ">> 重新整理"}
+          label={isLoading ? "載入中" : "重新整理"}
+          icon="refresh-outline"
           tone="purple"
           size="sm"
           disabled={isLoading}
@@ -284,7 +291,7 @@ const Profile = () => {
       >
         {/* 通知設定 */}
         <PixelCard
-          title="NOTIFY  SETUP"
+          title="通知設定"
           titleTone={
             registrationMeta.tone === "green"
               ? "green"
@@ -292,7 +299,6 @@ const Profile = () => {
                 ? "red"
                 : "blue"
           }
-          titleDisplay
           padding={14}
         >
           <View style={styles.headerRow}>
@@ -348,7 +354,7 @@ const Profile = () => {
           <View style={{ flexDirection: "row", gap: 8 }}>
             <View style={{ flex: 1 }}>
               <PixelButton
-                label={isLoading ? "..." : registrationMeta.actionLabel}
+                label={isLoading ? "處理中" : registrationMeta.actionLabel}
                 tone={registrationMeta.actionTone}
                 fullWidth
                 disabled={isLoading}
@@ -384,7 +390,8 @@ const Profile = () => {
               />
             </View>
             <PixelButton
-              label={showAdvanced ? "x" : "DEV"}
+              label={showAdvanced ? "收合" : "進階"}
+              icon={showAdvanced ? "chevron-up-outline" : "settings-outline"}
               tone={showAdvanced ? "ink" : "paper"}
               size="md"
               display
@@ -395,9 +402,8 @@ const Profile = () => {
 
         {/* 診斷資訊 */}
         <PixelCard
-          title="DIAGNOSTICS"
+          title="診斷資訊"
           titleTone="purple"
-          titleDisplay
           padding={14}
         >
           <Pressable
@@ -408,7 +414,7 @@ const Profile = () => {
               <Ionicons
                 name="code-slash"
                 size={18}
-                color={pixelColors.ink}
+                color={pixelColors.white}
               />
             </View>
             <View style={{ flex: 1 }}>
@@ -417,17 +423,19 @@ const Profile = () => {
                 裝置編號、token、除錯工具
               </PixelText>
             </View>
-            <PixelText variant="title" tone="gold" display>
-              {showAdvanced ? "-" : "+"}
-            </PixelText>
+            <Ionicons
+              name={showAdvanced ? "chevron-up" : "chevron-down"}
+              size={20}
+              color={pixelColors.gray500}
+            />
           </Pressable>
 
           {showAdvanced ? (
             <>
               {/* 裝置基本資訊 */}
               <View style={styles.divider} />
-              <PixelText variant="caption" tone="gold" display>
-                DEVICE  INFO
+              <PixelText variant="caption" tone="muted">
+                裝置資訊
               </PixelText>
               <View style={{ height: 8 }} />
 
@@ -475,8 +483,54 @@ const Profile = () => {
               {/* 我的裝置列表 */}
               <View style={styles.divider} />
               <View style={styles.miniRow}>
-                <PixelText variant="caption" tone="blue" display>
-                  MY  DEVICES
+                <PixelText variant="caption" tone="muted">
+                  裝置健康紀錄
+                </PixelText>
+                <PixelChip
+                  label={`${deviceHealth.length} 筆`}
+                  tone="paper"
+                  active
+                />
+              </View>
+              <View style={{ height: 8 }} />
+              {deviceHealth.length === 0 ? (
+                <PixelText variant="caption" tone="muted">
+                  (目前沒有)
+                </PixelText>
+              ) : (
+                <View style={{ gap: 8 }}>
+                  {deviceHealth.map((item) => (
+                    <View key={item.ID} style={styles.deviceBox}>
+                      <View style={styles.miniRow}>
+                        <PixelText variant="caption" tone="muted">
+                          {shortText(item.DeviceID)}
+                        </PixelText>
+                        <PixelChip
+                          label={
+                            item.HealthStatus === "healthy"
+                              ? "健康"
+                              : item.HealthStatus === "stale"
+                                ? "過期"
+                                : "失效"
+                          }
+                          tone={
+                            item.HealthStatus === "healthy" ? "green" : "red"
+                          }
+                          active
+                        />
+                      </View>
+                      <PixelText variant="caption" tone="muted">
+                        最後回報：{item.TokenRefreshedAt}
+                      </PixelText>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              <View style={styles.divider} />
+              <View style={styles.miniRow}>
+                <PixelText variant="caption" tone="muted">
+                  可接收推播的裝置
                 </PixelText>
                 <PixelChip
                   label={`${devices.length} 台`}
@@ -534,7 +588,8 @@ const Profile = () => {
                       <View style={{ flexDirection: "row", gap: 8 }}>
                         <View style={{ flex: 1 }}>
                           <PixelButton
-                            label={isLoading ? "..." : "> 更新 Token"}
+                            label={isLoading ? "處理中" : "更新 Token"}
+                            icon="refresh-outline"
                             tone="blue"
                             fullWidth
                             disabled={isLoading}
@@ -543,7 +598,8 @@ const Profile = () => {
                         </View>
                         <View style={{ flex: 1 }}>
                           <PixelButton
-                            label={isLoading ? "..." : "x 停用"}
+                            label={isLoading ? "處理中" : "停用"}
+                            icon="close-circle-outline"
                             tone="red"
                             fullWidth
                             disabled={isLoading}
@@ -562,12 +618,14 @@ const Profile = () => {
                 style={styles.miniRow}
                 onPress={() => setShowDebugTools((v) => !v)}
               >
-                <PixelText variant="caption" tone="red" display>
-                  DEBUG  TOOLS
+                <PixelText variant="caption" tone="muted">
+                  除錯工具
                 </PixelText>
-                <PixelText variant="body" tone="gold" display>
-                  {showDebugTools ? "-" : "+"}
-                </PixelText>
+                <Ionicons
+                  name={showDebugTools ? "chevron-up" : "chevron-down"}
+                  size={18}
+                  color={pixelColors.gray500}
+                />
               </Pressable>
 
               {showDebugTools ? (
@@ -592,7 +650,7 @@ const Profile = () => {
                   />
                   <View style={{ height: 10 }} />
                   <PixelButton
-                    label={isLoading ? "..." : "> 手動註冊本機裝置"}
+                    label={isLoading ? "處理中" : "手動註冊本機裝置"}
                     tone="ink"
                     fullWidth
                     disabled={isLoading}
@@ -600,7 +658,8 @@ const Profile = () => {
                   />
                   <View style={{ height: 8 }} />
                   <PixelButton
-                    label={isLoading ? "..." : ">> 重新取得 Token"}
+                    label={isLoading ? "處理中" : "重新取得 Token"}
+                    icon="refresh-outline"
                     tone="paper"
                     fullWidth
                     disabled={isLoading}
@@ -634,7 +693,7 @@ const Profile = () => {
         </PixelCard>
 
         {/* 帳號 / 登出 */}
-        <PixelCard title="ACCOUNT" titleTone="red" titleDisplay padding={14}>
+        <PixelCard title="帳號" titleTone="red" padding={14}>
           <View style={{ gap: 4 }}>
             <PixelText variant="bodyLg">{user?.name || "探索者"}</PixelText>
             <PixelText variant="caption" tone="muted">
@@ -644,6 +703,7 @@ const Profile = () => {
           <View style={{ height: 12 }} />
           <PixelButton
             label="登出"
+            icon="log-out-outline"
             tone="red"
             fullWidth
             onPress={() => {

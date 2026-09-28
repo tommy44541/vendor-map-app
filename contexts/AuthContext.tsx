@@ -79,6 +79,11 @@ export type AuthActionResult =
       onboardingToken: string;
       requestedRole: "vendor" | "consumer";
       requiredFields: string[];
+    }
+  | {
+      status: "linking_required";
+      linkingToken: string;
+      requestedRole: "vendor" | "consumer";
     };
 
 interface AuthState {
@@ -96,20 +101,22 @@ interface AuthContextType extends AuthState {
     name: string;
     userType: UserType;
     store_name?: string;
-    business_license?: string;
   }) => Promise<void>;
   googleLogin: (
     userType: UserType,
     options?: {
       forceAccountSelection?: boolean;
       storeName?: string;
-      businessLicense?: string;
     }
   ) => Promise<AuthActionResult | void>;
   completeMerchantOnboarding: (input: {
     onboardingToken: string;
     storeName: string;
-    businessLicense: string;
+  }) => Promise<AuthActionResult>;
+  linkProvider: (input: {
+    linkingToken: string;
+    password: string;
+    userType: UserType;
   }) => Promise<AuthActionResult>;
   logout: () => Promise<void>;
   updateUser: (userData: Partial<User>) => void;
@@ -407,6 +414,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       };
     }
 
+    if (result.status === "linking_required") {
+      const linkingToken = result.linking_token?.trim();
+      if (!linkingToken) {
+        throw new Error("帳號綁定流程缺少 linking token");
+      }
+
+      setAuthState((prev) => ({ ...prev, isLoading: false }));
+      return {
+        status: "linking_required",
+        linkingToken,
+        requestedRole: roleToUserType(result.requested_role, preferredUserType),
+      };
+    }
+
     return finalizeAuthenticatedResult(result, preferredUserType);
   };
 
@@ -441,14 +462,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     name: string;
     userType: UserType;
     store_name?: string;
-    business_license?: string;
   }) => {
     try {
       debugLog("📝 注册資料摘要:", {
         userType: userData.userType,
         email: userData.email,
         hasStoreName: !!userData.store_name,
-        hasBusinessLicense: !!userData.business_license,
       });
 
       setAuthState((prev) => ({ ...prev, isLoading: true }));
@@ -463,7 +482,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           email: userData.email,
           password: userData.password,
           store_name: userData.store_name!,
-          business_license: userData.business_license!,
         });
         debugLog("✅ 商家註冊 API 呼叫成功");
       } else {
@@ -500,7 +518,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     options: {
       forceAccountSelection?: boolean;
       storeName?: string;
-      businessLicense?: string;
     } = {}
   ) => {
     try {
@@ -540,7 +557,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         requestedRole: userType === "vendor" ? "merchant" : "user",
         state: userType === "vendor" ? "merchant" : "user",
         storeName: options.storeName?.trim() || undefined,
-        businessLicense: options.businessLicense?.trim() || undefined,
       });
 
       return await handleAuthResult(callbackResponse.data, userType);
@@ -568,7 +584,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const completeMerchantOnboarding = async (input: {
     onboardingToken: string;
     storeName: string;
-    businessLicense: string;
   }): Promise<AuthActionResult> => {
     try {
       setAuthState((prev) => ({ ...prev, isLoading: true }));
@@ -576,10 +591,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const response = await authApi.completeMerchantOnboarding({
         onboarding_token: input.onboardingToken,
         store_name: input.storeName,
-        business_license: input.businessLicense,
       });
 
       return await handleAuthResult(response.data, "vendor");
+    } catch (error) {
+      setAuthState((prev) => ({ ...prev, isLoading: false }));
+      throw error;
+    }
+  };
+
+  const linkProvider = async (input: {
+    linkingToken: string;
+    password: string;
+    userType: UserType;
+  }): Promise<AuthActionResult> => {
+    try {
+      setAuthState((prev) => ({ ...prev, isLoading: true }));
+      const response = await authApi.linkProvider({
+        linking_token: input.linkingToken,
+        password: input.password,
+      });
+      return await handleAuthResult(response.data, input.userType);
     } catch (error) {
       setAuthState((prev) => ({ ...prev, isLoading: false }));
       throw error;
@@ -666,6 +698,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     register,
     googleLogin,
     completeMerchantOnboarding,
+    linkProvider,
     logout,
     updateUser,
     syncUserFromApi,

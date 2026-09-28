@@ -12,10 +12,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ApiError } from "@/services/api/util";
 import { pixelColors } from "@/theme/pixel";
 import { getLocationDisplayLabel } from "@/utils/location/getLocationDisplayLabel";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Location from "expo-location";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-
   Alert,
   Modal,
   Pressable,
@@ -460,7 +460,7 @@ export default function LocationManagerScreen<T extends LocationRecord>({
       await loadSavedLocations("initial", response.data?.ID);
     } catch (error: unknown) {
       console.error("保存位置失敗:", error);
-      if (error instanceof ApiError && error.code === "LOCATION_LIMIT_EXCEEDED") {
+      if (error instanceof ApiError && error.code === "LOCATION_LIMIT_REACHED") {
         Alert.alert("錯誤", "您已達到位置數量限制(最多5個位置)");
       } else if (error instanceof ApiError && error.code === "TOKEN_EXPIRED") {
         handleAuthExpired();
@@ -597,7 +597,8 @@ export default function LocationManagerScreen<T extends LocationRecord>({
             onPress={() => openEditModal(item)}
           />
           <PixelButton
-            label="x"
+            label="刪除"
+            icon="trash-outline"
             tone="red"
             size="sm"
             display
@@ -677,8 +678,8 @@ export default function LocationManagerScreen<T extends LocationRecord>({
             />
             <View style={styles.handle} />
             <View style={{ height: 4 }} />
-            <PixelText variant="caption" tone="muted" display>
-              LOCATION  PANEL
+            <PixelText variant="caption" tone="muted">
+              位置管理
             </PixelText>
           </Pressable>
         </GestureDetector>
@@ -694,9 +695,8 @@ export default function LocationManagerScreen<T extends LocationRecord>({
         >
           {/* 地址搜尋 */}
           <PixelCard
-            title="ADDRESS  SEARCH"
+            title="地址搜尋"
             titleTone="blue"
-            titleDisplay
             padding={12}
           >
             <PixelTextInput
@@ -709,7 +709,8 @@ export default function LocationManagerScreen<T extends LocationRecord>({
             />
             <View style={{ height: 10 }} />
             <PixelButton
-              label={isGeocoding ? "..." : "> 搜尋地址"}
+              label={isGeocoding ? "搜尋中" : "搜尋地址"}
+              icon="search-outline"
               tone="ink"
               fullWidth
               disabled={isLoading || isGeocoding}
@@ -725,7 +726,8 @@ export default function LocationManagerScreen<T extends LocationRecord>({
           <View style={{ flexDirection: "row", gap: 8 }}>
             <View style={{ flex: 1 }}>
               <PixelButton
-                label={isLoading ? "..." : "> 取得目前位置"}
+                label={isLoading ? "定位中" : "取得目前位置"}
+                icon="navigate-outline"
                 tone="blue"
                 fullWidth
                 disabled={isLoading}
@@ -735,7 +737,8 @@ export default function LocationManagerScreen<T extends LocationRecord>({
             {currentLocation ? (
               <View style={{ flex: 1 }}>
                 <PixelButton
-                  label={isLoading ? "..." : "> 保存位置"}
+                  label={isLoading ? "儲存中" : "儲存位置"}
+                  icon="checkmark-outline"
                   tone="gold"
                   fullWidth
                   disabled={isLoading}
@@ -748,9 +751,8 @@ export default function LocationManagerScreen<T extends LocationRecord>({
           {/* 新增位置設定 */}
           {currentLocation ? (
             <PixelCard
-              title="NEW  LOCATION"
-              titleTone="gold"
-              titleDisplay
+              title="新增位置"
+                          titleTone="gold"
               padding={12}
             >
               <PixelTextInput
@@ -767,7 +769,7 @@ export default function LocationManagerScreen<T extends LocationRecord>({
                 <View style={{ flex: 1 }}>
                   <PixelText variant="bodyLg">設為主要地點</PixelText>
                   <PixelText variant="caption" tone="muted">
-                    勾選後,這筆位置會成為主要地點
+                    開啟後，這筆位置會成為主要地點
                   </PixelText>
                 </View>
                 <Switch
@@ -784,8 +786,8 @@ export default function LocationManagerScreen<T extends LocationRecord>({
 
               <View style={{ height: 10 }} />
               <View style={styles.addressBox}>
-                <PixelText variant="caption" tone="gold" display>
-                  CURRENT  ADDRESS
+                <PixelText variant="caption" tone="muted">
+                  目前地址
                 </PixelText>
                 <View style={{ height: 4 }} />
                 <PixelText variant="body">{currentLocation.address}</PixelText>
@@ -797,7 +799,8 @@ export default function LocationManagerScreen<T extends LocationRecord>({
           <View style={styles.savedHeader}>
             <PixelText variant="bodyLg">已保存位置</PixelText>
             <PixelButton
-              label={isListLoading || isRefreshing ? "..." : ">> 刷新"}
+              label={isListLoading || isRefreshing ? "載入中" : "重新整理"}
+              icon="refresh-outline"
               tone="paper"
               size="sm"
               disabled={isListLoading || isRefreshing}
@@ -810,7 +813,7 @@ export default function LocationManagerScreen<T extends LocationRecord>({
               <PixelLoading label="" size="sm" tone="gold" />
               <View style={{ height: 6 }} />
               <PixelText variant="caption" tone="muted">
-                加載中...
+                載入中
               </PixelText>
             </View>
           ) : savedLocations.length === 0 ? (
@@ -838,9 +841,8 @@ export default function LocationManagerScreen<T extends LocationRecord>({
         >
           <Pressable onPress={(e) => e.stopPropagation()}>
             <PixelCard
-              title="GEOCODE  CANDIDATES"
+              title="地址搜尋結果"
               titleTone="blue"
-              titleDisplay
               padding={16}
               style={styles.modalCard}
             >
@@ -867,9 +869,11 @@ export default function LocationManagerScreen<T extends LocationRecord>({
                         lat {r.latitude.toFixed(6)} / lng {r.longitude.toFixed(6)}
                       </PixelText>
                     </View>
-                    <PixelText variant="title" tone="gold" display>
-                      {">"}
-                    </PixelText>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={20}
+                      color={pixelColors.gray500}
+                    />
                   </Pressable>
                 ))}
               </View>
@@ -895,9 +899,8 @@ export default function LocationManagerScreen<T extends LocationRecord>({
       >
         <View style={styles.modalBottomWrap}>
           <PixelCard
-            title="EDIT  LOCATION"
+            title="編輯位置"
             titleTone="purple"
-            titleDisplay
             padding={16}
             style={styles.modalBottomCard}
           >
@@ -952,7 +955,8 @@ export default function LocationManagerScreen<T extends LocationRecord>({
               </View>
               <View style={{ flex: 1 }}>
                 <PixelButton
-                  label={isSavingEdit ? "..." : "> 保存"}
+                  label={isSavingEdit ? "儲存中" : "儲存"}
+                  icon="checkmark-outline"
                   tone="blue"
                   fullWidth
                   disabled={isSavingEdit}

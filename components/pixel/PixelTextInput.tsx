@@ -1,5 +1,5 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import React, { forwardRef } from "react";
+import React, { forwardRef, useState } from "react";
 import {
   Pressable,
   StyleSheet,
@@ -11,7 +11,6 @@ import {
 import {
   pixelColors,
   pixelBorderWidth,
-  pixelBorderWidthThick,
   pixelFont,
   pixelRadius,
   pixelTextSize,
@@ -38,17 +37,20 @@ export const PixelTextInput = forwardRef<TextInput, PixelTextInputProps>(
       containerStyle,
       placeholder,
       placeholderTextColor,
+      onFocus,
+      onBlur,
       ...rest
     },
     ref
   ) {
     const hasError = !!error;
+    const [focused, setFocused] = useState(false);
     return (
       <View style={[styles.wrap, containerStyle]}>
         {label ? (
           <View style={styles.labelRow}>
-            <PixelText variant="body" tone="muted" display style={{ letterSpacing: 1 }}>
-              {label.toUpperCase()}
+            <PixelText variant="body" tone="muted" style={styles.label}>
+              {label}
             </PixelText>
             {hint && !error ? (
               <PixelText variant="caption" tone="muted">
@@ -61,6 +63,7 @@ export const PixelTextInput = forwardRef<TextInput, PixelTextInputProps>(
         <View
           style={[
             styles.field,
+            focused ? styles.fieldFocused : null,
             hasError ? styles.fieldError : null,
             style,
           ]}
@@ -70,10 +73,18 @@ export const PixelTextInput = forwardRef<TextInput, PixelTextInputProps>(
             accessibilityLabel={label}
             accessibilityHint={hint}
             {...rest}
+            onFocus={(event) => {
+              setFocused(true);
+              onFocus?.(event);
+            }}
+            onBlur={(event) => {
+              setFocused(false);
+              onBlur?.(event);
+            }}
             placeholder={placeholder}
             placeholderTextColor={placeholderTextColor || pixelColors.gray500}
-            selectionColor={pixelColors.gold}
-            cursorColor={pixelColors.gold}
+            selectionColor={pixelColors.green}
+            cursorColor={pixelColors.green}
             style={styles.input}
           />
           {rightAdornment ? (
@@ -83,7 +94,7 @@ export const PixelTextInput = forwardRef<TextInput, PixelTextInputProps>(
 
         {error ? (
           <PixelText variant="caption" tone="red" style={styles.errorText}>
-            ! {error}
+            {error}
           </PixelText>
         ) : null}
       </View>
@@ -91,7 +102,7 @@ export const PixelTextInput = forwardRef<TextInput, PixelTextInputProps>(
   }
 );
 
-// 給密碼欄做眼睛切換用的小元件,輸出像素風的 SHOW / HIDE 文字按鈕。
+// 密碼欄的顯示／隱藏按鈕。
 export function PixelEyeToggle({
   visible,
   onPress,
@@ -127,18 +138,21 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 6,
   },
+  label: {
+    fontWeight: "500",
+  },
   field: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: pixelColors.paper,
-    borderTopWidth: pixelBorderWidthThick,
-    borderLeftWidth: pixelBorderWidthThick,
+    borderTopWidth: pixelBorderWidth,
+    borderLeftWidth: pixelBorderWidth,
     borderRightWidth: pixelBorderWidth,
     borderBottomWidth: pixelBorderWidth,
-    borderTopColor: pixelColors.ink,
-    borderLeftColor: pixelColors.ink,
-    borderRightColor: pixelColors.gray500,
-    borderBottomColor: pixelColors.gray500,
+    borderTopColor: pixelColors.borderSoft,
+    borderLeftColor: pixelColors.borderSoft,
+    borderRightColor: pixelColors.borderSoft,
+    borderBottomColor: pixelColors.borderSoft,
     borderRadius: pixelRadius,
     paddingHorizontal: 10,
   },
@@ -148,12 +162,18 @@ const styles = StyleSheet.create({
     borderRightColor: pixelColors.red,
     borderBottomColor: pixelColors.red,
   },
+  fieldFocused: {
+    borderTopColor: pixelColors.green,
+    borderLeftColor: pixelColors.green,
+    borderRightColor: pixelColors.green,
+    borderBottomColor: pixelColors.green,
+  },
   input: {
     flex: 1,
     color: pixelColors.ink,
     fontFamily: pixelFont.body,
     fontSize: pixelTextSize.bodyLg,
-    lineHeight: Math.round(pixelTextSize.bodyLg * 1.4),
+    lineHeight: Math.round(pixelTextSize.bodyLg * 1.3),
     paddingVertical: 12,
   },
   adornment: {

@@ -11,7 +11,7 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 14,
     borderBottomWidth: pixelBorderWidth,
-    borderBottomColor: pixelColors.ink,
+    borderBottomColor: pixelColors.borderSoft,
     flexDirection: "row",
     alignItems: "flex-end",
     gap: 12,
@@ -25,15 +25,14 @@ export const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
+    borderColor: pixelColors.borderSoft,
     borderRadius: pixelRadius,
     alignItems: "center",
     justifyContent: "center",
   },
-  // 用一條 2px 黑線當區塊分隔,取代之前的雙層 inset box
   divider: {
-    height: 2,
-    backgroundColor: pixelColors.ink,
+    height: 1,
+    backgroundColor: pixelColors.borderSoft,
     marginVertical: 12,
   },
   miniRow: {

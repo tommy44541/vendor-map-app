@@ -22,10 +22,26 @@ export const styles = StyleSheet.create({
   },
   header: {
     marginTop: 4,
-    marginBottom: 12,
+    marginBottom: 20,
+  },
+  brandRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  brandIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 12,
+  },
+  brandCopy: {
+    flex: 1,
   },
   tagline: {
-    // 一條告示牌
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: pixelColors.borderSoft,
   },
   cardsWrap: {
     flex: 1,
@@ -34,7 +50,7 @@ export const styles = StyleSheet.create({
   selectLabel: {
     textAlign: "center",
     marginBottom: 4,
-    letterSpacing: 2,
+    fontWeight: "600",
   },
   roleWrap: {
     flex: 1,
@@ -45,9 +61,13 @@ export const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 16,
   },
-  roleIcon: {
-    width: 64,
-    height: 64,
+  roleIconWrap: {
+    width: 48,
+    height: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 12,
+    backgroundColor: pixelColors.surfaceAlt,
   },
   roleTitle: {
     marginBottom: 12,

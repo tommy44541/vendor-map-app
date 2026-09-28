@@ -34,3 +34,8 @@ test("checkCommonPatterns catches weak password patterns", () => {
   assert.equal(warnings.includes("避免常見鍵盤序列"), true);
   assert.equal(warnings.includes("避免常見弱密碼"), true);
 });
+
+test("password policy accepts every backend-supported special character", () => {
+  assert.equal(checkPasswordRequirements("Password1~").isValid, true);
+  assert.equal(checkPasswordRequirements("Password1`").isValid, true);
+});

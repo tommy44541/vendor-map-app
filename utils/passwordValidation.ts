@@ -1,5 +1,7 @@
 import { zxcvbn } from '@zxcvbn-ts/core';
 
+const SPECIAL_CHARACTER_PATTERN = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?~`]/;
+
 export interface PasswordValidationResult {
   isValid: boolean;
   score: number;
@@ -53,7 +55,7 @@ export function validatePassword(
   const hasUppercase = /[A-Z]/.test(password);
   const hasLowercase = /[a-z]/.test(password);
   const hasNumbers = /[0-9]/.test(password);
-  const hasSpecialChars = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+  const hasSpecialChars = SPECIAL_CHARACTER_PATTERN.test(password);
 
   const missingRequirements: string[] = [];
   
@@ -145,7 +147,7 @@ export function checkPasswordRequirements(
   const hasUppercase = /[A-Z]/.test(password);
   const hasLowercase = /[a-z]/.test(password);
   const hasNumbers = /[0-9]/.test(password);
-  const hasSpecialChars = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+  const hasSpecialChars = SPECIAL_CHARACTER_PATTERN.test(password);
   const hasMinLength = password.length >= requirements.minLength;
 
   const missingRequirements: string[] = [];

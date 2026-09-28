@@ -30,17 +30,11 @@ import {
   PixelText,
   PixelTextInput,
 } from "../../components/pixel";
-import { useAuth } from "../../contexts/AuthContext";
-import { ApiError } from "../../services/api/util";
-import {
-  ErrorCode,
-  isErrorType,
-  showErrorAlert,
-} from "../../utils/errorHandler";
+import { type AuthActionResult, useAuth } from "../../contexts/AuthContext";
+import { showErrorAlert } from "../../utils/errorHandler";
 import {
   DEFAULT_PASSWORD_REQUIREMENTS,
   checkPasswordRequirements,
-  validatePassword,
 } from "../../utils/passwordValidation";
 import { getPostAuthRoute } from "../../utils/onboarding";
 import { pixelColors } from "../../theme/pixel";
@@ -49,11 +43,10 @@ const createValidationSchema = (isLogin: boolean, isVendor: boolean) => {
   if (isLogin) {
     return z.object({
       email: z.email("請輸入有效的電子郵件地址"),
-      password: z.string().min(8, "密碼至少需要8個字符"),
+      password: z.string().min(1, "請輸入密碼").max(128, "密碼最多128個字符"),
       name: z.string().optional(),
       confirmPassword: z.string().optional(),
-      store_name: z.string().optional(),
-      business_license: z.string().optional(),
+      store_name: z.string().max(50, "店名最多50個字符").optional(),
     });
   }
   return z
@@ -63,6 +56,7 @@ const createValidationSchema = (isLogin: boolean, isVendor: boolean) => {
       password: z
         .string()
         .min(8, "密碼至少需要8個字符")
+        .max(128, "密碼最多128個字符")
         .superRefine((password, ctx) => {
           const requirementsCheck = checkPasswordRequirements(
             password,
@@ -73,19 +67,10 @@ const createValidationSchema = (isLogin: boolean, isVendor: boolean) => {
               code: "custom",
               message: requirementsCheck.errorMessage || "密碼不符合要求",
             });
-            return;
-          }
-          const validation = validatePassword(
-            password,
-            DEFAULT_PASSWORD_REQUIREMENTS
-          );
-          if (!validation.isValid) {
-            ctx.addIssue({ code: "custom", message: "密碼強度不足" });
           }
         }),
       confirmPassword: z.string().min(1, "請確認密碼"),
-      store_name: z.string().optional(),
-      business_license: z.string().optional(),
+      store_name: z.string().max(50, "店名最多50個字符").optional(),
     })
     .superRefine((data, ctx) => {
       if (data.password !== data.confirmPassword) {
@@ -102,13 +87,6 @@ const createValidationSchema = (isLogin: boolean, isVendor: boolean) => {
           path: ["store_name"],
         });
       }
-      if (isVendor && !data.business_license?.trim()) {
-        ctx.addIssue({
-          code: "custom",
-          message: "請輸入營業執照號碼",
-          path: ["business_license"],
-        });
-      }
     });
 };
 
@@ -117,6 +95,11 @@ type RegisterFormData = z.infer<ReturnType<typeof createValidationSchema>>;
 type MerchantOnboardingState = {
   onboardingToken: string;
   requiredFields: string[];
+} | null;
+
+type AccountLinkingState = {
+  linkingToken: string;
+  userType: "vendor" | "consumer";
 } | null;
 
 type AuthMode = "register" | "login";
@@ -131,6 +114,7 @@ export default function RegisterScreen() {
     login,
     googleLogin,
     completeMerchantOnboarding,
+    linkProvider,
     isLoading,
     isAuthenticated,
     user,
@@ -150,8 +134,12 @@ export default function RegisterScreen() {
     useState<MerchantOnboardingState>(null);
   const [merchantOnboardingValues, setMerchantOnboardingValues] = useState({
     store_name: "",
-    business_license: "",
   });
+  const [accountLinking, setAccountLinking] =
+    useState<AccountLinkingState>(null);
+  const [linkingPassword, setLinkingPassword] = useState("");
+  const [isLinkingPasswordVisible, setIsLinkingPasswordVisible] =
+    useState(false);
 
   const validationSchema = useMemo(
     () => createValidationSchema(isLogin, isVendor),
@@ -166,7 +154,6 @@ export default function RegisterScreen() {
       password: "",
       confirmPassword: "",
       store_name: "",
-      business_license: "",
     },
     mode: "onChange",
   });
@@ -179,20 +166,49 @@ export default function RegisterScreen() {
       password: "",
       confirmPassword: "",
       store_name: "",
-      business_license: "",
     });
   }, [isLogin, form]);
 
   useEffect(() => {
+    setAccountLinking(null);
+    setLinkingPassword("");
     if (type !== "vendor") {
       setMerchantOnboarding(null);
       return;
     }
     setMerchantOnboardingValues({
       store_name: String(form.getValues("store_name") || ""),
-      business_license: String(form.getValues("business_license") || ""),
     });
   }, [form, type]);
+
+  const capturePendingAuthResult = useCallback(
+    (result: AuthActionResult | void) => {
+      if (result?.status === "linking_required") {
+        setMerchantOnboarding(null);
+        setAccountLinking({
+          linkingToken: result.linkingToken,
+          userType: result.requestedRole,
+        });
+        setLinkingPassword("");
+        return;
+      }
+
+      if (
+        result?.status === "onboarding_required" &&
+        result.requestedRole === "vendor"
+      ) {
+        setAccountLinking(null);
+        setMerchantOnboarding({
+          onboardingToken: result.onboardingToken,
+          requiredFields: result.requiredFields,
+        });
+        setMerchantOnboardingValues({
+          store_name: String(form.getValues("store_name") || ""),
+        });
+      }
+    },
+    [form]
+  );
 
   useEffect(() => {
     if (!rootNavState?.key) return;
@@ -223,123 +239,98 @@ export default function RegisterScreen() {
             name: data.name,
             userType,
             store_name: userType === "vendor" ? data.store_name : undefined,
-            business_license:
-              userType === "vendor" ? data.business_license : undefined,
           });
         }
       } catch (error: any) {
-        if (
-          error instanceof ApiError &&
-          isErrorType(error, ErrorCode.UNAUTHORIZED)
-        ) {
-          showErrorAlert(ErrorCode.UNAUTHORIZED);
-        } else {
-          showErrorAlert(error, "操作失敗");
-        }
-        form.reset();
+        showErrorAlert(error, "操作失敗");
       }
     },
-    [isLogin, isVendor, register, login, form]
+    [isLogin, isVendor, register, login]
   );
 
   const handleGoogleLogin = useCallback(async () => {
     try {
       const userType: "vendor" | "consumer" = isVendor ? "vendor" : "consumer";
       const result = await googleLogin(userType);
-      if (result?.status === "onboarding_required" && userType === "vendor") {
-        setMerchantOnboarding({
-          onboardingToken: result.onboardingToken,
-          requiredFields: result.requiredFields,
-        });
-        setMerchantOnboardingValues({
-          store_name: String(form.getValues("store_name") || ""),
-          business_license: String(form.getValues("business_license") || ""),
-        });
-      }
+      capturePendingAuthResult(result);
     } catch (error: any) {
-      if (
-        error instanceof ApiError &&
-        isErrorType(error, ErrorCode.UNAUTHORIZED)
-      ) {
-        showErrorAlert(ErrorCode.UNAUTHORIZED);
-      } else {
-        showErrorAlert(error, "Google 登入失敗");
-      }
+      showErrorAlert(error, "Google 登入失敗");
     }
-  }, [form, googleLogin, isVendor]);
+  }, [capturePendingAuthResult, googleLogin, isVendor]);
 
   const handleGoogleRegister = useCallback(async () => {
     try {
       const userType: "vendor" | "consumer" = isVendor ? "vendor" : "consumer";
       const storeName = String(form.getValues("store_name") || "").trim();
-      const businessLicense = String(
-        form.getValues("business_license") || ""
-      ).trim();
       const result = await googleLogin(userType, {
         forceAccountSelection: true,
         storeName: storeName || undefined,
-        businessLicense: businessLicense || undefined,
       });
-      if (result?.status === "onboarding_required" && userType === "vendor") {
-        setMerchantOnboarding({
-          onboardingToken: result.onboardingToken,
-          requiredFields: result.requiredFields,
-        });
-        setMerchantOnboardingValues({
-          store_name: String(form.getValues("store_name") || ""),
-          business_license: String(form.getValues("business_license") || ""),
-        });
+      capturePendingAuthResult(result);
+      if (result?.status === "onboarding_required") {
         setAuthMode("register");
       }
     } catch (error: any) {
-      if (
-        error instanceof ApiError &&
-        isErrorType(error, ErrorCode.UNAUTHORIZED)
-      ) {
-        showErrorAlert(ErrorCode.UNAUTHORIZED);
-      } else {
-        showErrorAlert(error, "Google 註冊失敗");
-      }
+      showErrorAlert(error, "Google 註冊失敗");
     }
-  }, [form, googleLogin, isVendor]);
+  }, [capturePendingAuthResult, form, googleLogin, isVendor]);
+
+  const handleLinkProvider = useCallback(async () => {
+    if (!accountLinking?.linkingToken) {
+      showErrorAlert("帳號綁定憑證已失效，請重新進行 Google 驗證", "流程已失效");
+      return;
+    }
+    if (!linkingPassword) {
+      showErrorAlert("請輸入這個帳號原本的密碼", "需要確認身分");
+      return;
+    }
+
+    try {
+      const result = await linkProvider({
+        linkingToken: accountLinking.linkingToken,
+        password: linkingPassword,
+        userType: accountLinking.userType,
+      });
+      setAccountLinking(null);
+      setLinkingPassword("");
+      capturePendingAuthResult(result);
+    } catch (error) {
+      showErrorAlert(error, "帳號綁定失敗");
+    }
+  }, [accountLinking, capturePendingAuthResult, linkProvider, linkingPassword]);
 
   const handleCompleteMerchantOnboarding = useCallback(async () => {
     const storeName = merchantOnboardingValues.store_name.trim();
-    const businessLicense = merchantOnboardingValues.business_license.trim();
 
     if (!merchantOnboarding?.onboardingToken) {
       showErrorAlert("缺少商戶補件憑證，請重新進行 Google 驗證", "流程已失效");
       return;
     }
-    if (!storeName || !businessLicense) {
-      showErrorAlert("請先填寫店名與營業執照號碼", "資料不足");
+    if (!storeName) {
+      showErrorAlert("請先填寫店名", "資料不足");
+      return;
+    }
+    if ([...storeName].length > 50) {
+      showErrorAlert("店名最多 50 個字", "店名過長");
       return;
     }
     try {
       await completeMerchantOnboarding({
         onboardingToken: merchantOnboarding.onboardingToken,
         storeName,
-        businessLicense,
       });
       setMerchantOnboarding(null);
     } catch (error: any) {
-      if (
-        error instanceof ApiError &&
-        isErrorType(error, ErrorCode.UNAUTHORIZED)
-      ) {
-        showErrorAlert(ErrorCode.UNAUTHORIZED);
-      } else {
-        showErrorAlert(error, "完成商戶資料失敗");
-      }
+      showErrorAlert(error, "完成商戶資料失敗");
     }
   }, [completeMerchantOnboarding, merchantOnboarding, merchantOnboardingValues]);
 
-  const showStandardAuthForm = !(merchantOnboarding && type === "vendor");
+  const showStandardAuthForm = !accountLinking && !(merchantOnboarding && type === "vendor");
   const roleZh = isVendor ? "商家" : "消費者";
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: pixelColors.bg }} edges={["top", "left", "right"]}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="dark-content" />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -364,24 +355,68 @@ export default function RegisterScreen() {
           {/* Hero */}
           <View style={{ gap: 6, marginTop: 4 }}>
             <PixelText variant="display">
-              {isLogin ? "登入雷達" : "加入雷達"}
+              {isLogin ? "歡迎回來" : "建立帳號"}
             </PixelText>
             <PixelText variant="body" tone="muted">
               {isLogin
-                ? "讀取存檔,繼續你的探索旅程。"
-                : `建立 ${roleZh} 帳號,1 分鐘加入雷達。`}
+                ? "登入後繼續使用攤位雷達。"
+                : `建立${roleZh}帳號，只需要一分鐘。`}
             </PixelText>
           </View>
 
-          {/* Merchant onboarding(Google 註冊後仍缺資料) */}
-          {merchantOnboarding && type === "vendor" ? (
-            <PixelCard title="MERCHANT SETUP" titleTone="gold" titleDisplay padding={16}>
-              <PixelChip label="GOOGLE  OK" tone="green" active display />
-              <View style={{ height: 12 }} />
-              <PixelText variant="bodyLg">再完成一步,即可進入商家後台</PixelText>
+          {accountLinking ? (
+            <PixelCard title="連結既有帳號" titleTone="blue" padding={16}>
+              <PixelText variant="bodyLg">這個信箱已經有帳號</PixelText>
               <View style={{ height: 8 }} />
               <PixelText variant="body" tone="muted">
-                Google 驗證已通過。補上店名與營業執照,就能建立商家身分。
+                請輸入原本的密碼確認身分，完成後即可使用 Google 登入。
+              </PixelText>
+              <View style={{ height: 16 }} />
+              <PixelTextInput
+                label="原帳號密碼"
+                placeholder="請輸入密碼"
+                value={linkingPassword}
+                onChangeText={setLinkingPassword}
+                secureTextEntry={!isLinkingPasswordVisible}
+                maxLength={128}
+                rightAdornment={
+                  <PixelEyeToggle
+                    visible={isLinkingPasswordVisible}
+                    onPress={() => setIsLinkingPasswordVisible((value) => !value)}
+                  />
+                }
+              />
+              <View style={{ height: 16 }} />
+              <PixelButton
+                label={isLoading ? "連結中" : "連結並登入"}
+                tone="green"
+                fullWidth
+                disabled={isLoading}
+                onPress={handleLinkProvider}
+              />
+              <View style={{ height: 8 }} />
+              <PixelButton
+                label="取消"
+                tone="paper"
+                fullWidth
+                disabled={isLoading}
+                onPress={() => {
+                  setAccountLinking(null);
+                  setLinkingPassword("");
+                }}
+              />
+            </PixelCard>
+          ) : null}
+
+          {/* Merchant onboarding(Google 註冊後仍缺資料) */}
+          {merchantOnboarding && type === "vendor" ? (
+            <PixelCard title="商家資料設定" titleTone="gold" padding={16}>
+              <PixelChip label="Google 已驗證" tone="green" active />
+              <View style={{ height: 12 }} />
+              <PixelText variant="bodyLg">再完成一步，即可進入商家後台</PixelText>
+              <View style={{ height: 8 }} />
+              <PixelText variant="body" tone="muted">
+                Google 驗證已通過。補上店名，就能建立商家身分。
               </PixelText>
               <View style={{ height: 16 }} />
 
@@ -390,6 +425,7 @@ export default function RegisterScreen() {
                   label="店名"
                   placeholder="請輸入您的店名"
                   value={merchantOnboardingValues.store_name}
+                  maxLength={50}
                   onChangeText={(value) =>
                     setMerchantOnboardingValues((prev) => ({
                       ...prev,
@@ -397,24 +433,12 @@ export default function RegisterScreen() {
                     }))
                   }
                 />
-                <PixelTextInput
-                  label="營業執照"
-                  placeholder="請輸入營業執照號碼"
-                  value={merchantOnboardingValues.business_license}
-                  autoCapitalize="characters"
-                  onChangeText={(value) =>
-                    setMerchantOnboardingValues((prev) => ({
-                      ...prev,
-                      business_license: value,
-                    }))
-                  }
-                />
               </View>
 
               <View style={{ height: 16 }} />
               <PixelButton
-                label={isLoading ? "SAVING..." : "完成設定"}
-                tone="gold"
+                label={isLoading ? "儲存中" : "完成設定"}
+                tone="purple"
                 fullWidth
                 disabled={isLoading}
                 onPress={handleCompleteMerchantOnboarding}
@@ -474,6 +498,7 @@ export default function RegisterScreen() {
                       placeholder="email@example.com"
                       value={value}
                       onChangeText={onChange}
+                      maxLength={128}
                       onBlur={onBlur}
                       keyboardType="email-address"
                       autoCapitalize="none"
@@ -492,6 +517,7 @@ export default function RegisterScreen() {
                       placeholder="********"
                       value={value}
                       onChangeText={onChange}
+                      maxLength={128}
                       onBlur={onBlur}
                       secureTextEntry={!isPasswordVisible}
                       returnKeyType="done"
@@ -509,9 +535,9 @@ export default function RegisterScreen() {
                 {!isLogin && form.watch("password") ? (
                   <View
                     style={{
-                      borderWidth: 2,
-                      borderColor: pixelColors.ink,
-                      borderRadius: 4,
+                      borderWidth: 1,
+                      borderColor: pixelColors.borderSoft,
+                      borderRadius: 8,
                       backgroundColor: pixelColors.surfaceAlt,
                       padding: 10,
                     }}
@@ -533,6 +559,7 @@ export default function RegisterScreen() {
                         placeholder="再次輸入密碼"
                         value={value}
                         onChangeText={onChange}
+                        maxLength={128}
                         onBlur={onBlur}
                         secureTextEntry={!isConfirmPasswordVisible}
                         returnKeyType="done"
@@ -565,31 +592,12 @@ export default function RegisterScreen() {
                           placeholder="請輸入您的店名"
                           value={value}
                           onChangeText={onChange}
+                          maxLength={50}
                           onBlur={onBlur}
                           autoCapitalize="words"
                           returnKeyType="next"
                           error={
                             form.formState.errors.store_name?.message as
-                              | string
-                              | undefined
-                          }
-                        />
-                      )}
-                    />
-                    <Controller
-                      control={form.control}
-                      name="business_license"
-                      render={({ field: { onChange, onBlur, value } }) => (
-                        <PixelTextInput
-                          label="營業執照"
-                          placeholder="請輸入營業執照號碼"
-                          value={value}
-                          onChangeText={onChange}
-                          onBlur={onBlur}
-                          autoCapitalize="characters"
-                          returnKeyType="done"
-                          error={
-                            form.formState.errors.business_license?.message as
                               | string
                               | undefined
                           }
@@ -603,7 +611,8 @@ export default function RegisterScreen() {
               <View style={{ height: 18 }} />
 
               <PixelButton
-                label={isLoading ? "..." : isLogin ? "> 登入" : "> 註冊"}
+                label={isLoading ? "處理中" : isLogin ? "登入" : "註冊"}
+                icon={isLogin ? "log-in-outline" : "person-add-outline"}
                 tone={isVendor ? "red" : "blue"}
                 size="lg"
                 fullWidth
@@ -629,25 +638,25 @@ export default function RegisterScreen() {
                 <View
                   style={{
                     flex: 1,
-                    height: 2,
-                    backgroundColor: pixelColors.gray500,
+                    height: 1,
+                    backgroundColor: pixelColors.borderSoft,
                   }}
                 />
                 <PixelText variant="caption" tone="muted" display>
-                  {isLogin ? "OR" : "OR  SIGN UP WITH"}
+                  或
                 </PixelText>
                 <View
                   style={{
                     flex: 1,
-                    height: 2,
-                    backgroundColor: pixelColors.gray500,
+                    height: 1,
+                    backgroundColor: pixelColors.borderSoft,
                   }}
                 />
               </View>
 
               <GoogleAuthButton
                 disabled={isLoading}
-                label={isLogin ? "GOOGLE 登入" : "GOOGLE 註冊"}
+                label={isLogin ? "使用 Google 登入" : "使用 Google 註冊"}
                 onPress={isLogin ? handleGoogleLogin : handleGoogleRegister}
               />
 
@@ -657,7 +666,7 @@ export default function RegisterScreen() {
                   tone="muted"
                   style={{ marginTop: 10 }}
                 >
-                  Google 驗證後若是新商家,需要再補齊店名與營業執照。
+                  Google 驗證後若是新商家，需要再補齊店名；營業驗證可在商家個人頁完成。
                 </PixelText>
               ) : null}
             </PixelCard>
@@ -678,36 +687,13 @@ function GoogleAuthButton({
   onPress: () => void;
 }) {
   return (
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-      }}
-    >
-      <View
-        style={{
-          width: 36,
-          height: 36,
-          backgroundColor: pixelColors.paper,
-          borderWidth: 2,
-          borderColor: pixelColors.ink,
-          borderRadius: 4,
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Ionicons name="logo-google" size={20} color={pixelColors.red} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <PixelButton
-          label={label}
-          tone="paper"
-          fullWidth
-          disabled={disabled}
-          onPress={onPress}
-        />
-      </View>
-    </View>
+    <PixelButton
+      label={label}
+      icon="logo-google"
+      tone="paper"
+      fullWidth
+      disabled={disabled}
+      onPress={onPress}
+    />
   );
 }

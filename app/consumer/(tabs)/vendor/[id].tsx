@@ -121,7 +121,7 @@ export default function VendorDetailScreen() {
   );
 
   useEffect(() => {
-    StatusBar.setBarStyle("light-content");
+    StatusBar.setBarStyle("dark-content");
     if (Platform.OS === "android") {
       StatusBar.setBackgroundColor("transparent");
       StatusBar.setTranslucent(true);
@@ -152,12 +152,9 @@ export default function VendorDetailScreen() {
         try {
           setMenuLoading(true);
           setMenuError(null);
-          const res = await menuApi.getPublicMerchantMenu(merchantId, {
-            page: 1,
-            page_size: 50,
-          });
+          const items = await menuApi.getAllPublicMerchantMenu(merchantId);
           if (cancelled) return;
-          setMenuItems(Array.isArray(res.data?.items) ? res.data.items : []);
+          setMenuItems(items);
         } catch (e: any) {
           if (cancelled) return;
           console.warn("load public merchant menu failed:", e);
@@ -218,7 +215,7 @@ export default function VendorDetailScreen() {
             <Ionicons name="chevron-back" size={24} color={pixelColors.ink} />
           </Pressable>
           <View style={styles.hudTitleBlock}>
-            <PixelText variant="display" numberOfLines={1}>{displayName}</PixelText>
+            <PixelText variant="titleLg" numberOfLines={1}>{displayName}</PixelText>
             {displayCuisine ? (
               <PixelText variant="caption" tone="muted">{displayCuisine}</PixelText>
             ) : null}
@@ -281,7 +278,8 @@ export default function VendorDetailScreen() {
           <View style={{ height: 12 }} />
           {isSubscribed ? (
             <PixelButton
-              label={subscriptionLoading ? "..." : "取消訂閱"}
+              label={subscriptionLoading ? "處理中" : "取消訂閱"}
+              icon="heart-dislike-outline"
               tone="red"
               fullWidth
               disabled={subscriptionLoading}
@@ -289,7 +287,8 @@ export default function VendorDetailScreen() {
             />
           ) : (
             <PixelButton
-              label={subscriptionLoading ? "..." : "訂閱通知"}
+              label={subscriptionLoading ? "處理中" : "訂閱通知"}
+              icon="notifications-outline"
               tone="green"
               fullWidth
               disabled={subscriptionLoading}
@@ -355,7 +354,7 @@ export default function VendorDetailScreen() {
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                     <PixelText variant="bodyLg">{item.name}</PixelText>
                     {item.popular ? (
-                      <PixelChip label="HOT" tone="red" active display />
+                      <PixelChip label="熱門" tone="red" active />
                     ) : null}
                   </View>
                   {item.description ? (

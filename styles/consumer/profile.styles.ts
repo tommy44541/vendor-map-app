@@ -11,7 +11,7 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 14,
     borderBottomWidth: pixelBorderWidth,
-    borderBottomColor: pixelColors.ink,
+    borderBottomColor: pixelColors.borderSoft,
     flexDirection: "row",
     alignItems: "flex-end",
     gap: 12,
@@ -26,7 +26,7 @@ export const styles = StyleSheet.create({
     height: 36,
     backgroundColor: pixelColors.gold,
     borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
+    borderColor: pixelColors.borderSoft,
     borderRadius: pixelRadius,
     alignItems: "center",
     justifyContent: "center",
@@ -36,15 +36,14 @@ export const styles = StyleSheet.create({
     height: 36,
     backgroundColor: pixelColors.purple,
     borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
+    borderColor: pixelColors.borderSoft,
     borderRadius: pixelRadius,
     alignItems: "center",
     justifyContent: "center",
   },
-  // 2px 黑線分區,取代雙層 inset box
   divider: {
-    height: 2,
-    backgroundColor: pixelColors.ink,
+    height: 1,
+    backgroundColor: pixelColors.borderSoft,
     marginVertical: 12,
   },
   miniRow: {
@@ -56,13 +55,13 @@ export const styles = StyleSheet.create({
   // 裝置卡仍保留,因為每張卡有自己的 action buttons,需要視覺邊界
   deviceBox: {
     borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
+    borderColor: pixelColors.borderSoft,
     borderRadius: pixelRadius,
     backgroundColor: pixelColors.surfaceAlt,
     padding: 12,
   },
   monoText: {
-    color: pixelColors.white,
+    color: pixelColors.ink,
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     fontSize: 11,
     lineHeight: 16,

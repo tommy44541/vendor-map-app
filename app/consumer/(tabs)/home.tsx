@@ -20,7 +20,7 @@ import {
 } from "@/services/api/discovery";
 import { subscriptionsApi } from "@/services/api/subscriptions";
 import { ApiError } from "@/services/api/util";
-import { pixelMapStyle } from "@/theme/mapStylePixel";
+import { fieldMapStyle } from "@/theme/mapStylePixel";
 import { pixelColors } from "@/theme/pixel";
 import { discoveryLabel } from "@/utils/discovery/labels";
 import { getMerchantDisplayName } from "@/utils/merchant/getMerchantDisplayName";
@@ -54,7 +54,6 @@ import {
   ScrollView,
   StatusBar,
   StyleSheet,
-  useColorScheme,
   useWindowDimensions,
   View,
 } from "react-native";
@@ -279,7 +278,7 @@ export default function ConsumerHomeScreen() {
   }, [requestUserLocation]);
 
   useEffect(() => {
-    StatusBar.setBarStyle("light-content");
+    StatusBar.setBarStyle("dark-content");
     if (Platform.OS === "android") {
       StatusBar.setBackgroundColor("transparent");
       StatusBar.setTranslucent(true);
@@ -483,7 +482,7 @@ export default function ConsumerHomeScreen() {
     if (!loc) return;
     try {
       setLocationActionLoading(true);
-      // Demote existing primary first to avoid backend unique constraint
+      // 後端目前不會自動替換主要地址，先取消舊值以避開唯一索引衝突。
       const oldPrimary = userLocations.find(
         (l) => l.IsPrimary && l.IsActive && l.ID !== pendingPrimaryId,
       );
@@ -710,14 +709,14 @@ export default function ConsumerHomeScreen() {
 
       const merchantsRes = await discoveryApi.searchPublicMerchants({
         ...(keywordDebounced ? { keyword: keywordDebounced } : {}),
-        ...(userLocation
+        ...(!keywordDebounced && userLocation
           ? {
               latitude: userLocation.latitude,
               longitude: userLocation.longitude,
             }
           : {}),
         page: 1,
-        page_size: 6,
+        page_size: 10,
       });
 
       if (!isLatest()) return;
@@ -799,9 +798,8 @@ export default function ConsumerHomeScreen() {
     };
   }, [focusedNotification]);
 
-  // 只在 dark mode 套像素 muted 配色;light mode 走系統預設(Google 彩色 / Apple 淡色)
-  const colorScheme = useColorScheme();
-  const mapCustomStyle = colorScheme === "dark" ? pixelMapStyle : undefined;
+  // 統一使用低彩度的大地色地圖，讓商家標記保持清楚。
+  const mapCustomStyle = fieldMapStyle;
 
   // === 浮島膠囊拖曳 + 三段 snap ===
   const { height: screenHeight, width: screenWidth } = useWindowDimensions();
@@ -1119,7 +1117,7 @@ export default function ConsumerHomeScreen() {
             {/* 共用 header:標題 + 齒輪(peek 時隱藏)*/}
             {capsuleSnapLevel > 0 && (
               <View style={styles.capsuleSectionHeader}>
-                <PixelText variant="display">
+                <PixelText variant="titleLg">
                   {TAB_PILL_ITEMS.find((t) => t.id === activeTab)?.label ?? ""}
                 </PixelText>
                 <View ref={gearIconRef}>
@@ -1292,7 +1290,8 @@ export default function ConsumerHomeScreen() {
                 {capsuleSnapLevel === 2 && (
                   <View style={{ marginTop: "auto" }}>
                     <PixelButton
-                      label={subLoading ? "..." : "> 掃 QR 訂閱新商家"}
+                      label={subLoading ? "處理中" : "掃描 QR 訂閱商家"}
+                      icon="qr-code-outline"
                       tone="gold"
                       fullWidth
                       disabled={subLoading}
@@ -1478,12 +1477,12 @@ export default function ConsumerHomeScreen() {
                   <Ionicons
                     name={item.icon}
                     size={28}
-                    color={isActive ? pixelColors.gold : pixelColors.gray300}
+                    color={isActive ? pixelColors.purple : pixelColors.gray300}
                   />
                   <PixelText
                     variant="caption"
                     style={{
-                      color: isActive ? pixelColors.gold : pixelColors.gray300,
+                      color: isActive ? pixelColors.purple : pixelColors.gray300,
                       marginTop: 2,
                     }}
                   >
@@ -1683,7 +1682,8 @@ export default function ConsumerHomeScreen() {
                 ]}
               >
                 <PixelButton
-                  label="+ 新增位置"
+                  label="新增位置"
+                  icon="add-outline"
                   tone="blue"
                   fullWidth
                   onPress={() => {
@@ -1757,20 +1757,22 @@ export default function ConsumerHomeScreen() {
           {/* 操作按鈕列 */}
           <View style={{ flexDirection: "row", gap: 8 }}>
             <PixelButton
-              label="× 取消"
+              label="取消"
               tone="paper"
               onPress={cancelAddLocation}
               disabled={addLocationLoading}
             />
             <PixelButton
-              label={addLocationLoading ? "..." : "GPS"}
+              label={addLocationLoading ? "定位中" : "目前位置"}
+              icon="navigate-outline"
               tone="blue"
               onPress={handleAddLocationGPS}
               disabled={addLocationLoading}
             />
             <View style={{ flex: 1 }}>
               <PixelButton
-                label={addLocationLoading ? "..." : "> 儲存"}
+                label={addLocationLoading ? "儲存中" : "儲存"}
+                icon="checkmark-outline"
                 tone="gold"
                 fullWidth
                 onPress={saveAddLocation}
@@ -1878,12 +1880,13 @@ export default function ConsumerHomeScreen() {
                 pointerEvents="box-none"
               >
                 <PixelButton
-                  label="x 關閉"
+                  label="關閉"
+                  icon="close-outline"
                   tone="ink"
                   size="sm"
                   onPress={() => setScannerOpen(false)}
                 />
-                <PixelChip label="SCAN QR" tone="gold" active display />
+                <PixelChip label="掃描 QR" tone="gold" active />
                 <View style={{ width: 60 }} />
               </View>
               <View style={[styles.scannerBottom, { bottom: 24 }]}>
@@ -1904,9 +1907,8 @@ export default function ConsumerHomeScreen() {
           ) : (
             <View style={styles.permissionWrap}>
               <PixelCard
-                title="CAMERA  PERMISSION"
+                title="相機權限"
                 titleTone="red"
-                titleDisplay
                 padding={20}
                 background={pixelColors.surface}
               >
@@ -1918,12 +1920,13 @@ export default function ConsumerHomeScreen() {
                     tone="muted"
                     style={{ textAlign: "center" }}
                   >
-                    允許相機權限後,才能掃描商家的訂閱 QR Code。
+                    允許相機權限後，才能掃描商家的訂閱 QR Code。
                   </PixelText>
                 </View>
                 <View style={{ height: 12 }} />
                 <PixelButton
-                  label="> 允許相機"
+                  label="允許相機"
+                  icon="camera-outline"
                   tone="gold"
                   fullWidth
                   onPress={requestCameraPermission}

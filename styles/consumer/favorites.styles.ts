@@ -1,4 +1,4 @@
-import { pixelBorderWidth, pixelColors } from "@/theme/pixel";
+import { pixelBorderWidth, pixelColors, pixelRadius } from "@/theme/pixel";
 import { StyleSheet } from "react-native";
 
 export const styles = StyleSheet.create({
@@ -11,7 +11,7 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 14,
     borderBottomWidth: pixelBorderWidth,
-    borderBottomColor: pixelColors.ink,
+    borderBottomColor: pixelColors.borderSoft,
     flexDirection: "row",
     alignItems: "flex-end",
     gap: 12,
@@ -26,15 +26,15 @@ export const styles = StyleSheet.create({
     height: 36,
     backgroundColor: pixelColors.pink,
     borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
-    borderRadius: 4,
+    borderColor: pixelColors.borderSoft,
+    borderRadius: pixelRadius,
     alignItems: "center",
     justifyContent: "center",
   },
   itemBox: {
     borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
-    borderRadius: 4,
+    borderColor: pixelColors.borderSoft,
+    borderRadius: pixelRadius,
     backgroundColor: pixelColors.surface,
     padding: 12,
   },

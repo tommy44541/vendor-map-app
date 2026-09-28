@@ -1,11 +1,8 @@
 import { styles } from "@/styles/index.styles";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRootNavigationState, useRouter } from "expo-router";
 import React, { useEffect, useRef } from "react";
-import {
-  Image,
-  type ImageSourcePropType,
-  View,
-} from "react-native";
+import { Image, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   PixelBorder,
@@ -28,27 +25,27 @@ interface RoleCardOption {
   callToAction: string;
   tone: "red" | "gold" | "blue";
   badge: string;
-  image: ImageSourcePropType;
+  icon: React.ComponentProps<typeof Ionicons>["name"];
 }
 
 const ROLE_OPTIONS: RoleCardOption[] = [
   {
     key: "vendor",
     title: "我是商家",
-    description: "管理店家、發送位置與通知,讓粉絲找得到你。",
+    description: "管理店家、發送位置與通知，讓熟客隨時找得到你。",
     callToAction: "開始營業",
     tone: "red",
     badge: "商家",
-    image: require("../assets/images/role_vendor.png"),
+    icon: "storefront-outline",
   },
   {
     key: "consumer",
     title: "我是吃貨",
-    description: "追蹤喜歡的攤車,第一時間收到附近開賣通知。",
+    description: "追蹤喜歡的攤車，第一時間收到附近開賣通知。",
     callToAction: "開始探索",
     tone: "blue",
     badge: "消費者",
-    image: require("../assets/images/role_consumer.png"),
+    icon: "compass-outline",
   },
 ];
 
@@ -62,26 +59,33 @@ function RoleBlock({
   return (
     <View style={styles.roleWrap}>
       <PixelCard padding={20} bodyFlex style={{ flex: 1 }}>
-        {/* 圖示 + badge */}
         <View style={styles.topRow}>
-          <Image source={option.image} style={styles.roleIcon} resizeMode="contain" />
+          <View style={styles.roleIconWrap}>
+            <Ionicons
+              name={option.icon}
+              size={28}
+              color={pixelColors[option.tone]}
+            />
+          </View>
           <PixelChip label={option.badge} tone={option.tone} active />
         </View>
 
-        {/* 標題 */}
-        <PixelText variant="display" style={styles.roleTitle}>
+        <PixelText variant="titleLg" style={styles.roleTitle}>
           {option.title}
         </PixelText>
 
-        {/* 說明 */}
         <PixelText variant="body" tone="muted" style={styles.roleDesc}>
           {option.description}
         </PixelText>
 
         <View style={{ flex: 1 }} />
 
-        {/* CTA */}
-        <PixelButton label={`> ${option.callToAction}`} tone="gold" fullWidth onPress={onPress} />
+        <PixelButton
+          label={option.callToAction}
+          tone="purple"
+          fullWidth
+          onPress={onPress}
+        />
       </PixelCard>
     </View>
   );
@@ -119,7 +123,7 @@ export default function IndexScreen() {
           <PixelLoading label="載入中" tone="gold" />
           <View style={{ height: 8 }} />
           <PixelText variant="caption" tone="muted">
-            正在讀取存檔
+            正在準備內容
           </PixelText>
         </PixelBorder>
       </SafeAreaView>
@@ -135,7 +139,7 @@ export default function IndexScreen() {
           </PixelText>
           <View style={{ height: 6 }} />
           <PixelText variant="title">
-            {user.name || "玩家"}
+            {user.name || "使用者"}
           </PixelText>
           <View style={{ height: 12 }} />
           <PixelText variant="body" tone="muted">
@@ -153,17 +157,24 @@ export default function IndexScreen() {
   return (
     <SafeAreaView style={styles.root} edges={["top", "left", "right"]}>
       <View style={styles.header}>
-        <PixelText variant="display">攤位雷達</PixelText>
-        <PixelBorder
-          variant="single"
-          padding={10}
-          background={pixelColors.surfaceAlt}
-          style={styles.tagline}
-        >
-          <PixelText variant="body" tone="default">
-            街邊小吃 x 行動商家  -  即時通報、隨叫隨到
+        <View style={styles.brandRow}>
+          <Image
+            source={require("../assets/images/app-icon-wiv-field.png")}
+            style={styles.brandIcon}
+            resizeMode="contain"
+          />
+          <View style={styles.brandCopy}>
+            <PixelText variant="display">攤位雷達</PixelText>
+            <PixelText variant="body" tone="muted">
+              Where is Vendor
+            </PixelText>
+          </View>
+        </View>
+        <View style={styles.tagline}>
+          <PixelText variant="body" tone="muted">
+            街邊小吃與行動商家，即時掌握最新位置
           </PixelText>
-        </PixelBorder>
+        </View>
       </View>
 
       <View style={styles.cardsWrap}>

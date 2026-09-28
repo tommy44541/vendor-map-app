@@ -50,13 +50,17 @@ export interface MerchantData {
   updated_at: string;
 }
 
-export type AuthStatus = "authenticated" | "onboarding_required";
+export type AuthStatus =
+  | "authenticated"
+  | "onboarding_required"
+  | "linking_required";
 
 export interface AuthResultData {
   status: AuthStatus;
   access_token?: string;
   refresh_token?: string;
   onboarding_token?: string;
+  linking_token?: string;
   requested_role?: string;
   required_fields?: string[];
   user?: UserData;
@@ -108,7 +112,6 @@ export const authApi = {
     email: string;
     password: string;
     store_name: string;
-    business_license: string;
   }) => request<AuthResultData>('/auth/register/merchant', {
     body: merchantData 
   }),
@@ -125,7 +128,6 @@ export const authApi = {
     requestedRole?: "user" | "merchant";
     state?: "user" | "merchant";
     storeName?: string;
-    businessLicense?: string;
   }) =>
     request<AuthResultData>('/oauth/google/callback', {
       body: {
@@ -133,16 +135,19 @@ export const authApi = {
         ...(input.requestedRole ? { requested_role: input.requestedRole } : {}),
         ...(input.state ? { state: input.state } : {}),
         ...(input.storeName ? { store_name: input.storeName } : {}),
-        ...(input.businessLicense ? { business_license: input.businessLicense } : {}),
       },
     }),
 
   completeMerchantOnboarding: (input: {
     onboarding_token: string;
     store_name: string;
-    business_license: string;
   }) =>
     request<AuthResultData>('/auth/onboarding/merchant', {
+      body: input,
+    }),
+
+  linkProvider: (input: { linking_token: string; password: string }) =>
+    request<AuthResultData>('/auth/link-provider', {
       body: input,
     }),
 
@@ -178,11 +183,5 @@ export const authApi = {
   logout: (refreshToken: string) => 
     request<{ message: string }>('/auth/logout', { 
       body: { refresh_token: refreshToken } 
-    }),
-
-  // 測試帶權限請求
-  testAuth: () => request<any>('/test/auth', { 
-    method: 'GET',
-    requireAuth: true 
   }),
 };

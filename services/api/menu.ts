@@ -102,27 +102,78 @@ const buildQueryString = (params?: GetMerchantMenuItemsParams) => {
   return str ? `?${str}` : "";
 };
 
-export const menuApi = {
-  getMerchantMenuItems: (params?: GetMerchantMenuItemsParams) =>
-    request<MerchantMenuListData>(
-      `/api/v1/menus/merchant${buildQueryString(params)}`,
-      {
-        requireAuth: true,
-        method: "GET",
-      }
-    ) as Promise<GetMerchantMenuItemsResponse>,
+const MENU_PAGE_SIZE = 100;
 
-  getPublicMerchantMenu: (
-    merchantId: string,
-    params?: Omit<GetMerchantMenuItemsParams, "is_available">
+const getAllMenuPages = async (
+  fetchPage: (page: number) => Promise<GetMerchantMenuItemsResponse>
+): Promise<MenuItem[]> => {
+  const items: MenuItem[] = [];
+
+  for (let page = 1; ; page += 1) {
+    const response = await fetchPage(page);
+    const pageItems = Array.isArray(response.data?.items)
+      ? response.data.items
+      : [];
+    items.push(...pageItems);
+
+    const total = Number(response.data?.pagination?.total ?? items.length);
+    if (pageItems.length === 0 || items.length >= total) {
+      return items;
+    }
+  }
+};
+
+const getMerchantMenuItems = (params?: GetMerchantMenuItemsParams) =>
+  request<MerchantMenuListData>(
+    `/api/v1/menus/merchant${buildQueryString(params)}`,
+    {
+      requireAuth: true,
+      method: "GET",
+    }
+  ) as Promise<GetMerchantMenuItemsResponse>;
+
+const getPublicMerchantMenu = (
+  merchantId: string,
+  params?: Omit<GetMerchantMenuItemsParams, "is_available">
+) =>
+  request<MerchantMenuListData>(
+    `/api/v1/merchants/${merchantId}/menu${buildQueryString(params)}`,
+    {
+      requireAuth: true,
+      method: "GET",
+    }
+  ) as Promise<GetMerchantMenuItemsResponse>;
+
+export const menuApi = {
+  getMerchantMenuItems,
+
+  getPublicMerchantMenu,
+
+  getAllMerchantMenuItems: (
+    params?: Omit<GetMerchantMenuItemsParams, "page" | "page_size">
   ) =>
-    request<MerchantMenuListData>(
-      `/api/v1/merchants/${merchantId}/menu${buildQueryString(params)}`,
-      {
-        requireAuth: true,
-        method: "GET",
-      }
-    ) as Promise<GetMerchantMenuItemsResponse>,
+    getAllMenuPages((page) =>
+      getMerchantMenuItems({
+        ...params,
+        page,
+        page_size: MENU_PAGE_SIZE,
+      })
+    ),
+
+  getAllPublicMerchantMenu: (
+    merchantId: string,
+    params?: Omit<
+      GetMerchantMenuItemsParams,
+      "is_available" | "page" | "page_size"
+    >
+  ) =>
+    getAllMenuPages((page) =>
+      getPublicMerchantMenu(merchantId, {
+        ...params,
+        page,
+        page_size: MENU_PAGE_SIZE,
+      })
+    ),
 
   createMenuItem: (body: UpsertMenuItemRequest) =>
     request<MenuItem>("/api/v1/menus/merchant", {

@@ -1,10 +1,8 @@
 import React from "react";
 import { Pressable, StyleSheet, View, ViewStyle } from "react-native";
-import { pixelColors, pixelBorderWidth, pixelRadius } from "@/theme/pixel";
+import { pixelColors, pixelBorderWidth } from "@/theme/pixel";
+import { fieldRadius } from "@/theme/field";
 import { PixelText } from "./PixelText";
-
-// PixelChip:像素風的標籤/狀態徽章/可點 chip。
-// 預設無 borderRadius。
 
 export interface PixelChipProps {
   label: string;
@@ -62,9 +60,9 @@ export function PixelChip({
       <PixelText
         variant="caption"
         display={display}
-        style={{ color: inactiveFg, letterSpacing: display ? 1 : 0 }}
+        style={{ color: inactiveFg, fontWeight: "600", letterSpacing: 0 }}
       >
-        {display ? label.toUpperCase() : label}
+        {label}
       </PixelText>
     </View>
   );
@@ -89,8 +87,8 @@ export function PixelChip({
 const styles = StyleSheet.create({
   wrap: {
     borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
-    borderRadius: pixelRadius,
+    borderColor: pixelColors.borderSoft,
+    borderRadius: fieldRadius.full,
     alignSelf: "flex-start",
     overflow: "hidden",
   },

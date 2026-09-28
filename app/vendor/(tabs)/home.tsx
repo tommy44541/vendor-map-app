@@ -43,7 +43,7 @@ export default function VendorHomeScreen() {
   >([]);
 
   useEffect(() => {
-    StatusBar.setBarStyle("light-content");
+    StatusBar.setBarStyle("dark-content");
     if (Platform.OS === "android") {
       StatusBar.setBackgroundColor("transparent");
       StatusBar.setTranslucent(true);
@@ -122,6 +122,13 @@ export default function VendorHomeScreen() {
           gap: 16,
         }}
       >
+        <View style={{ gap: 4 }}>
+          <PixelText variant="titleLg">商家工作台</PixelText>
+          <PixelText variant="caption" tone="muted">
+            {user?.name || "商家帳號"}
+          </PixelText>
+        </View>
+
         {/* 快速功能 */}
         <View>
           <View style={styles.sectionHeader}>
@@ -133,26 +140,28 @@ export default function VendorHomeScreen() {
               <Pressable
                 key={item.id}
                 onPress={item.onPress}
-                style={{ flex: 1 }}
+                style={({ pressed }) => [
+                  { flex: 1 },
+                  styles.quickCard,
+                  pressed ? styles.quickCardPressed : null,
+                ]}
               >
-                <View style={styles.quickCard}>
-                  <View
-                    style={[
-                      styles.quickIcon,
-                      { backgroundColor: toneToColor(item.tone) },
-                    ]}
-                  >
-                    <Ionicons
-                      name={item.icon}
-                      size={22}
-                      color={pixelColors.ink}
-                    />
-                  </View>
-                  <View style={{ height: 8 }} />
-                  <PixelText variant="bodyLg" style={{ textAlign: "center" }}>
-                    {item.title}
-                  </PixelText>
+                <View
+                  style={[
+                    styles.quickIcon,
+                    { backgroundColor: toneToColor(item.tone) },
+                  ]}
+                >
+                  <Ionicons
+                    name={item.icon}
+                    size={22}
+                    color={item.tone === "gold" ? pixelColors.ink : pixelColors.white}
+                  />
                 </View>
+                <View style={{ height: 8 }} />
+                <PixelText variant="bodyLg" style={{ textAlign: "center" }}>
+                  {item.title}
+                </PixelText>
               </Pressable>
             ))}
           </View>
@@ -163,7 +172,7 @@ export default function VendorHomeScreen() {
           <View style={styles.sectionHeader}>
             <PixelText variant="title">最近活動</PixelText>
             <PixelButton
-              label="x 清除"
+              label="清除"
               tone={recentPublishes.length > 0 ? "red" : "paper"}
               size="sm"
               disabled={recentPublishes.length === 0}
@@ -176,7 +185,7 @@ export default function VendorHomeScreen() {
               <View style={{ alignItems: "flex-start", gap: 6 }}>
                 <PixelText variant="bodyLg">尚無發布紀錄</PixelText>
                 <PixelText variant="body" tone="muted">
-                  到「發布通知」tab 發出第一則營業訊息,這裡會列出最近 5 筆。
+                  到「發布通知」頁面發出第一則營業訊息，這裡會列出最近 5 筆。
                 </PixelText>
               </View>
             ) : (

@@ -20,7 +20,6 @@ interface StrengthLevel {
   score: number;
 }
 
-// 強度配色使用 pixel palette
 const strengthLevels: StrengthLevel[] = [
   { label: "非常弱", color: pixelColors.red, score: 0 },
   { label: "弱", color: pixelColors.red, score: 1 },
@@ -78,7 +77,7 @@ export default function PasswordStrength({
             {currentStrength.label}
           </PixelText>
         </View>
-        <PixelText variant="caption" tone="muted" display>
+        <PixelText variant="caption" tone="muted">
           {`${score} / 4`}
         </PixelText>
       </View>
@@ -92,7 +91,7 @@ export default function PasswordStrength({
               styles.barCell,
               {
                 backgroundColor:
-                  index <= score ? currentStrength.color : pixelColors.gray700,
+                  index <= score ? currentStrength.color : pixelColors.borderSoft,
               },
             ]}
           />
@@ -112,14 +111,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 3,
     borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
+    borderColor: pixelColors.borderSoft,
     borderRadius: pixelRadius,
-    backgroundColor: pixelColors.ink,
+    backgroundColor: pixelColors.surface,
     padding: 2,
   },
   barCell: {
     flex: 1,
     height: 8,
-    borderRadius: 1,
+    borderRadius: 4,
   },
 });

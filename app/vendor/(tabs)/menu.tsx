@@ -67,7 +67,7 @@ const VendorMenuScreen = () => {
   const [form, setForm] = useState<MenuFormState>(DEFAULT_FORM);
 
   useEffect(() => {
-    StatusBar.setBarStyle("light-content");
+    StatusBar.setBarStyle("dark-content");
     if (Platform.OS === "android") {
       StatusBar.setBackgroundColor("transparent");
       StatusBar.setTranslucent(true);
@@ -154,11 +154,7 @@ const VendorMenuScreen = () => {
       if (!silent) setLoading(true);
 
       try {
-        const res = await menuApi.getMerchantMenuItems({
-          page: 1,
-          page_size: 100,
-        });
-        const items = Array.isArray(res.data?.items) ? res.data.items : [];
+        const items = await menuApi.getAllMerchantMenuItems();
         setMenuItems(items);
       } catch (error) {
         handleApiError(error, "取得品項失敗");
@@ -226,8 +222,18 @@ const VendorMenuScreen = () => {
       return;
     }
 
-    if (!Number.isFinite(price) || price <= 0) {
-      Alert.alert("價格格式錯誤", "請輸入大於 0 的價格");
+    if ([...name].length > 80) {
+      Alert.alert("品項名稱過長", "品項名稱最多 80 個字");
+      return;
+    }
+
+    if ([...description].length > 500) {
+      Alert.alert("描述過長", "品項描述最多 500 個字");
+      return;
+    }
+
+    if (!Number.isFinite(price) || price < 0) {
+      Alert.alert("價格格式錯誤", "價格不可小於 0");
       return;
     }
 
@@ -311,7 +317,7 @@ const VendorMenuScreen = () => {
       <View style={[styles.hud, { paddingTop: insets.top + 8 }]}>
         <View style={styles.hudTop}>
           <View style={{ flex: 1 }}>
-            <PixelText variant="display">品項管理</PixelText>
+            <PixelText variant="titleLg">品項管理</PixelText>
             <View style={{ height: 4 }} />
             <PixelText variant="caption" tone="muted">
               管理上架品項與價格
@@ -319,14 +325,16 @@ const VendorMenuScreen = () => {
           </View>
           <View style={{ gap: 6 }}>
             <PixelButton
-              label={loading ? "..." : ">> 重新整理"}
+              label={loading ? "載入中" : "重新整理"}
+              icon="refresh-outline"
               tone="paper"
               size="sm"
               disabled={loading || submitting}
               onPress={() => loadMenuItems()}
             />
             <PixelButton
-              label="+ 新增"
+              label="新增"
+              icon="add-outline"
               tone="gold"
               size="sm"
               disabled={loading || submitting || categoriesLoadError}
@@ -403,7 +411,8 @@ const VendorMenuScreen = () => {
                 </PixelText>
                 <View style={{ height: 4 }} />
                 <PixelButton
-                  label="+ 新增第一個品項"
+                  label="新增第一個品項"
+                  icon="add-outline"
                   tone="gold"
                   onPress={openCreateEditor}
                 />
@@ -484,7 +493,8 @@ const VendorMenuScreen = () => {
                   </View>
                   <View style={{ flex: 1 }}>
                     <PixelButton
-                      label="x 刪除"
+                      label="刪除"
+                      icon="trash-outline"
                       tone="red"
                       size="sm"
                       fullWidth
@@ -534,6 +544,7 @@ const VendorMenuScreen = () => {
                     placeholder="例如:炙燒牛肉飯"
                     value={form.name}
                     onChangeText={(v) => updateForm("name", v)}
+                    maxLength={80}
                   />
 
                   <View>
@@ -582,6 +593,7 @@ const VendorMenuScreen = () => {
                     placeholder="簡短描述口味、配料或特色"
                     value={form.description}
                     onChangeText={(v) => updateForm("description", v)}
+                    maxLength={500}
                     multiline
                     style={{ minHeight: 88 }}
                   />
@@ -624,12 +636,13 @@ const VendorMenuScreen = () => {
                     <PixelButton
                       label={
                         submitting
-                          ? "..."
+                          ? "儲存中"
                           : editingId
-                            ? "> 儲存變更"
-                            : "> 新增品項"
+                            ? "儲存變更"
+                            : "新增品項"
                       }
                       tone={editingId ? "blue" : "gold"}
+                      icon={editingId ? "checkmark-outline" : "add-outline"}
                       fullWidth
                       disabled={submitting}
                       onPress={submitEditor}

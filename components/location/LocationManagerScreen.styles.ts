@@ -11,11 +11,16 @@ export const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: pixelColors.surface,
-    borderTopWidth: 4,
-    borderTopColor: pixelColors.ink,
+    borderTopWidth: 1,
+    borderTopColor: pixelColors.borderSoft,
     borderTopLeftRadius: pixelRadius * 2,
     borderTopRightRadius: pixelRadius * 2,
     overflow: "hidden",
+    shadowColor: pixelColors.ink,
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 6,
   },
   handleWrap: {
     // 加大 hit area,讓拇指容易抓
@@ -31,10 +36,9 @@ export const styles = StyleSheet.create({
     height: 2,
   },
   handle: {
-    // 更顯眼:更寬、更厚、白色高對比
     width: 64,
     height: 5,
-    backgroundColor: pixelColors.gray100,
+    backgroundColor: pixelColors.gray500,
     borderRadius: 2,
   },
   switchRow: {
@@ -45,7 +49,7 @@ export const styles = StyleSheet.create({
   },
   addressBox: {
     borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
+    borderColor: pixelColors.borderSoft,
     borderRadius: pixelRadius,
     backgroundColor: pixelColors.surfaceAlt,
     padding: 10,
@@ -58,7 +62,7 @@ export const styles = StyleSheet.create({
   },
   emptyBox: {
     borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
+    borderColor: pixelColors.borderSoft,
     borderRadius: pixelRadius,
     backgroundColor: pixelColors.surfaceAlt,
     padding: 14,
@@ -69,7 +73,7 @@ export const styles = StyleSheet.create({
     alignItems: "flex-start",
     gap: 10,
     borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
+    borderColor: pixelColors.borderSoft,
     borderRadius: pixelRadius,
     backgroundColor: pixelColors.surface,
     padding: 12,
@@ -89,7 +93,7 @@ export const styles = StyleSheet.create({
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.6)",
+    backgroundColor: "rgba(24,31,26,0.48)",
     justifyContent: "center",
     paddingHorizontal: 16,
   },
@@ -98,7 +102,7 @@ export const styles = StyleSheet.create({
   },
   modalBottomWrap: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(24,31,26,0.48)",
     justifyContent: "flex-end",
   },
   modalBottomCard: {
@@ -110,7 +114,7 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
+    borderColor: pixelColors.borderSoft,
     borderRadius: pixelRadius,
     backgroundColor: pixelColors.surfaceAlt,
     paddingHorizontal: 10,

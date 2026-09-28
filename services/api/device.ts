@@ -22,6 +22,14 @@ interface RawUserDevice {
   updated_at: string;
 }
 
+interface RawDeviceHealth {
+  id: string;
+  client_device_id: string;
+  health_status: "healthy" | "stale" | "invalid";
+  token_refreshed_at: string;
+  requires_rebind: boolean;
+}
+
 const toDevice = (raw: RawUserDevice): GetDevicesData => ({
   ID: raw.id,
   UserID: raw.user_id,
@@ -55,8 +63,17 @@ export interface GetDevicesData {
   UpdatedAt: string;
 }
 
+export interface DeviceHealthData {
+  ID: string;
+  DeviceID: string;
+  HealthStatus: "healthy" | "stale" | "invalid";
+  TokenRefreshedAt: string;
+  RequiresRebind: boolean;
+}
+
 export type RegisterDeviceResponse = ApiSuccessResponse<RegisterDeviceData>;
 export type GetDevicesResponse = ApiSuccessResponse<GetDevicesData[]>;
+export type GetDeviceHealthResponse = ApiSuccessResponse<DeviceHealthData[]>;
 export type UpdateDeviceResponse = ApiSuccessResponse<{ message: string }>;
 export type DeleteDeviceResponse = ApiSuccessResponse<{ message: string }>;
 
@@ -82,6 +99,22 @@ export const deviceApi = {
     });
     const data = Array.isArray(res.data) ? res.data.map(toDevice) : [];
     return { ...res, data } as GetDevicesResponse;
+  },
+  getDeviceHealth: async () => {
+    const res = await request<RawDeviceHealth[]>('/api/v1/devices/health', {
+      requireAuth: true,
+      method: 'GET',
+    });
+    const data = Array.isArray(res.data)
+      ? res.data.map((item) => ({
+          ID: item.id,
+          DeviceID: item.client_device_id,
+          HealthStatus: item.health_status,
+          TokenRefreshedAt: item.token_refreshed_at,
+          RequiresRebind: item.requires_rebind,
+        }))
+      : [];
+    return { ...res, data } as GetDeviceHealthResponse;
   },
   //更新 FCM Token
   updateDevice: (deviceId: string, deviceData: UpdateDeviceRequest) => {

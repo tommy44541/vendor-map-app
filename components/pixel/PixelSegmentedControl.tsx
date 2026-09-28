@@ -29,10 +29,8 @@ export function PixelSegmentedControl<T extends string>({
 }: PixelSegmentedControlProps<T>) {
   return (
     <View style={[styles.wrap, style]}>
-      {options.map((opt, idx) => {
+      {options.map((opt) => {
         const active = opt.value === value;
-        const isFirst = idx === 0;
-        const isLast = idx === options.length - 1;
         return (
           <Pressable
             key={opt.value}
@@ -43,15 +41,7 @@ export function PixelSegmentedControl<T extends string>({
             style={[
               styles.segment,
               {
-                backgroundColor: active
-                  ? pixelColors.ink
-                  : pixelColors.surfaceAlt,
-                borderLeftWidth: isFirst ? 0 : pixelBorderWidth,
-                borderLeftColor: pixelColors.ink,
-                borderTopLeftRadius: isFirst ? pixelRadius - 1 : 0,
-                borderBottomLeftRadius: isFirst ? pixelRadius - 1 : 0,
-                borderTopRightRadius: isLast ? pixelRadius - 1 : 0,
-                borderBottomRightRadius: isLast ? pixelRadius - 1 : 0,
+                backgroundColor: active ? pixelColors.purple : "transparent",
               },
             ]}
           >
@@ -59,8 +49,9 @@ export function PixelSegmentedControl<T extends string>({
               variant="bodyLg"
               display={display}
               style={{
-                color: active ? pixelColors.gold : pixelColors.gray500,
-                letterSpacing: 1,
+                color: active ? pixelColors.white : pixelColors.gray500,
+                fontWeight: "600",
+                letterSpacing: 0,
               }}
             >
               {opt.label}
@@ -76,14 +67,16 @@ const styles = StyleSheet.create({
   wrap: {
     flexDirection: "row",
     borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
+    borderColor: pixelColors.borderSoft,
     borderRadius: pixelRadius,
-    overflow: "hidden",
+    backgroundColor: pixelColors.surfaceAlt,
+    padding: 3,
   },
   segment: {
     flex: 1,
     paddingVertical: 12,
     alignItems: "center",
     justifyContent: "center",
+    borderRadius: pixelRadius - 2,
   },
 });

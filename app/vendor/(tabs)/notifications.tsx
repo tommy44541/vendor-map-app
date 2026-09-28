@@ -61,7 +61,7 @@ const Notifications = () => {
   const isMountedRef = useRef(true);
 
   useEffect(() => {
-    StatusBar.setBarStyle("light-content");
+    StatusBar.setBarStyle("dark-content");
     if (Platform.OS === "android") {
       StatusBar.setBackgroundColor("transparent");
       StatusBar.setTranslucent(true);
@@ -292,10 +292,10 @@ const Notifications = () => {
       {/* HUD */}
       <View style={[styles.hud, { paddingTop: insets.top + 8 }]}>
         <View style={{ flex: 1 }}>
-          <PixelText variant="display">發布位置通知</PixelText>
+          <PixelText variant="titleLg">發布位置通知</PixelText>
           <View style={{ height: 4 }} />
           <PixelText variant="caption" tone="muted">
-            選已保存位置或輸入臨時地點,寫好訊息送出
+            選擇保存位置或輸入臨時地點，寫好訊息後送出
           </PixelText>
         </View>
       </View>
@@ -349,7 +349,8 @@ const Notifications = () => {
               </View>
               {mode === "saved" ? (
                 <PixelButton
-                  label={isLoadingLocations ? "..." : ">> 刷新"}
+                  label={isLoadingLocations ? "載入中" : "重新整理"}
+                  icon="refresh-outline"
                   tone="paper"
                   size="sm"
                   disabled={isLoadingLocations || isPublishing}
@@ -436,7 +437,7 @@ const Notifications = () => {
                         tone={isSelected ? "gold" : "muted"}
                         display
                       >
-                        {isSelected ? "*" : ">"}
+                        {isSelected ? "已選擇" : "選擇"}
                       </PixelText>
                     </Pressable>
                   );
@@ -474,9 +475,10 @@ const Notifications = () => {
                 </View>
                 <PixelButton
                   label={
-                    isGettingTempLocation ? "..." : "> 使用當前位置"
+                    isGettingTempLocation ? "定位中" : "使用目前位置"
                   }
                   tone="blue"
+                  icon="navigate-outline"
                   size="sm"
                   disabled={isGettingTempLocation || isPublishing}
                   onPress={fillTempWithCurrentLocation}
@@ -548,7 +550,8 @@ const Notifications = () => {
 
             <View style={{ height: 14 }} />
             <PixelButton
-              label={isPublishing ? "..." : ">> 發布通知"}
+              label={isPublishing ? "發布中" : "發布通知"}
+              icon="notifications-outline"
               tone="red"
               size="lg"
               fullWidth
@@ -574,14 +577,15 @@ const Notifications = () => {
                   <Ionicons
                     name="stats-chart"
                     size={18}
-                    color={pixelColors.ink}
+                    color={pixelColors.white}
                   />
                 </View>
                 <View style={{ flex: 1 }}>
                   <PixelText variant="bodyLg">最近一次發布結果</PixelText>
                 </View>
                 <PixelButton
-                  label={isRefreshingLast ? "..." : ">> 刷新統計"}
+                  label={isRefreshingLast ? "載入中" : "更新統計"}
+                  icon="refresh-outline"
                   tone="paper"
                   size="sm"
                   disabled={isRefreshingLast}

@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React from "react";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import {
   Pressable,
   PressableProps,
@@ -46,6 +47,7 @@ export interface PixelButtonProps extends Omit<PressableProps, "style"> {
   tone?: PixelButtonTone;
   size?: "sm" | "md" | "lg";
   display?: boolean;
+  icon?: React.ComponentProps<typeof Ionicons>["name"];
   fullWidth?: boolean;
   style?: ViewStyle;
 }
@@ -55,6 +57,7 @@ export function PixelButton({
   tone = "ink",
   size = "md",
   display = false,
+  icon,
   fullWidth = false,
   onPressIn,
   onPressOut,
@@ -62,73 +65,79 @@ export function PixelButton({
   style,
   ...rest
 }: PixelButtonProps) {
-  const [pressed, setPressed] = useState(false);
-  // 防呆:tone 不在表內(typo 或新加未補)時 fallback 到 ink,
-  // 避免整個 app 因為 .bg of undefined 直接 crash。
   const bg = toneToBg[tone] ?? toneToBg.ink;
   const fg = toneToFg[tone] ?? toneToFg.ink;
-
-  // Press 時整個按鈕往下偏移 2px,模擬實體按下感
-  const offset = pressed ? 2 : 0;
 
   const paddingV = size === "sm" ? 6 : size === "lg" ? 14 : 10;
   const paddingH = size === "sm" ? 12 : size === "lg" ? 24 : 18;
   const variant = size === "sm" ? "body" : size === "lg" ? "title" : "bodyLg";
 
   return (
-    <View
-      style={[
-        styles.shadow,
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: !!disabled }}
+      {...rest}
+      disabled={disabled}
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      style={({ pressed }) => [
         fullWidth ? styles.fullWidth : null,
-        { opacity: disabled ? 0.5 : 1 },
+        {
+          opacity: disabled ? 0.45 : pressed ? 0.86 : 1,
+          transform: [{ scale: pressed ? 0.985 : 1 }],
+        },
         style,
       ]}
     >
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={label}
-        accessibilityState={{ disabled: !!disabled }}
-        {...rest}
-        disabled={disabled}
-        onPressIn={(e) => {
-          setPressed(true);
-          onPressIn?.(e);
-        }}
-        onPressOut={(e) => {
-          setPressed(false);
-          onPressOut?.(e);
-        }}
-        style={{
-          transform: [{ translateY: offset }, { translateX: offset }],
-          backgroundColor: bg,
-          borderWidth: pixelBorderWidth,
-          borderColor: pixelColors.ink,
-          borderRadius: pixelRadius,
-          paddingVertical: paddingV,
-          paddingHorizontal: paddingH,
-          alignItems: "center",
-          justifyContent: "center",
-        }}
+      <View
+        style={[
+          styles.button,
+          {
+            backgroundColor: bg,
+            paddingVertical: paddingV,
+            paddingHorizontal: paddingH,
+          },
+        ]}
       >
-        <PixelText
-          variant={variant}
-          display={display}
-          style={{ color: fg, letterSpacing: display ? 1 : 0 }}
-        >
-          {label}
-        </PixelText>
-      </Pressable>
-    </View>
+        <View style={styles.content}>
+          {icon ? (
+            <Ionicons
+              name={icon}
+              size={size === "sm" ? 16 : 19}
+              color={fg}
+            />
+          ) : null}
+          <PixelText
+            variant={variant}
+            display={display}
+            style={{ color: fg, fontWeight: "600", letterSpacing: 0 }}
+          >
+            {label}
+          </PixelText>
+        </View>
+      </View>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  // 用 ink 色的「背板」當作按鈕的硬陰影
-  shadow: {
-    backgroundColor: pixelColors.ink,
+  button: {
+    minHeight: 42,
+    borderWidth: pixelBorderWidth,
+    borderColor: "rgba(37,44,39,0.12)",
     borderRadius: pixelRadius,
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "stretch",
   },
   fullWidth: {
     alignSelf: "stretch",
+  },
+  content: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
   },
 });

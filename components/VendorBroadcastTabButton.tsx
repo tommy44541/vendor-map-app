@@ -1,4 +1,4 @@
-import { pixelBorderWidth, pixelColors, pixelRadius } from "@/theme/pixel";
+import { pixelBorderWidth, pixelColors } from "@/theme/pixel";
 import Octicons from "@expo/vector-icons/Octicons";
 import { router } from "expo-router";
 import React from "react";
@@ -16,21 +16,15 @@ const VendorBroadcastTabButton = ({
       onPress={() => router.push("/vendor/notifications")}
       style={styles.hitArea}
     >
-      <View style={styles.shadow}>
-        <View
-          style={[
-            styles.fab,
-            {
-              backgroundColor: isFocused ? pixelColors.gold : pixelColors.red,
-            },
-          ]}
-        >
-          <Octicons
-            name="broadcast"
-            size={26}
-            color={isFocused ? pixelColors.ink : pixelColors.white}
-          />
-        </View>
+      <View
+        style={[
+          styles.fab,
+          {
+            backgroundColor: isFocused ? pixelColors.purple : pixelColors.red,
+          },
+        ]}
+      >
+        <Octicons name="broadcast" size={25} color={pixelColors.white} />
       </View>
     </TouchableOpacity>
   );
@@ -42,20 +36,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  shadow: {
-    marginTop: -28,
-    backgroundColor: pixelColors.ink,
-    borderRadius: pixelRadius,
-  },
   fab: {
-    width: 60,
-    height: 60,
+    marginTop: -28,
+    width: 56,
+    height: 56,
     borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
-    borderRadius: pixelRadius,
+    borderColor: pixelColors.surface,
+    borderRadius: 28,
     alignItems: "center",
     justifyContent: "center",
-    transform: [{ translateX: -2 }, { translateY: -2 }],
+    shadowColor: pixelColors.ink,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    elevation: 5,
   },
 });
 

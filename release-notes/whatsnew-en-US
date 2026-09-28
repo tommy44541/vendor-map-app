@@ -1,4 +1,5 @@
 Updates:
-- Vendors can now edit and save their store name and description
-- Improved capsule opacity, drag targets, and spring motion for both app modes
-- Fixed precise-handle dragging and brief compression when collapsing the vendor capsule
+- Refreshed the app with a cleaner earth-tone interface
+- Fixed Google account linking and vendor registration flows
+- Improved merchant search, menu loading, device status, and push reliability
+- Fixed location limits, form validation, and error messages

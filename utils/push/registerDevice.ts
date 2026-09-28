@@ -1,6 +1,9 @@
 import { Platform } from "react-native";
 import { deviceApi } from "../../services/api/device";
 import { getRegistrationCache, setRegistrationCache } from "./cache";
+import { isPushRegistrationStale } from "./registrationPolicy";
+
+export { isPushRegistrationStale } from "./registrationPolicy";
 
 export interface RegisterDeviceInput {
   userId: string;
@@ -10,8 +13,9 @@ export interface RegisterDeviceInput {
 
 /**
  * idempotent 註冊：
- * - 若已註冊且 token 未變 -> no-op（前端避免重複呼叫）
+ * - 若已註冊且 token 未變、七天內回報過 -> no-op
  * - 若 token 變 -> 重新 POST /devices（後端 upsert）
+ * - 至少每七天重新 POST，避免超過後端 30 天健康期限而收不到推播
  */
 export async function registerDeviceIfNeeded(input: RegisterDeviceInput) {
   const { userId, deviceId, fcmToken } = input;
@@ -21,7 +25,8 @@ export async function registerDeviceIfNeeded(input: RegisterDeviceInput) {
     !cache.device_registered ||
     cache.user_id !== userId ||
     cache.device_id !== deviceId ||
-    cache.last_fcm_token !== fcmToken;
+    cache.last_fcm_token !== fcmToken ||
+    isPushRegistrationStale(cache.last_registered_at);
 
   if (!shouldCall) {
     return { didRegister: false, reason: "no-op" as const };

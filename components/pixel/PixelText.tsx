@@ -37,7 +37,7 @@ const toneToColor: Record<PixelTextTone, string> = {
 export interface PixelTextProps extends TextProps {
   variant?: PixelTextVariant;
   tone?: PixelTextTone;
-  display?: boolean; // 用英文像素字(Press Start 2P)
+  display?: boolean; // Compatibility prop: now selects the display system face.
   style?: TextStyle | TextStyle[];
 }
 
@@ -49,10 +49,16 @@ export function PixelText({
   ...rest
 }: PixelTextProps) {
   const fontSize = pixelTextSize[variant];
-  // Press Start 2P 是 8px 字,實際顯示尺寸要乘以倍率,但 RN 接受任意 px,
-  // 我們仍維持整數倍以維持像素感。
-  const lineHeight = Math.round(fontSize * 1.4);
+  const lineHeight = Math.round(fontSize * (variant === "caption" ? 1.4 : 1.3));
   const fontFamily = display ? pixelFont.display : pixelFont.body;
+  const fontWeight =
+    variant === "hero" || variant === "display"
+      ? "700"
+      : variant === "titleLg" || variant === "title"
+        ? "600"
+        : variant === "bodyLg"
+          ? "500"
+          : "400";
 
   return (
     <Text
@@ -64,6 +70,8 @@ export function PixelText({
           fontSize,
           lineHeight,
           color: toneToColor[tone],
+          fontWeight,
+          letterSpacing: 0,
         },
         style,
       ]}
@@ -72,5 +80,7 @@ export function PixelText({
 }
 
 const styles = StyleSheet.create({
-  base: {},
+  base: {
+    includeFontPadding: false,
+  },
 });

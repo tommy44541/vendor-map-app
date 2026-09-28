@@ -81,7 +81,7 @@ const Profile = () => {
   const [storeDescriptionDraft, setStoreDescriptionDraft] = useState("");
 
   useEffect(() => {
-    StatusBar.setBarStyle("light-content");
+    StatusBar.setBarStyle("dark-content");
     if (Platform.OS === "android") {
       StatusBar.setBackgroundColor("transparent");
       StatusBar.setTranslucent(true);
@@ -326,14 +326,15 @@ const Profile = () => {
       {/* HUD */}
       <View style={[styles.hud, { paddingTop: insets.top + 8 }]}>
         <View style={{ flex: 1 }}>
-          <PixelText variant="display">個人</PixelText>
+          <PixelText variant="titleLg">商家設定</PixelText>
           <View style={{ height: 4 }} />
           <PixelText variant="caption" tone="muted">
             {user?.name ? `${user.name} (商家)` : "商家帳號"}
           </PixelText>
         </View>
         <PixelButton
-          label={isLoading ? "..." : ">> 重新整理"}
+          label={isLoading ? "載入中" : "重新整理"}
+          icon="refresh-outline"
           tone="red"
           size="sm"
           disabled={isLoading || isSubmitting}
@@ -370,7 +371,7 @@ const Profile = () => {
               <Ionicons
                 name="shield-checkmark-outline"
                 size={18}
-                color={pixelColors.ink}
+                color={isVerified ? pixelColors.white : pixelColors.ink}
               />
             </View>
             <View style={{ flex: 1 }}>
@@ -416,10 +417,10 @@ const Profile = () => {
           <PixelButton
             label={
               isSubmitting
-                ? "..."
+                ? "驗證中"
                 : isVerified
                   ? "已完成驗證"
-                  : "> 送出商家驗證"
+                  : "送出商家驗證"
             }
             tone={isVerified ? "paper" : "red"}
             fullWidth
@@ -444,7 +445,7 @@ const Profile = () => {
               <Ionicons
                 name="compass-outline"
                 size={18}
-                color={pixelColors.ink}
+                color={pixelColors.white}
               />
             </View>
             <View style={{ flex: 1 }}>
@@ -505,25 +506,25 @@ const Profile = () => {
           <View style={{ height: 6 }} />
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
             <PixelChip
-              label={discoveryProfile?.is_verified ? "✓ 驗證" : "✗ 驗證"}
+              label={discoveryProfile?.is_verified ? "已驗證" : "尚未驗證"}
               tone={discoveryProfile?.is_verified ? "green" : "red"}
               active
             />
             <PixelChip
-              label={selectedCategoryId ? "✓ 主分類" : "✗ 主分類"}
+              label={selectedCategoryId ? "已有主分類" : "缺少主分類"}
               tone={selectedCategoryId ? "green" : "red"}
               active
             />
             <PixelChip
-              label={selectedSubcategoryId ? "✓ 子分類" : "✗ 子分類"}
+              label={selectedSubcategoryId ? "已有子分類" : "缺少子分類"}
               tone={selectedSubcategoryId ? "green" : "red"}
               active
             />
             <PixelChip
               label={
                 discoveryProfile?.has_active_primary_location
-                  ? "✓ 主要地點"
-                  : "✗ 主要地點"
+                  ? "已有主要地點"
+                  : "缺少主要地點"
               }
               tone={
                 discoveryProfile?.has_active_primary_location ? "green" : "red"
@@ -535,7 +536,8 @@ const Profile = () => {
             <>
               <View style={{ height: 8 }} />
               <PixelButton
-                label="前往位置設定主要地點 →"
+                label="設定主要地點"
+                icon="location-outline"
                 tone="gold"
                 size="sm"
                 onPress={() => router.push("/vendor/location" as any)}
@@ -677,7 +679,8 @@ const Profile = () => {
                 </View>
                 <View style={{ flex: 1 }}>
                   <PixelButton
-                    label={isSavingDiscovery ? "..." : "> 儲存"}
+                    label={isSavingDiscovery ? "儲存中" : "儲存"}
+                    icon="checkmark-outline"
                     tone="blue"
                     fullWidth
                     disabled={isSavingDiscovery || isLoading}
@@ -690,7 +693,8 @@ const Profile = () => {
             <>
               <View style={styles.divider} />
               <PixelButton
-                label="> 編輯探索設定"
+                label="編輯探索設定"
+                icon="create-outline"
                 tone="blue"
                 fullWidth
                 disabled={isLoading}
@@ -721,7 +725,8 @@ const Profile = () => {
             <Pressable>
               <View pointerEvents="none">
                 <PixelButton
-                  label="> 開啟 QR Code"
+                  label="開啟 QR Code"
+                  icon="qr-code-outline"
                   tone="gold"
                   fullWidth
                   onPress={() => {}}
@@ -796,7 +801,8 @@ const Profile = () => {
                 </View>
                 <View style={{ flex: 1 }}>
                   <PixelButton
-                    label={isSavingMerchantProfile ? "..." : "> 儲存"}
+                    label={isSavingMerchantProfile ? "儲存中" : "儲存"}
+                    icon="checkmark-outline"
                     tone="green"
                     fullWidth
                     disabled={isSavingMerchantProfile || isLoading}
@@ -809,7 +815,8 @@ const Profile = () => {
             <>
               <View style={{ height: 12 }} />
               <PixelButton
-                label="> 編輯店家資料"
+                label="編輯店家資料"
+                icon="create-outline"
                 tone="purple"
                 fullWidth
                 onPress={startMerchantProfileEdit}
@@ -821,7 +828,8 @@ const Profile = () => {
           <View style={{ flexDirection: "row", gap: 8 }}>
             <View style={{ flex: 1 }}>
               <PixelButton
-                label="> 品項管理"
+                label="品項管理"
+                icon="restaurant-outline"
                 tone="blue"
                 fullWidth
                 onPress={() => router.push("/vendor/menu")}
@@ -829,7 +837,8 @@ const Profile = () => {
             </View>
             <View style={{ flex: 1 }}>
               <PixelButton
-                label="> 位置設定"
+                label="位置設定"
+                icon="location-outline"
                 tone="gold"
                 fullWidth
                 onPress={() => router.push("/vendor/location")}
@@ -840,6 +849,7 @@ const Profile = () => {
 
         <PixelButton
           label="刪除帳號與資料"
+          icon="trash-outline"
           tone="paper"
           fullWidth
           onPress={() =>
@@ -850,6 +860,7 @@ const Profile = () => {
         {/* 登出 */}
         <PixelButton
           label="登出"
+          icon="log-out-outline"
           tone="red"
           fullWidth
           onPress={async () => {

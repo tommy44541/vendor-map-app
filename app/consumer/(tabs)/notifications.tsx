@@ -86,7 +86,7 @@ export default function ConsumerNotificationsScreen() {
   };
 
   useEffect(() => {
-    StatusBar.setBarStyle("light-content");
+    StatusBar.setBarStyle("dark-content");
     if (Platform.OS === "android") {
       StatusBar.setBackgroundColor("transparent");
       StatusBar.setTranslucent(true);
@@ -151,17 +151,15 @@ export default function ConsumerNotificationsScreen() {
     <View style={styles.root}>
       <View style={[styles.hud, { paddingTop: insets.top + 8 }]}>
         <View style={{ flex: 1 }}>
-          <PixelText variant="caption" tone="red" display>
-            INBOX
-          </PixelText>
-          <PixelText variant="display">通知</PixelText>
+          <PixelText variant="titleLg">通知</PixelText>
           <View style={{ height: 4 }} />
           <PixelText variant="caption" tone="muted">
             顯示最近開啟或收到的推播訊息
           </PixelText>
         </View>
         <PixelButton
-          label="x 清空"
+          label="清空"
+          icon="trash-outline"
           tone="red"
           size="sm"
           onPress={() => setItems([])}
@@ -178,13 +176,13 @@ export default function ConsumerNotificationsScreen() {
           gap: 14,
         }}
       >
-        <PixelCard title="LOG" titleTone="red" titleDisplay padding={14}>
+        <PixelCard title="通知紀錄" titleTone="red" padding={14}>
           <View style={styles.headerRow}>
             <View style={styles.headerIcon}>
               <Ionicons
                 name="chatbubble-ellipses"
                 size={18}
-                color={pixelColors.ink}
+                color={pixelColors.white}
               />
             </View>
             <View style={{ flex: 1 }}>
@@ -207,7 +205,7 @@ export default function ConsumerNotificationsScreen() {
               </PixelText>
               <View style={{ height: 4 }} />
               <PixelText variant="caption" tone="muted">
-                訂閱商家後,商家發布訊息時會在這裡列出。
+                訂閱商家後，商家發布訊息時會在這裡列出。
               </PixelText>
             </View>
           ) : (
@@ -224,7 +222,7 @@ export default function ConsumerNotificationsScreen() {
                   accessibilityLabel={`${it.title}，在地圖查看位置`}
                 >
                   <View style={styles.itemTitleRow}>
-                    <PixelChip label="NEW" tone="red" active display />
+                    <PixelChip label="最新" tone="red" active />
                     <View style={{ flex: 1 }}>
                       <PixelText variant="bodyLg" numberOfLines={1}>
                         {it.title}

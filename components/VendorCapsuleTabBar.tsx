@@ -176,7 +176,7 @@ export function VendorCapsuleTabBar({ state, navigation }: BottomTabBarProps) {
     backgroundColor: interpolateColor(
       capsuleHeight.value,
       [CAPSULE_SNAP_MIN, CAPSULE_SNAP_MID, CAPSULE_SNAP_MAX],
-      ["rgba(250,244,232,0.92)", "rgba(250,244,232,0.92)", "#FAF4E8"],
+      ["rgba(250,250,247,0.96)", "rgba(250,250,247,0.97)", "#FAFAF7"],
     ),
   }));
 
@@ -385,8 +385,8 @@ export function VendorCapsuleTabBar({ state, navigation }: BottomTabBarProps) {
       setCreateLabel("");
       await loadLocations(res.data?.ID);
     } catch (error) {
-      if (error instanceof ApiError && error.code === "LOCATION_LIMIT_EXCEEDED")
-        Alert.alert("錯誤", "您已達到位置數量限制（最多 5 個）");
+      if (error instanceof ApiError && error.code === "LOCATION_LIMIT_REACHED")
+        Alert.alert("錯誤", "您已達到位置數量限制（最多 10 個）");
       else if (error instanceof ApiError && error.code === "TOKEN_EXPIRED")
         handleAuthExpired();
       else Alert.alert("錯誤", "保存位置失敗，請重試");
@@ -510,7 +510,8 @@ export function VendorCapsuleTabBar({ state, navigation }: BottomTabBarProps) {
                   />
                   <View style={{ height: 10 }} />
                   <PixelButton
-                    label={isGeocoding ? "..." : "> 搜尋地址"}
+                    label={isGeocoding ? "搜尋中" : "搜尋地址"}
+                    icon="search-outline"
                     tone="ink"
                     fullWidth
                     disabled={isLoading || isGeocoding}
@@ -526,7 +527,8 @@ export function VendorCapsuleTabBar({ state, navigation }: BottomTabBarProps) {
                 <View style={{ flexDirection: "row", gap: 8 }}>
                   <View style={{ flex: 1 }}>
                     <PixelButton
-                      label={isLoading ? "..." : "> 取得目前位置"}
+                      label={isLoading ? "定位中" : "取得目前位置"}
+                      icon="navigate-outline"
                       tone="blue"
                       fullWidth
                       disabled={isLoading}
@@ -536,7 +538,8 @@ export function VendorCapsuleTabBar({ state, navigation }: BottomTabBarProps) {
                   {currentLocation && (
                     <View style={{ flex: 1 }}>
                       <PixelButton
-                        label={isLoading ? "..." : "> 保存位置"}
+                        label={isLoading ? "儲存中" : "儲存位置"}
+                        icon="checkmark-outline"
                         tone="gold"
                         fullWidth
                         disabled={isLoading}
@@ -594,7 +597,8 @@ export function VendorCapsuleTabBar({ state, navigation }: BottomTabBarProps) {
                 <View style={styles.savedHeader}>
                   <PixelText variant="bodyLg">已保存位置</PixelText>
                   <PixelButton
-                    label={isListLoading ? "..." : ">> 刷新"}
+                    label={isListLoading ? "載入中" : "重新整理"}
+                    icon="refresh-outline"
                     tone="paper"
                     size="sm"
                     disabled={isListLoading}
@@ -663,7 +667,8 @@ export function VendorCapsuleTabBar({ state, navigation }: BottomTabBarProps) {
                               onPress={() => openEdit(loc)}
                             />
                             <PixelButton
-                              label="x"
+                              label="刪除"
+                              icon="trash-outline"
                               tone="red"
                               size="sm"
                               display
@@ -698,12 +703,12 @@ export function VendorCapsuleTabBar({ state, navigation }: BottomTabBarProps) {
                   <Ionicons
                     name={tab.icon}
                     size={20}
-                    color={isActive ? pixelColors.gold : pixelColors.gray300}
+                    color={isActive ? pixelColors.purple : pixelColors.gray300}
                   />
                   <PixelText
                     variant="caption"
                     style={{
-                      color: isActive ? pixelColors.gold : pixelColors.gray300,
+                      color: isActive ? pixelColors.purple : pixelColors.gray300,
                       marginTop: 2,
                     }}
                   >
@@ -757,9 +762,11 @@ export function VendorCapsuleTabBar({ state, navigation }: BottomTabBarProps) {
                         {r.longitude.toFixed(6)}
                       </PixelText>
                     </View>
-                    <PixelText variant="title" tone="gold" display>
-                      {">"}
-                    </PixelText>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={20}
+                      color={pixelColors.gray500}
+                    />
                   </Pressable>
                 ))}
               </View>
@@ -837,7 +844,8 @@ export function VendorCapsuleTabBar({ state, navigation }: BottomTabBarProps) {
               </View>
               <View style={{ flex: 1 }}>
                 <PixelButton
-                  label={isSavingEdit ? "..." : "> 保存"}
+                  label={isSavingEdit ? "儲存中" : "儲存"}
+                  icon="checkmark-outline"
                   tone="blue"
                   fullWidth
                   disabled={isSavingEdit}

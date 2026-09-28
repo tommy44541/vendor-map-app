@@ -49,7 +49,7 @@ export const showErrorAlert = (
   } else if (typeof error === 'number') {
     message = HTTP_STATUS_MESSAGES[error] || `錯誤（${error}）`;
   } else if (error instanceof ApiError) {
-    message = HTTP_STATUS_MESSAGES[error.status] || error.message || '錯誤';
+    message = error.message || HTTP_STATUS_MESSAGES[error.status] || '錯誤';
     if (error.requestId) {
       message = `${message}\n\nrequest_id: ${error.requestId}`;
     }

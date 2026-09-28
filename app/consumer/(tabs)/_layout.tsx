@@ -24,7 +24,7 @@ const ConsumerLayout = () => {
         tabBarLabelStyle: {
           fontFamily: pixelFont.body,
           fontSize: 11,
-          letterSpacing: 0.5,
+          letterSpacing: 0,
           marginTop: 2,
         },
         tabBarActiveTintColor: pixelColors.gold,

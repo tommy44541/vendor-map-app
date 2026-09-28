@@ -8,7 +8,12 @@ export const styles = StyleSheet.create({
     alignSelf: "center",
     borderRadius: 40,
     borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
+    borderColor: pixelColors.borderSoft,
+    shadowColor: pixelColors.ink,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 4,
     overflow: "hidden",
     flexDirection: "column",
   },
@@ -74,7 +79,7 @@ export const styles = StyleSheet.create({
   },
   addressBox: {
     borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
+    borderColor: pixelColors.borderSoft,
     borderRadius: pixelRadius,
     backgroundColor: pixelColors.surfaceAlt,
     padding: 10,
@@ -87,7 +92,7 @@ export const styles = StyleSheet.create({
   },
   emptyBox: {
     borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
+    borderColor: pixelColors.borderSoft,
     borderRadius: pixelRadius,
     backgroundColor: pixelColors.surfaceAlt,
     padding: 14,
@@ -98,7 +103,7 @@ export const styles = StyleSheet.create({
     alignItems: "flex-start",
     gap: 10,
     borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
+    borderColor: pixelColors.borderSoft,
     borderRadius: pixelRadius,
     backgroundColor: pixelColors.surface,
     padding: 12,
@@ -117,7 +122,7 @@ export const styles = StyleSheet.create({
   // ── Modals ────────────────────────────────────────────────────
   modalBackdrop: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.6)",
+    backgroundColor: "rgba(24,31,26,0.48)",
     justifyContent: "center",
     paddingHorizontal: 16,
   },
@@ -127,7 +132,7 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
+    borderColor: pixelColors.borderSoft,
     borderRadius: pixelRadius,
     backgroundColor: pixelColors.surfaceAlt,
     paddingHorizontal: 10,
@@ -135,7 +140,7 @@ export const styles = StyleSheet.create({
   },
   editWrap: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(24,31,26,0.48)",
     justifyContent: "flex-end",
   },
   editCard: {

@@ -48,7 +48,7 @@ export default function RoleOnboardingScreen({
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
-    StatusBar.setBarStyle("light-content");
+    StatusBar.setBarStyle("dark-content");
     if (Platform.OS === "android") {
       StatusBar.setBackgroundColor("transparent");
       StatusBar.setTranslucent(true);
@@ -86,8 +86,8 @@ export default function RoleOnboardingScreen({
           }}
         >
           <View style={{ gap: 6 }}>
-            <PixelText variant="caption" tone="gold" display>
-              ONBOARDING
+            <PixelText variant="caption" tone="green">
+              快速導覽
             </PixelText>
             <PixelText variant="display">{title}</PixelText>
             <View style={{ height: 4 }} />
@@ -99,21 +99,20 @@ export default function RoleOnboardingScreen({
           <View style={{ height: 18 }} />
 
           <PixelCard
-            title={`STEP  ${index + 1} / ${steps.length}`}
+            title={`步驟 ${index + 1} / ${steps.length}`}
             titleTone="blue"
-            titleDisplay
             padding={16}
           >
             <View style={styles.stepHeader}>
               <PixelChip label={currentStep.eyebrow} tone="purple" active />
-              <PixelText variant="caption" tone="muted" display>
+              <PixelText variant="caption" tone="muted">
                 {stepCounter}
               </PixelText>
             </View>
 
             <View style={{ height: 14 }} />
-            <View style={[styles.iconBox, { backgroundColor: accent }]}>
-              <Ionicons name={currentStep.icon} size={44} color={pixelColors.ink} />
+            <View style={styles.iconBox}>
+              <Ionicons name={currentStep.icon} size={44} color={accent} />
             </View>
 
             <View style={{ height: 14 }} />
@@ -125,8 +124,8 @@ export default function RoleOnboardingScreen({
 
             <View style={{ height: 12 }} />
             <View style={styles.noteBox}>
-              <PixelText variant="caption" tone="gold" display>
-                NOTE
+              <PixelText variant="caption" tone="green">
+                小提醒
               </PixelText>
               <View style={{ height: 4 }} />
               <PixelText variant="body">{currentStep.note}</PixelText>
@@ -143,8 +142,8 @@ export default function RoleOnboardingScreen({
                   {
                     backgroundColor:
                       stepIndex <= index
-                        ? pixelColors.gold
-                        : pixelColors.gray700,
+                        ? pixelColors.purple
+                        : pixelColors.borderSoft,
                   },
                 ]}
               />
@@ -155,8 +154,8 @@ export default function RoleOnboardingScreen({
 
           <View style={{ marginTop: 24 }}>
             <PixelButton
-              label={isLastStep ? `> ${finishLabel}` : "> 下一步"}
-              tone="gold"
+              label={isLastStep ? finishLabel : "下一步"}
+              tone="purple"
               size="lg"
               fullWidth
               onPress={() => {
@@ -173,7 +172,7 @@ export default function RoleOnboardingScreen({
               tone="muted"
               style={{ textAlign: "center" }}
             >
-              引導只會在首次登入時顯示一次,之後可直接進入主畫面。
+              引導只會在首次登入時顯示一次，之後可直接進入主畫面。
             </PixelText>
           </View>
         </ScrollView>
@@ -203,15 +202,16 @@ const styles = StyleSheet.create({
   iconBox: {
     width: 112,
     height: 112,
-    borderWidth: pixelBorderWidth * 2,
-    borderColor: pixelColors.ink,
-    borderRadius: pixelRadius,
+    borderWidth: pixelBorderWidth,
+    borderColor: pixelColors.borderSoft,
+    borderRadius: pixelRadius * 2,
+    backgroundColor: pixelColors.surfaceAlt,
     alignItems: "center",
     justifyContent: "center",
   },
   noteBox: {
     borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
+    borderColor: pixelColors.borderSoft,
     borderRadius: pixelRadius,
     backgroundColor: pixelColors.surfaceAlt,
     padding: 10,
@@ -222,9 +222,7 @@ const styles = StyleSheet.create({
   },
   progressDot: {
     flex: 1,
-    height: 8,
-    borderWidth: 1,
-    borderColor: pixelColors.ink,
+    height: 4,
     borderRadius: 2,
   },
 });

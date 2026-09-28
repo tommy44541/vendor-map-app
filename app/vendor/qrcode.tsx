@@ -37,7 +37,7 @@ export default function VendorQrCodeScreen() {
   const [qrError, setQrError] = useState("");
 
   React.useEffect(() => {
-    StatusBar.setBarStyle("light-content");
+    StatusBar.setBarStyle("dark-content");
     if (Platform.OS === "android") {
       StatusBar.setBackgroundColor("transparent");
       StatusBar.setTranslucent(true);
@@ -190,10 +190,7 @@ export default function VendorQrCodeScreen() {
           <Ionicons name="chevron-back" size={24} color={pixelColors.ink} />
         </Pressable>
         <View style={{ flex: 1 }}>
-          <PixelText variant="caption" tone="gold" display>
-            SHARE  QR
-          </PixelText>
-          <PixelText variant="title">我的訂閱 QR Code</PixelText>
+          <PixelText variant="titleLg">我的訂閱 QR Code</PixelText>
         </View>
       </View>
 
@@ -207,9 +204,8 @@ export default function VendorQrCodeScreen() {
         }}
       >
         <PixelCard
-          title="MERCHANT  QR"
+          title="商家訂閱碼"
           titleTone="gold"
-          titleDisplay
           padding={14}
         >
           <View style={styles.headerRow}>
@@ -219,7 +215,7 @@ export default function VendorQrCodeScreen() {
             <View style={{ flex: 1 }}>
               <PixelText variant="bodyLg">掃描訂閱</PixelText>
               <PixelText variant="caption" tone="muted">
-                客戶端掃描此 QR,即可訂閱你的通知
+                客戶端掃描此 QR，即可訂閱你的通知
               </PixelText>
             </View>
           </View>
@@ -237,8 +233,8 @@ export default function VendorQrCodeScreen() {
                     <View style={styles.qrBox}>
                       <PixelLoading label="" size="md" tone="purple" />
                       <View style={{ height: 8 }} />
-                      <PixelText variant="caption" tone="inverse">
-                        載入 QR Code 中...
+                      <PixelText variant="caption" tone="muted">
+                        載入 QR Code 中
                       </PixelText>
                     </View>
                   ) : qrImageUri ? (
@@ -257,14 +253,15 @@ export default function VendorQrCodeScreen() {
                       <View style={{ height: 8 }} />
                       <PixelText
                         variant="body"
-                        tone="inverse"
+                        tone="default"
                         style={{ textAlign: "center", paddingHorizontal: 12 }}
                       >
                         {qrError}
                       </PixelText>
                       <View style={{ height: 10 }} />
                       <PixelButton
-                        label="> 重新載入"
+                        label="重新載入"
+                        icon="refresh-outline"
                         tone="red"
                         size="sm"
                         onPress={() => void loadQrCode()}
@@ -272,7 +269,7 @@ export default function VendorQrCodeScreen() {
                     </View>
                   ) : (
                     <View style={styles.qrBox}>
-                      <PixelText variant="body" tone="inverse">
+                      <PixelText variant="body" tone="muted">
                         尚未取得 QR Code
                       </PixelText>
                     </View>
@@ -280,7 +277,7 @@ export default function VendorQrCodeScreen() {
                 </View>
 
                 <View style={{ height: 10 }} />
-                <PixelText variant="caption" tone="inverse">
+                <PixelText variant="caption" tone="muted">
                   此 QR Code 由系統依目前登入的商家帳號產生
                 </PixelText>
               </View>
@@ -291,7 +288,8 @@ export default function VendorQrCodeScreen() {
           <View style={{ flexDirection: "row", gap: 8 }}>
             <View style={{ flex: 1 }}>
               <PixelButton
-                label={busy === "image" ? "..." : "> 分享圖片"}
+                label={busy === "image" ? "準備中" : "分享圖片"}
+                icon="share-outline"
                 tone="ink"
                 fullWidth
                 disabled={busy !== "none"}
@@ -300,7 +298,8 @@ export default function VendorQrCodeScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <PixelButton
-                label={busy === "pdf" ? "..." : "> 匯出 PDF"}
+                label={busy === "pdf" ? "匯出中" : "匯出 PDF"}
+                icon="document-outline"
                 tone="blue"
                 fullWidth
                 disabled={busy !== "none"}
@@ -311,7 +310,8 @@ export default function VendorQrCodeScreen() {
 
           <View style={{ height: 8 }} />
           <PixelButton
-            label={busy === "print" ? "..." : "> 列印"}
+            label={busy === "print" ? "準備中" : "列印"}
+            icon="print-outline"
             tone="gold"
             fullWidth
             disabled={busy !== "none"}
@@ -320,9 +320,8 @@ export default function VendorQrCodeScreen() {
         </PixelCard>
 
         <PixelCard
-          title="TIP"
+          title="使用提示"
           titleTone="blue"
-          titleDisplay
           padding={14}
         >
           <View style={styles.tipRow}>
@@ -332,7 +331,7 @@ export default function VendorQrCodeScreen() {
               color={pixelColors.blue}
             />
             <PixelText variant="body" style={{ flex: 1 }}>
-              建議將「匯出 PDF」的檔案分享給列印 App 或 AirPrint 列印,張貼在攤位旁讓顧客掃碼訂閱。
+              建議將匯出的 PDF 分享至列印 App 或使用 AirPrint，張貼在攤位旁讓顧客掃碼訂閱。
             </PixelText>
           </View>
         </PixelCard>

@@ -11,7 +11,7 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 14,
     borderBottomWidth: pixelBorderWidth,
-    borderBottomColor: pixelColors.ink,
+    borderBottomColor: pixelColors.borderSoft,
   },
   hudTop: {
     flexDirection: "row",
@@ -25,10 +25,10 @@ export const styles = StyleSheet.create({
   statBox: {
     flex: 1,
     borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
+    borderColor: pixelColors.borderSoft,
     borderRadius: pixelRadius,
-    borderTopWidth: 6,
-    backgroundColor: pixelColors.surfaceAlt,
+    borderTopWidth: 3,
+    backgroundColor: pixelColors.surface,
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
@@ -45,9 +45,9 @@ export const styles = StyleSheet.create({
   },
   priceBox: {
     borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
+    borderColor: pixelColors.purple,
     borderRadius: pixelRadius,
-    backgroundColor: pixelColors.ink,
+    backgroundColor: pixelColors.purple,
     paddingHorizontal: 8,
     paddingVertical: 4,
     alignItems: "center",
@@ -64,7 +64,7 @@ export const styles = StyleSheet.create({
   },
   modalWrap: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.55)",
+    backgroundColor: "rgba(24,31,26,0.48)",
     justifyContent: "flex-end",
   },
   modalCard: {

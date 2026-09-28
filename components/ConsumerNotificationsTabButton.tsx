@@ -1,4 +1,4 @@
-import { pixelColors, pixelBorderWidth, pixelRadius } from "@/theme/pixel";
+import { pixelColors, pixelBorderWidth } from "@/theme/pixel";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
 import React from "react";
@@ -16,22 +16,15 @@ const ConsumerNotificationsTabButton = ({
       onPress={() => router.push("/consumer/notifications")}
       style={styles.hitArea}
     >
-      {/* 用 ink 色背板模擬硬陰影,維持與 PixelButton 一致風格 */}
-      <View style={styles.shadow}>
-        <View
-          style={[
-            styles.fab,
-            {
-              backgroundColor: isFocused ? pixelColors.gold : pixelColors.red,
-            },
-          ]}
-        >
-          <Ionicons
-            name="notifications"
-            size={28}
-            color={isFocused ? pixelColors.ink : pixelColors.white}
-          />
-        </View>
+      <View
+        style={[
+          styles.fab,
+          {
+            backgroundColor: isFocused ? pixelColors.purple : pixelColors.red,
+          },
+        ]}
+      >
+        <Ionicons name="notifications-outline" size={26} color={pixelColors.white} />
       </View>
     </TouchableOpacity>
   );
@@ -43,20 +36,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  shadow: {
-    marginTop: -28,
-    backgroundColor: pixelColors.ink,
-    borderRadius: pixelRadius,
-  },
   fab: {
-    width: 60,
-    height: 60,
+    marginTop: -28,
+    width: 56,
+    height: 56,
     borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
-    borderRadius: pixelRadius,
+    borderColor: pixelColors.surface,
+    borderRadius: 28,
     alignItems: "center",
     justifyContent: "center",
-    transform: [{ translateX: -2 }, { translateY: -2 }],
+    shadowColor: pixelColors.ink,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    elevation: 5,
   },
 });
 

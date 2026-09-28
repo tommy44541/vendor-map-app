@@ -3,8 +3,6 @@ import { View, ViewProps, ViewStyle, StyleSheet } from "react-native";
 import { pixelColors, pixelBorderWidth, pixelRadius } from "@/theme/pixel";
 import { PixelText } from "./PixelText";
 
-// PixelCard:RPG 對話框風格,可有 header tag(像 NES 主選單上方的牌子)。
-
 export interface PixelCardProps extends ViewProps {
   title?: string;
   titleTone?: "red" | "gold" | "blue" | "green" | "pink" | "ink" | "purple";
@@ -17,13 +15,13 @@ export interface PixelCardProps extends ViewProps {
 }
 
 const titleTones = {
-  red: { bg: pixelColors.red, fg: pixelColors.white },
-  gold: { bg: pixelColors.gold, fg: pixelColors.ink },
-  blue: { bg: pixelColors.blue, fg: pixelColors.white },
-  green: { bg: pixelColors.green, fg: pixelColors.ink },
-  pink: { bg: pixelColors.pink, fg: pixelColors.ink },
-  ink: { bg: pixelColors.ink, fg: pixelColors.white },
-  purple: { bg: pixelColors.purple, fg: pixelColors.white },
+  red: { bg: "#F1E0DA", fg: pixelColors.red },
+  gold: { bg: "#F2E9CE", fg: pixelColors.ink },
+  blue: { bg: "#E1E9EB", fg: pixelColors.blue },
+  green: { bg: "#DFE7DE", fg: pixelColors.green },
+  pink: { bg: "#E9E1E8", fg: pixelColors.pink },
+  ink: { bg: pixelColors.surfaceAlt, fg: pixelColors.ink },
+  purple: { bg: "#DDE5DB", fg: pixelColors.purple },
 } as const;
 
 export function PixelCard({
@@ -47,7 +45,7 @@ export function PixelCard({
           <PixelText
             variant="bodyLg"
             display={titleDisplay}
-            style={{ color: tone.fg, letterSpacing: titleDisplay ? 1 : 0 }}
+            style={{ color: tone.fg, fontWeight: "600", letterSpacing: 0 }}
           >
             {title}
           </PixelText>
@@ -69,16 +67,15 @@ export function PixelCard({
 const styles = StyleSheet.create({
   wrap: {
     borderWidth: pixelBorderWidth,
-    borderColor: pixelColors.ink,
+    borderColor: pixelColors.borderSoft,
     borderRadius: pixelRadius,
-    // 讓 title bar 的方角被裁出圓角來
     overflow: "hidden",
   },
   titleBar: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderBottomWidth: pixelBorderWidth,
-    borderBottomColor: pixelColors.ink,
+    borderBottomColor: pixelColors.borderSoft,
   },
   body: {},
   bodyFlexible: {

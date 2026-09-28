@@ -44,7 +44,7 @@ export default function ConsumerFavoritesScreen() {
   const [subs, setSubs] = useState<UserMerchantSubscription[]>([]);
 
   useEffect(() => {
-    StatusBar.setBarStyle("light-content");
+    StatusBar.setBarStyle("dark-content");
     if (Platform.OS === "android") {
       StatusBar.setBackgroundColor("transparent");
       StatusBar.setTranslucent(true);
@@ -125,10 +125,7 @@ export default function ConsumerFavoritesScreen() {
       {/* HUD 標題列 */}
       <View style={[styles.hud, { paddingTop: insets.top + 8 }]}>
         <View style={{ flex: 1 }}>
-          <PixelText variant="caption" tone="pink" display>
-            COLLECTION
-          </PixelText>
-          <PixelText variant="display">收藏</PixelText>
+          <PixelText variant="titleLg">收藏</PixelText>
           <View style={{ height: 4 }} />
           <View style={{ flexDirection: "row", gap: 6 }}>
             <PixelChip
@@ -140,7 +137,8 @@ export default function ConsumerFavoritesScreen() {
           </View>
         </View>
         <PixelButton
-          label={loading ? "..." : ">> 重新整理"}
+          label={loading ? "載入中" : "重新整理"}
+          icon="refresh-outline"
           tone="pink"
           size="sm"
           onPress={loadSubscriptions}
@@ -157,10 +155,10 @@ export default function ConsumerFavoritesScreen() {
           gap: 14,
         }}
       >
-        <PixelCard title="MY  LIST" titleTone="pink" titleDisplay padding={14}>
+        <PixelCard title="訂閱清單" titleTone="pink" padding={14}>
           <View style={styles.headerRow}>
             <View style={styles.headerIcon}>
-              <Ionicons name="heart" size={18} color={pixelColors.ink} />
+              <Ionicons name="heart" size={18} color={pixelColors.white} />
             </View>
             <View style={{ flex: 1 }}>
               <PixelText variant="bodyLg">我的訂閱清單</PixelText>
@@ -183,8 +181,8 @@ export default function ConsumerFavoritesScreen() {
                 marginTop: 14,
                 padding: 12,
                 borderWidth: pixelBorderWidth,
-                borderColor: pixelColors.ink,
-                borderRadius: 4,
+                borderColor: pixelColors.borderSoft,
+                borderRadius: 8,
                 backgroundColor: pixelColors.surfaceAlt,
               }}
             >
@@ -220,9 +218,11 @@ export default function ConsumerFavoritesScreen() {
                           tone={s.is_active ? "green" : "paper"}
                           active
                         />
-                        <PixelText variant="title" tone="gold" display>
-                          {">"}
-                        </PixelText>
+                        <Ionicons
+                          name="chevron-forward"
+                          size={20}
+                          color={pixelColors.gray500}
+                        />
                       </View>
                     </Pressable>
 
@@ -232,7 +232,8 @@ export default function ConsumerFavoritesScreen() {
                     </PixelText>
                     <View style={{ height: 10 }} />
                     <PixelButton
-                      label={loading ? "..." : "x 取消訂閱"}
+                      label={loading ? "處理中" : "取消訂閱"}
+                      icon="heart-dislike-outline"
                       tone="red"
                       fullWidth
                       disabled={loading}

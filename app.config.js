@@ -6,7 +6,7 @@ const androidGoogleMapsApiKey =
 module.exports = () => ({
   name: "尋攤",
   slug: "vendor_map_app",
-  version: "1.0.28",
+  version: "1.0.29",
   orientation: "portrait",
   icon: "./assets/images/app-icon-wiv-field.png",
   scheme: "vendormapapp",
