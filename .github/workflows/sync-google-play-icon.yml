@@ -132,7 +132,31 @@ jobs:
           upload_api="https://androidpublisher.googleapis.com/upload/androidpublisher/v3/applications/${PACKAGE_NAME}"
           auth_header="Authorization: Bearer ${ACCESS_TOKEN}"
 
-          edit_response="$(curl --fail-with-body --silent --show-error \
+          api_call() {
+            local response_file status
+            response_file="$(mktemp)"
+            status="$(curl --silent --show-error \
+              --output "$response_file" \
+              --write-out '%{http_code}' \
+              "$@")" || {
+              cat "$response_file" >&2
+              rm -f "$response_file"
+              return 1
+            }
+
+            if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
+              echo "Google Play API request failed with HTTP $status:" >&2
+              cat "$response_file" >&2
+              rm -f "$response_file"
+              return 1
+            fi
+
+            cat "$response_file"
+            rm -f "$response_file"
+          }
+
+          echo "Creating Google Play edit..."
+          edit_response="$(api_call \
             --request POST \
             --header "$auth_header" \
             --header "Content-Type: application/json" \
@@ -154,12 +178,14 @@ jobs:
           trap cleanup_edit ERR
 
           images_url="${api}/edits/${edit_id}/listings/${LISTING_LANGUAGE}/icon"
-          curl --fail-with-body --silent --show-error \
+          echo "Removing the existing ${LISTING_LANGUAGE} store icon..."
+          api_call \
             --request DELETE \
             --header "$auth_header" \
             "$images_url" >/dev/null
 
-          upload_response="$(curl --fail-with-body --silent --show-error \
+          echo "Uploading ${ICON_PATH}..."
+          upload_response="$(api_call \
             --request POST \
             --header "$auth_header" \
             --header "Content-Type: image/png" \
@@ -172,7 +198,8 @@ jobs:
             exit 1
           fi
 
-          curl --fail-with-body --silent --show-error \
+          echo "Validating Google Play edit ${edit_id}..."
+          api_call \
             --request POST \
             --header "$auth_header" \
             --header "Content-Type: application/json" \
@@ -186,7 +213,8 @@ jobs:
             outcome="submitted_for_review"
           fi
 
-          curl --fail-with-body --silent --show-error \
+          echo "Committing Google Play edit ${edit_id}..."
+          api_call \
             --request POST \
             --header "$auth_header" \
             --header "Content-Type: application/json" \
