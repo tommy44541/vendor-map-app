@@ -198,14 +198,6 @@ jobs:
             exit 1
           fi
 
-          echo "Validating Google Play edit ${edit_id}..."
-          api_call \
-            --request POST \
-            --header "$auth_header" \
-            --header "Content-Type: application/json" \
-            --data '{}' \
-            "${api}/edits/${edit_id}:validate" >/dev/null
-
           commit_query="changesNotSentForReview=true&changesInReviewBehavior=ERROR_IF_IN_REVIEW"
           outcome="saved_without_review"
           if [ "$SUBMIT_FOR_REVIEW" = "true" ]; then
