@@ -54,13 +54,70 @@ jobs:
           console.log(`Validated ${path}: ${width} x ${height}, ${icon.length} bytes.`);
           NODE
 
-      - name: Authenticate to Google Play
+      - name: Create Google Play access token
         id: play_auth
-        uses: google-github-actions/auth@v3
-        with:
-          credentials_json: ${{ secrets.PLAY_STORE_SA_JSON }}
-          token_format: access_token
-          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+        shell: bash
+        env:
+          PLAY_STORE_SA_JSON: ${{ secrets.PLAY_STORE_SA_JSON }}
+        run: |
+          set -euo pipefail
+
+          node <<'NODE'
+          const crypto = require("crypto");
+          const fs = require("fs");
+
+          const credentials = JSON.parse(process.env.PLAY_STORE_SA_JSON || "{}");
+          if (!credentials.client_email || !credentials.private_key) {
+            throw new Error("PLAY_STORE_SA_JSON must contain client_email and private_key.");
+          }
+
+          const encode = (value) =>
+            Buffer.from(JSON.stringify(value)).toString("base64url");
+          const issuedAt = Math.floor(Date.now() / 1000);
+          const unsignedToken = [
+            encode({ alg: "RS256", typ: "JWT" }),
+            encode({
+              iss: credentials.client_email,
+              scope: "https://www.googleapis.com/auth/androidpublisher",
+              aud: "https://oauth2.googleapis.com/token",
+              iat: issuedAt,
+              exp: issuedAt + 3600,
+            }),
+          ].join(".");
+          const signature = crypto
+            .sign("RSA-SHA256", Buffer.from(unsignedToken), credentials.private_key)
+            .toString("base64url");
+          const assertion = `${unsignedToken}.${signature}`;
+
+          const body = new URLSearchParams({
+            grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+            assertion,
+          });
+
+          fetch("https://oauth2.googleapis.com/token", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body,
+          })
+            .then(async (response) => {
+              const payload = await response.json();
+              if (!response.ok || !payload.access_token) {
+                throw new Error(
+                  `Google OAuth token exchange failed (${response.status}): ${JSON.stringify(payload)}`,
+                );
+              }
+
+              console.log(`::add-mask::${payload.access_token}`);
+              fs.appendFileSync(
+                process.env.GITHUB_OUTPUT,
+                `access_token=${payload.access_token}\n`,
+              );
+            })
+            .catch((error) => {
+              console.error(error);
+              process.exit(1);
+            });
+          NODE
 
       - name: Replace Play Store icon
         id: sync
